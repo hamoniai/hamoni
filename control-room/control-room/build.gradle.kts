@@ -20,6 +20,8 @@ plugins {
     id("quarkus-application-conventions")
 }
 
+description = "Main assembly for the Control Room component"
+
 dependencies {
     // For frontend development
     implementation(libs.platform.quarkus.ext.quinoa)
