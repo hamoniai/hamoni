@@ -1,0 +1,49 @@
+= Hamoni Platform
+:navtitle: Overview
+
+Hamoni is a cloud workflow platform with an **Operations-first** focus. It lets
+teams bring AI directly into their business processes as an **actively
+contributing participant**, so that people and AI are orchestrated as *one
+workforce* and built to scale.
+
+The people who use Hamoni are overwhelmingly **business people, not
+technologists**. Three rules follow and shape the whole design:
+
+. **80% of things should be easy.**
+. The remaining **20% is advanced mode**.
+. In advanced mode the user has **full control**, with verification only to make
+  sure a change does not break the platform.
+
+== How the code is organised
+
+Work is grouped into three holding directories plus the documentation set. Each
+directory holds one or more build projects, not a project itself.
+
+[cols="1,3"]
+|===
+| Directory | Holds
+
+| `control-room`
+| The projects for everything user-facing: the process designer, management,
+lists, teams, projects and security.
+
+| `process-runner`
+| The projects for the runtime that executes process definitions end to end.
+
+| `common`
+| The projects for libraries genuinely shared by both — the process model, the
+state models and shared contracts.
+|===
+
+== The build
+
+The platform is built in **Kotlin** with **Gradle** (Kotlin DSL), targets
+**Java 25**, and runs on **Quarkus** in reactive mode. See the repository
+`README.md` for build and test commands.
+
+== Where the decisions live
+
+The technical standards are in `CODING-STANDARDS.md` (in three parts: Common,
+Backend and Frontend). The architecture decisions, each with its reasoning, are
+in `ARCHITECTURE-DECISIONS.md`. As the platform matures, both graduate into this
+Antora site — see xref:architecture.adoc[Architecture].

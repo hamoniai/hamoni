@@ -1,0 +1,38 @@
+= Architecture
+:navtitle: Architecture
+
+This section describes how the Hamoni platform is built: its directories, the
+boundaries between them, and the decisions behind them.
+
+The authoritative, always-current source is the architecture decision log at the
+repository root, `ARCHITECTURE-DECISIONS.md`. Every record states its own
+reasoning, so the log is self-contained. It is a working document; as decisions
+stabilise they are written up here as structured pages.
+
+== Directory boundaries
+
+The platform is three holding directories plus this documentation set. Each
+directory holds one or more build projects.
+
+* **`control-room/`** — the projects for the user-facing application. They own
+  the design-time model (the process designer), management, and the read models
+  the screens use. They never execute a process.
+* **`process-runner/`** — the projects for the execution runtime. They own the
+  process engine, the runtime state machines, pend and exception, signals and
+  timers, and the audit trail. They never own user-facing configuration.
+* **`common/`** — the projects for the libraries both areas share: the JSON
+  Process model and schema, the state models, and shared contracts. They have no
+  runtime of their own.
+
+Dependencies are one-way: a project under `control-room/` or `process-runner/`
+may depend on a project under `common/`, and the two application areas never
+depend on each other.
+
+== Key decisions
+
+The platform's defining decisions — teams and projects are orthogonal top-level
+objects; one shallow container owns a process; access is a grant, not a location;
+versions are linear and immutable; pend and exception are first-class process
+states; JSON Process is an executable model defined as a JSON Schema; identity is
+OpenID Connect only — are recorded with their reasoning in
+`ARCHITECTURE-DECISIONS.md`. Read that log before changing anything structural.

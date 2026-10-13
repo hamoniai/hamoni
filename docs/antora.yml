@@ -1,0 +1,5 @@
+name: hamoni
+title: Hamoni Platform
+version: ~
+nav:
+  - modules/ROOT/nav.adoc
