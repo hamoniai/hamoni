@@ -55,10 +55,10 @@ tasks.withType<QuarkusDev>().configureEach {
 }
 
 /**
- * Disable the Quarkus build tasks for non-main projects. The main project has root project name without '-root'
+ * Disable the Quarkus build tasks for non-main projects. The main project will be in a parent directory of the same
+ * name.
  */
-val mainProjectName = project.rootProject.name.replace("-root", "")
-if (project.name != mainProjectName) {
+if (project.projectDir.name != project.projectDir.parentFile.name) {
     val quarkusDisabledTasks = listOf("quarkusBuild", "quarkusBuildAppModel", "quarkusAppPartsBuild", "quarkusDependenciesBuild")
     tasks.named { it in quarkusDisabledTasks }.configureEach {
         enabled = false
