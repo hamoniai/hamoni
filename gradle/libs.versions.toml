@@ -1,0 +1,29 @@
+[versions]
+kotlin-core = "2.4.10"
+kotlin-serialization = "1.11.0"
+platform-quarkus = "3.40.1"
+platform-quarkus-ext-quinoa = "2.9.2"
+platform-quarkus-ext-aws = "3.23.0"
+platform-quarkus-ext-h2db = "0.8.0"
+platform-quarkus-ext-mockk = "latest.release"
+test-assertj = "3.27.7"
+util-jandex = "2.3.0"
+
+[libraries]
+kotlin-serialization-bom = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-bom", version.ref = "kotlin-serialization" }
+platform-quarkus-bom = { group = "io.quarkus.platform", name = "quarkus-bom", version.ref = "platform-quarkus" }
+platform-quarkus-ext-quinoa = { group = "io.quarkiverse.quinoa", name = "quarkus-quinoa", version.ref = "platform-quarkus-ext-quinoa" }
+platform-quarkus-ext-aws-bom = { group = "io.quarkiverse.amazonservices", name = "quarkus-amazon-services-bom", version.ref = "platform-quarkus-ext-aws" } # Includes the AWS BOM
+platform-quarkus-ext-h2db = { group = "io.quarkiverse.quarkus-reactive-h2-client", name = "quarkus-reactive-h2-client", version.ref = "platform-quarkus-ext-h2db" }
+platform-quarkus-ext-mockk = { group = "io.quarkiverse.mockk", name = "quarkus-junit5-mockk", version.ref = "platform-quarkus-ext-mockk" }
+test-assertj-core = { group = "org.assertj", name = "assertj-core", version.ref = "test-assertj" }
+
+[bundles]
+
+[plugins]
+platform-quarkus-application = { id = "io.quarkus", version.ref = "platform-quarkus"}
+platform-quarkus-extension = { id = "io.quarkus.extension", version.ref = "platform-quarkus"}
+kotlin-core = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-core" }
+kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin-core" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-core" }
+util-jandex = { id = "org.kordamp.gradle.jandex", version.ref = "util-jandex" }
