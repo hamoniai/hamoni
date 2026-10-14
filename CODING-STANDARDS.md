@@ -197,7 +197,7 @@ Do not:
   `POST /processes/{processId}/instances`, with the body validated against the
   process's state schema (ADR-0029).
 - **Errors use the problem-details format (`application/problem+json`, RFC
-  7807).** No stack traces on the wire, and no internal identifiers in error
+  9457).** No stack traces on the wire, and no internal identifiers in error
   messages.
 - **Validation at the boundary.** A payload is validated against the process's
   declared state data (ADR-0017); a mismatch raises a mapped exception.

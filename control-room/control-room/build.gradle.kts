@@ -27,15 +27,21 @@ dependencies {
     implementation(libs.platform.quarkus.ext.quinoa)
 
     // Projects
-    //implementation(project(":hamoni-auth-aws-common"))
+    implementation(project(":common-platform"))
 
-    // Main runtime
+    // Main runtime (Quarkus components to include)
+    implementation("io.quarkus:quarkus-flyway") // includes the h2 module
+    implementation("io.quarkus:quarkus-flyway-mysql")
+    implementation("io.quarkus:quarkus-hibernate-reactive-panache-kotlin")
+    implementation("io.quarkus:quarkus-hibernate-validator")
     implementation("io.quarkus:quarkus-jdbc-mysql")
     implementation("io.quarkus:quarkus-oidc")
     implementation("io.quarkus:quarkus-reactive-mysql-client")
+    implementation("io.quarkus:quarkus-reactive-transactions")
+    implementation("io.quarkus:quarkus-scheduler")
+    implementation("io.quarkus:quarkus-smallrye-context-propagation")
 
     // Dependencies for build
-    compileOnly("io.quarkus:quarkus-hibernate-reactive-panache-kotlin") // Special case, we need access to some classes in DevMode.kt
     implementation("io.quarkus:quarkus-container-image-docker")
 
     // Quarkus dependencies for dev mode

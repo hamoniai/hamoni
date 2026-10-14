@@ -52,6 +52,7 @@ tasks.withType<QuarkusDev>().configureEach {
     //getOverridableProperty("aws.default.profile")?.let {
     //    jvmArgs = listOf("-Daws.profile=$it")
     //}
+    notCompatibleWithConfigurationCache("Plugin not compatible")
 }
 
 /**

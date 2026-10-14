@@ -73,7 +73,7 @@ Run a project from its directory, for example the Control Room's user-interface
 project, in development mode (live reload):
 
 ```bash
-./gradlew :hamoni-cr-ui:quarkusDev
+./gradlew :control-room:quarkusDev
 ```
 
 Development mode enables live reload and the development interface. Development
