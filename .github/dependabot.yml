@@ -2,6 +2,7 @@ version: 2
 updates:
   # Configuration for npm packages (Node.js)
   - package-ecosystem: "npm"
+    open-pull-requests-limit: 10
     directory: "/control-room/control-room-ui"
     schedule:
       interval: "weekly"
@@ -18,7 +19,8 @@ updates:
       - "dependencies"
       - "angular"
   # Configuration for Java packages (Gradle)
-  - package-ecosystem: "gradle" 
+  - package-ecosystem: "gradle"
+    open-pull-requests-limit: 10
     directory: "/"
     schedule:
       interval: "weekly"
