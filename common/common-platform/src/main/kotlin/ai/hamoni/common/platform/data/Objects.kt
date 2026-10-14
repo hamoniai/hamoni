@@ -21,7 +21,7 @@ package ai.hamoni.common.platform.data
 /**
  * An object that maps to an error being sent to the frontend. Maps RFC9457
  */
-class Error (
+class Problem (
     val type: String,
     val title: String,
     val status: Int,

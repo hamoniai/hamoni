@@ -21,6 +21,7 @@ package ai.hamoni.common.platform.resource
 import ai.hamoni.common.platform.APPLICATION_PROBLEM_JSON_UTF8_TYPE
 import ai.hamoni.common.platform.REQUEST_PROPERTY_ID
 import ai.hamoni.common.platform.ResourceLogger
+import ai.hamoni.common.platform.data.Problem
 import ai.hamoni.common.platform.exception.EntityNotFoundException
 import ai.hamoni.common.platform.exception.SecurityException
 import jakarta.validation.ConstraintViolationException
@@ -79,7 +80,7 @@ class ExceptionMappers {
 
     // Service exceptions
     @ServerExceptionMapper
-    fun handleConstraintViolationException(exception: ConstraintViolationException, context: ContainerRequestContext): RestResponse<Error> {
+    fun handleConstraintViolationException(exception: ConstraintViolationException, context: ContainerRequestContext): RestResponse<Problem> {
         val reference = getRequestId(context)
         val message = exception.constraintViolations
             .joinToString(
@@ -90,31 +91,31 @@ class ExceptionMappers {
         ResourceLogger.LOGGER.restValidationError(reference, "<unknown>", message)
 
         val errorStatus = RestResponse.Status.BAD_REQUEST
-        val errorObject: Error = Error() //Error(reference, message) - TODO convert to a structured message, see RFC example
+        val errorObject: Problem = Problem() //Error(reference, message) - TODO convert to a structured message, see RFC example
         return RestResponse.ResponseBuilder.create(errorStatus, errorObject)
             .type(APPLICATION_PROBLEM_JSON_UTF8_TYPE)
             .build()
     }
 
     @ServerExceptionMapper
-    fun handleNotFoundExceptionMapper(exception: EntityNotFoundException, context: ContainerRequestContext): RestResponse<Error> {
+    fun handleNotFoundExceptionMapper(exception: EntityNotFoundException, context: ContainerRequestContext): RestResponse<Problem> {
         val reference = getRequestId(context)
         ResourceLogger.LOGGER.restNotFoundError(reference, getServiceName(exception.serviceMethod))
 
         val errorStatus = RestResponse.Status.NOT_FOUND
-        val errorObject: Error = Error() //Error(reference, "Object not found")
+        val errorObject: Problem = Problem() //Error(reference, "Object not found")
         return RestResponse.ResponseBuilder.create(errorStatus, errorObject)
             .type(APPLICATION_PROBLEM_JSON_UTF8_TYPE)
             .build()
     }
 
     @ServerExceptionMapper
-    fun handleSecurityExceptionMapper(exception: SecurityException, context: ContainerRequestContext): RestResponse<Error> {
+    fun handleSecurityExceptionMapper(exception: SecurityException, context: ContainerRequestContext): RestResponse<Problem> {
         val reference = getRequestId(context)
         ResourceLogger.LOGGER.restSecurityError(reference, getServiceName(exception.serviceMethod), exception.message)
 
         val errorStatus = RestResponse.Status.NOT_FOUND // FIXME
-        val errorObject: Error = Error() //Error(reference, "Security error")
+        val errorObject: Problem = Problem() //Error(reference, "Security error")
         return RestResponse.ResponseBuilder.create(errorStatus, errorObject)
             .type(APPLICATION_PROBLEM_JSON_UTF8_TYPE)
             .build()
@@ -122,12 +123,12 @@ class ExceptionMappers {
 
     // Framework exceptions
     @ServerExceptionMapper
-    fun handleResourceNotFoundExceptionMapper(exception: NotFoundException, context: ContainerRequestContext): RestResponse<Error> {
+    fun handleResourceNotFoundExceptionMapper(exception: NotFoundException, context: ContainerRequestContext): RestResponse<Problem> {
         val reference = getRequestId(context)
         ResourceLogger.LOGGER.restNotFoundError(reference, context.uriInfo.requestUri.toString())
 
         val errorStatus = RestResponse.Status.NOT_FOUND
-        val errorObject: Error = Error() //Error(reference, "Not found")
+        val errorObject: Problem = Problem() //Error(reference, "Not found")
         return RestResponse.ResponseBuilder.create(errorStatus, errorObject)
             .type(APPLICATION_PROBLEM_JSON_UTF8_TYPE)
             .build()
@@ -148,7 +149,7 @@ class ExceptionMappers {
      * The actual ConstraintValidation is wrapped further up in the exception hierarchy.
      */
     @ServerExceptionMapper
-    fun handleValidationExceptionMapper(exception: ValidationException, context: ContainerRequestContext): RestResponse<Error> {
+    fun handleValidationExceptionMapper(exception: ValidationException, context: ContainerRequestContext): RestResponse<Problem> {
         var e = exception.cause
         while (e != null) {
            if (e is ConstraintViolationException) {
@@ -162,12 +163,12 @@ class ExceptionMappers {
 
     // General handler
     @ServerExceptionMapper
-    fun handleExceptionMapper(exception: Exception, context: ContainerRequestContext): RestResponse<Error> {
+    fun handleExceptionMapper(exception: Exception, context: ContainerRequestContext): RestResponse<Problem> {
         val reference = getRequestId(context)
         ResourceLogger.LOGGER.restError(reference, exception)
 
         val errorStatus = RestResponse.Status.INTERNAL_SERVER_ERROR
-        val errorObject: Error = Error() //Error(reference, "Unknown error")
+        val errorObject: Problem = Problem() //Error(reference, "Unknown error")
         return RestResponse.ResponseBuilder.create(errorStatus, errorObject)
             .type(APPLICATION_PROBLEM_JSON_UTF8_TYPE)
             .build()
