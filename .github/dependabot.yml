@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # Configuration for npm packages (Node.js)
+  - package-ecosystem: "npm"
+    directory: "/control-room/control-room-ui"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "angular"
+  # Configuration for Java packages (Gradle)
+  - package-ecosystem: "gradle" 
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "java"
