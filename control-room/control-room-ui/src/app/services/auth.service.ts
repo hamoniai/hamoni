@@ -1,48 +1,25 @@
-import { HttpClient, HttpErrorResponse, httpResource } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
-import { catchError, of, take, tap, throwError, Observable } from 'rxjs';
-import { AppError } from '@/app.exceptions';
-import { LoggingService, getProblemDetailsFromError } from '@/app/services/logging.service';
+import { HttpClient, HttpErrorResponse, HttpStatusCode, httpResource } from '@angular/common/http';
+import { effect, inject, Injectable } from '@angular/core';
+import { catchError, of, take, tap, Observable } from 'rxjs';
+import { LoggingService, getProblemDetailsFromHttpError } from '@/app/services/logging.service';
 import { environment } from '@/environments/environment';
-
-/**
- * The representation of an organisation
- */
-export interface Organisation {
-    /**
-     * The identifier of the organisation
-     */
-    id: string;
-    /**
-     * The name of the organisation
-     */
-    name: string;
-}
 
 /**
  * The representation of a user
  */
 export interface User {
     /**
-     * The identifier of the user in the application (should be a UUID)
+     * The identifier of the user in the application (UUID)
      */
     id: string;
     /**
-     * The display name of the user in the applicaiton.
+     * The display name of the user.
      */
     name: string;
     /**
-     * The email address of the user in the application.
+     * The email address of the user.
      */
     email: string;
-    /**
-     * The organisations a user belongs to
-     */
-    organisations: Organisation[];
-    /**
-     * The default organisation for the user (should be a uuid)
-     */
-    defaultOrganisationId: string;
 }
 
 /**
@@ -56,9 +33,6 @@ export class AuthService {
     readonly #http = inject(HttpClient);
     readonly #logging = inject(LoggingService);
 
-    constructor() {
-    }
-
     // Http resources. For cases when the underlying resource is needed. These should be readonly.
     // Note that this will trigger under all conditions, even if accessing unauthenticated pages. That is
     // okay because this is a light service. However, it may not resolve if the user is not logged in.
@@ -69,7 +43,22 @@ export class AuthService {
     // The underlying userResource is guarded in app.component.ts, so the user property can be safely used.
     readonly user = this.#userResource.value.asReadonly();
 
-    // Actions: Named as <verb><noun>. returns observables.
+    constructor() {
+        // Handler to catch an error from the user service and log it.
+        effect(() => {
+            const error = this.#userResource.error() as HttpErrorResponse;
+
+            if (error) {
+                // If the error is unauthorised. If a 401, then goto the login page. Anything else, goto the error page.
+                if (error.status != HttpStatusCode.Unauthorized) {
+                    const problemDetails = getProblemDetailsFromHttpError(error);
+                    this.#logging.apiCallFailed(problemDetails);
+                }                    
+            }
+        });
+    }
+
+    // Actions: Named as <verb>(<noun>)?. returns observables.
     /**
      * @returns an observable which is true if the logout request completed, undefined otherwise.
      */
@@ -77,28 +66,21 @@ export class AuthService {
         return this.#http.get<boolean>(`${this.#apiBase}/logout`)
             .pipe(
                 catchError((error: HttpErrorResponse) => {
-                    this.#logging.authLogoutFailed(getProblemDetailsFromError(error));
+                    const problemDetails = getProblemDetailsFromHttpError(error, "Unable to logout");
+                    this.#logging.apiCallFailed(problemDetails);
                     return of(true);
                 }),
                 tap(() => {
-                    this.#userResource.set(null);
+                    this.#userResource.set(undefined);
                 }),
                 take(1)
             );
     }
 
     /**
-     * select to an organisation.
+     * Accessor method, we don't want to expose the underlying resource directly, as it is not readonly.
      */
-    selectOrganisation(newOrganisationId: string): Observable<boolean> {
-        return this.#http.post<boolean>(`${this.#apiBase}/selectOrganisation`, { organisationId: newOrganisationId })
-            .pipe(
-                catchError((error: HttpErrorResponse) => {
-                    const problemDetails = getProblemDetailsFromError(error, "Unable to select organisation");
-                    this.#logging.authSelectOrganisationFailed(problemDetails);
-                    return throwError(() => new AppError(problemDetails.title, problemDetails.detail, { cause: error }));
-                }),
-                take(1)
-            );
+    reloadUser(): void {
+        this.#userResource.reload();
     }
 }

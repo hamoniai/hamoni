@@ -1,9 +1,11 @@
 import { inject, effect, Component } from '@angular/core';
 import { Location } from '@angular/common';
+import { HttpStatusCode, HttpErrorResponse } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
 import { Router } from '@angular/router';
 import { AppStateService } from '@/app/services/app-state.service';
 import { AuthService } from '@/app/services/auth.service';
+import { getProblemDetailsFromHttpError,  } from '@/app/services/logging.service';
 import { environment } from '@/environments/environment';
 
 
@@ -31,20 +33,24 @@ export class AppComponent {
         if ("/error" == currentPath || currentPath.startsWith("/auth/")) {
             this.#router.initialNavigation();
         } else {
-            // Check the auth whoami service to obtain the user information. If this returns not authenticated, then redirect the user to the
-            // default login page. Do thi sinstead of checking the appState as we do not need the full state here. That also gives time for
-            // the full appState to load in the background.
+            // Check the auth whoami service to obtain the user information. We need to check direct as appState only holds a value if the
+            // user is authenticated, the failure call from teh whoami service is hidden.
             effect(() => {
                 const data = this.#authService.userResource.value();
-                const error = this.#authService.userResource.error();
+                const error = this.#authService.userResource.error() as HttpErrorResponse;
 
                 if (data) {
-                    this.#appState.loadDefaults();
+                    // TODO: need to select the organisation - need to confirm the organisation load has finished in app state (should be a non-null array)
+                    // then follow the authorisation rules.
                     this.#router.initialNavigation();
                 } else if (error) {
                     // If the error is unauthorised. If a 401, then goto the login page. Anything else, goto the error page.
-                    // FIXME: redirect update
-                    this.#router.navigateByUrl(environment.errorPage, { skipLocationChange: true });
+                    if (error.status == HttpStatusCode.Unauthorized) {
+                        this.#router.navigateByUrl(environment.loginPage, { skipLocationChange: false });
+                    } else {
+                        const problemDetails = getProblemDetailsFromHttpError(error); // No need to log here, that is handled in the auth service.
+                        this.#router.navigateByUrl(environment.errorPage, { skipLocationChange: true, state: problemDetails });
+                    }                    
                 }
             });
         }

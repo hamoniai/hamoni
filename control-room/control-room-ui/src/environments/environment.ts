@@ -1,5 +1,6 @@
 export const environment = {
     production: true,
     apiBase: '/api',
-    errorPage: '/error'
+    errorPage: '/error',
+    loginPage: '/login'
 };

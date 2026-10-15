@@ -2,15 +2,11 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
+import { ProblemMessage, createUnknownProblemDetails } from '@/app/services/logging.service';
 
-
-export const stateErrorDetailsKey = "errorDetails"
-
-export interface ErrorDetails {
-    code: number,
-    message: string
-}
-
+/**
+ * Display an error page. The state parameter will be a problem object.
+ */
 @Component({
     selector: 'app-error',
     standalone: true,
@@ -25,12 +21,9 @@ export interface ErrorDetails {
             </div>
 
             <div class="w-full max-w-md p-8 bg-[var(--surface-card)] border border-[var(--surface-border)] rounded-3xl shadow-xl transition-all duration-300">
-                <h1 class="text-4xl font-extrabold text-[var(--primary-color)] mb-4 tracking-tight">{{ heading }}</h1>
+                <h1 class="text-4xl font-extrabold text-[var(--primary-color)] mb-4 tracking-tight">{{ problemMessage.title }}</h1>
                 <p class="text-[var(--text-color-secondary)] text-base font-medium mb-8 leading-relaxed">
-                    {{ errorDetails.message }}
-                </p>
-                <p class="text-[var(--text-color-secondary)] text-base font-medium mb-8 leading-relaxed">
-                    Please try closing this window and opening from the AWS portal
+                    {{ problemMessage.detail }}
                 </p>
                 <button pButton class="px-6 py-2.5 rounded-xl font-bold" (click)="closeTab()">Close</button>
             </div>
@@ -40,26 +33,11 @@ export interface ErrorDetails {
 export class ErrorComponent {
     readonly #router = inject(Router);
 
-    errorDetails: ErrorDetails
-
-    get heading(): string {
-        switch(this.errorDetails.code) {
-            case 400:
-                return "Bad request"
-            case 401:
-                return "Login error"
-            case 403:
-                return "Not authorised"
-            case 404:
-                return "Page not found"
-            default:
-                return "Unknown error"
-        }
-    }
+    problemMessage: ProblemMessage
 
     constructor() {
         const nav = this.#router.currentNavigation()
-        this.errorDetails = ((nav?.extras.state?.[stateErrorDetailsKey]) || {code: 500, message: "Unknown error"}) as ErrorDetails
+        this.problemMessage = (nav?.extras?.state as ProblemMessage | undefined) || createUnknownProblemDetails()
     }
 
     closeTab() {
