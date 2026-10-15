@@ -63,12 +63,8 @@ its service and its state together (CODING-STANDARDS §19).
 
 ## Bootstrapping
 
-The frontend is built by the shared Gradle build through Quinoa, so running the
-Control Room builds and serves it:
-
-```bash
-./gradlew :control-room-ui:quarkusDev    # runs the app, UI included (live reload)
-```
+The frontend is assembled into the `:control-room` project by the shared Gradle build
+and Quarkus Quinoa, which is outside the scope of this project.
 
 For focused interface work, run the Angular dev server directly, against a
 running backend:
@@ -80,9 +76,6 @@ npm run build     # production build — Quinoa runs this in the Gradle build
 npm test          # unit tests
 npm run lint      # ESLint
 ```
-
-Use the project's own package scripts where they differ. The Gradle project path
-follows the shared Gradle convention scripts.
 
 ## Angular rules for this project
 
