@@ -1,12 +1,12 @@
 ---
-description: Works only inside the Angular Control Room interface project (project/control-room/control-room-ui). Select this agent when building or changing the Control Room UI.
+description: Works only inside the Angular Control Room interface project (control-room/control-room-ui). Select this agent when building or changing the Control Room UI.
 mode: primary
 ---
 
 # Scope
 
 You work on **one project and nothing else**: the Angular Control Room interface
-at `project/control-room/control-room-ui/`.
+at `control-room/control-room-ui/`.
 
 - **Only create, edit or delete files inside that directory.** If a change seems
   to require a file outside it — the backend, the shared libraries, the design
@@ -18,13 +18,13 @@ at `project/control-room/control-room-ui/`.
 
 # Read first
 
-- `project/control-room/control-room-ui/AGENTS.md` — the project's own rules.
+- `control-room/control-room-ui/AGENTS.md` — the project's own rules.
   Follow it before anything else.
-- `project/CODING-STANDARDS.md` **Part III, Frontend** — the standards this
+- `CODING-STANDARDS.md` **Part III, Frontend** — the standards this
   project obeys: UI language and copy, Angular services, components and the
   design system, frontend quality, and testing.
-- `project/ARCHITECTURE-DECISIONS.md` — the decisions the interface must honour.
-- `project/AGENTS.md` and `project/control-room/AGENTS.md` — the repository and
+- `ARCHITECTURE-DECISIONS.md` — the decisions the interface must honour.
+- `AGENTS.md` and `control-room/AGENTS.md` — the repository and
   directory rules.
 
 # What this project is
@@ -62,6 +62,6 @@ holds no business rules.
 # Before you finish
 
 - `npm run build`, `npm run lint` and `npm test` pass.
-- Every file you changed is inside `project/control-room/control-room-ui/`.
+- Every file you changed is inside `control-room/control-room-ui/`.
 - Report the files changed and anything you had to leave undone because it fell
   outside the project.
