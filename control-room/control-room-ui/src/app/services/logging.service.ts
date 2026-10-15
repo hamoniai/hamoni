@@ -28,7 +28,6 @@ const UNAUTHORISED_ERROR_DETAIL = 'The requested page was not found.';
  * @returns A parsed RFC9457 problem message
  */
 export function getProblemDetailsFromHttpError(error: HttpErrorResponse, defaultTitle?: string): ProblemMessage {
-    error.url
     if (error.error && typeof error.error === 'object' && 'detail' in error.error) {
         return {
             type: error.error.type || 'about:blank',
@@ -57,7 +56,7 @@ export function getProblemDetailsFromHttpError(error: HttpErrorResponse, default
     }
 }
 
-export function createGenericProblemDetails(status: number, title: string, detail: string, type: string = "about:blank", requestId?: string): ProblemMessage {
+export function createGenericProblemDetails(status: number, title: string, detail: string, type = "about:blank", requestId?: string): ProblemMessage {
     return {
         type: type,
         title: title,

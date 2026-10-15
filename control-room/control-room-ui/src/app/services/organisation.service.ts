@@ -30,9 +30,6 @@ export class OrganisationService {
     readonly #http = inject(HttpClient);
     readonly #logging = inject(LoggingService);
 
-    constructor() {
-    }
-
     // Http resources
 
     // State data (returns signals)

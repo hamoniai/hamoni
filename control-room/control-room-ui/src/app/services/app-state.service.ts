@@ -1,7 +1,6 @@
-import { Injectable, computed, effect, inject, linkedSignal, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { AuthService, User } from '@/app/services/auth.service';
 import { Organisation, OrganisationService } from '@/app/services/organisation.service';
-import { LoggingService } from '@/app/services/logging.service';
 
 
 /**
@@ -28,7 +27,6 @@ const THEME_LIGHT = 'light';
 export class AppStateService {
     readonly #authService = inject(AuthService);
     readonly #organisationService = inject(OrganisationService);
-    readonly #logging = inject(LoggingService);
 
     // global state, with a public read only view. Initial state is loaded from local storage.
     // Operations on global state, such as accepting an invite should update/refresh the application state object by reloading.
@@ -39,6 +37,9 @@ export class AppStateService {
         theme: localStorage.getItem(STOREKEY_THEME) || THEME_DARK
     });
     readonly appState = this.#appState.asReadonly();
+    // Store the last updated timestamp
+    readonly #appStateLoaded = signal<number | undefined>(undefined);
+    readonly appStateLoaded = this.#appStateLoaded.asReadonly();
 
     // Private fields to track changes to the theme
     readonly #appStateTheme = computed(() => this.#appState().theme);
@@ -60,11 +61,17 @@ export class AppStateService {
                 }));
 
                 // Do not actually change the selected organisation, that is the job of the startup or organisation switcher.
-                this.#organisationService.list().subscribe(data => {
-                    this.#appState.update(currentState => ({
-                        ...currentState,
-                        organisations: data
-                    }));
+                this.#organisationService.list().subscribe({
+                    next: (data) => {
+                        this.#appState.update(currentState => ({
+                            ...currentState,
+                            organisations: data
+                        }));
+                    },
+                    error: (err) => {},
+                    complete: () => {
+                        this.#appStateLoaded.set(Date.now());
+                    }
                 });
             }
         });

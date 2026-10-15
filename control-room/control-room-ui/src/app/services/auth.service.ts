@@ -40,8 +40,6 @@ export class AuthService {
     readonly userResource = this.#userResource.asReadonly();
 
     // State data (returns signals)
-    // The underlying userResource is guarded in app.component.ts, so the user property can be safely used.
-    readonly user = this.#userResource.value.asReadonly();
 
     constructor() {
         // Handler to catch an error from the user service and log it.

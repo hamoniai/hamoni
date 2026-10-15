@@ -1,7 +1,6 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { provideRouter, withDisabledInitialNavigation, withInMemoryScrolling } from '@angular/router';
+import { provideRouter, withDisabledInitialNavigation, withInMemoryScrolling, withPreloading, PreloadAllModules } from '@angular/router';
 import { provideLumberjack } from '@ngworker/lumberjack';
 import { providePrimeNG } from 'primeng/config';
 import { definePreset } from '@primeuix/themes';
@@ -83,7 +82,8 @@ export const appConfig: ApplicationConfig = {
     provideLumberjackConsoleDriver(),
     provideRouter(routes,
       withInMemoryScrolling({ anchorScrolling: 'enabled', scrollPositionRestoration: 'enabled' }),
-      withDisabledInitialNavigation()
+      withDisabledInitialNavigation(),
+      withPreloading(PreloadAllModules)
     ),
     providePrimeNG({
       // This is horrible and breaks our security practices as the key gets checked in. Need to find some way to dynamically load this, or move to Optimus UI.

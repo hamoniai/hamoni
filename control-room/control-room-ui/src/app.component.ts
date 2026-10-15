@@ -3,7 +3,6 @@ import { Location } from '@angular/common';
 import { HttpStatusCode, HttpErrorResponse } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
 import { Router } from '@angular/router';
-import { AppStateService } from '@/app/services/app-state.service';
 import { AuthService } from '@/app/services/auth.service';
 import { getProblemDetailsFromHttpError,  } from '@/app/services/logging.service';
 import { environment } from '@/environments/environment';
@@ -24,7 +23,6 @@ import { environment } from '@/environments/environment';
 export class AppComponent {
     readonly #router = inject(Router);
     readonly #location = inject(Location);
-    readonly #appState = inject(AppStateService);
     readonly #authService = inject(AuthService);
 
     constructor() {

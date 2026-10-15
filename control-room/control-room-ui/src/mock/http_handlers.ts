@@ -19,7 +19,7 @@ function api(path: string) {
  * @returns A basic object with the same properties, sanitised and ready for wire sending.
  */
 function toObject(obj: any) {
-  let serialised = JSON.stringify(obj, (key, value) => {
+  const serialised = JSON.stringify(obj, (key, value) => {
     if (value instanceof Date) {
       return value.toISOString();
     }
