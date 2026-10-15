@@ -10,7 +10,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "hamoni-controller-frontend": {
+    "hamoni-control-room": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -101,10 +101,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "hamoni-controller-frontend:build:production"
+              "buildTarget": "hamoni-control-room:build:production"
             },
             "development": {
-              "buildTarget": "hamoni-controller-frontend:build:development",
+              "buildTarget": "hamoni-control-room:build:development",
               "prebundle": {
                 "exclude": [
                   "msw",
@@ -114,7 +114,7 @@
               }
             },
             "staging": {
-              "buildTarget": "hamoni-controller-frontend:build:staging"
+              "buildTarget": "hamoni-control-room:build:staging"
             }
           },
           "defaultConfiguration": "development"

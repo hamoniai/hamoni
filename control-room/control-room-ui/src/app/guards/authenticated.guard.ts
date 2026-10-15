@@ -4,7 +4,7 @@ import { CanActivateFn, RedirectCommand, Router } from '@angular/router';
 import { catchError, filter, map, take } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { AuthService } from '@/app/services/auth.service';
-import { environment } from '@/environments/environment.staging';
+import { environment } from '@/environments/environment';
 
 /**
  * Guards access to authenticated pages. If the guard fails, it will redirect to the login page rather than show an error.
