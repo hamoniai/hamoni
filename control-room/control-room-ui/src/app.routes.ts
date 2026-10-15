@@ -11,7 +11,7 @@ export const routes: Routes = [
         path: '',
         component: AppLayout,
         children: [
-            { path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/home/home').then(c => c.Dashboard) },
+            { path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/home/home').then(c => c.HomeComponent) },
             //{ path: 'configuration', pathMatch: 'full', loadComponent: () => import('./app/pages/configuration/configuration-versions').then(c => c.ConfigurationVersions) },
             //{ path: 'configuration/editor', pathMatch: 'full', loadComponent: () => import('./app/pages/configuration/configuration-editor').then(c => c.Configuration) },
         ],

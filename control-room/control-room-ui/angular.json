@@ -26,14 +26,17 @@
           "options": {
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
-            "inlineStyleLanguage": "scss",
+            "inlineStyleLanguage": "css",
             "assets": [
               {
                 "glob": "**/*",
                 "input": "public"
               }
             ],
-            "styles": ["src/assets/styles.scss", "src/assets/tailwind.css"]
+            "styles": [
+              "node_modules/primeicons/primeicons.css",
+              "src/styles/styles.css"
+            ]
           },
           "configurations": {
             "production": {

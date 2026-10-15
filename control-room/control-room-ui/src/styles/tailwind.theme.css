@@ -1,0 +1,76 @@
+/* Hamoni Tailwind theme — Tailwind v4, CSS-first.
+ *
+ * Derived from the same custom properties as tokens.css, so a Tailwind utility
+ * and a PrimeNG component resolve to one value and can never drift apart.
+ * @theme inline inlines the var() reference into each utility (rather than
+ * emitting a second variable), which is what lets the .app-dark switch reach
+ * Tailwind with no indirection.
+ *
+ * The dark variant is aligned with PrimeNG's darkModeSelector (.app-dark).
+ */
+
+@custom-variant dark (&:where(.app-dark, .app-dark *));
+
+@theme inline {
+  /* ── colours — the registered palette + its oklch derivations ────────── */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-dim: var(--dim);
+  --color-accent: var(--accent);
+  --color-info: var(--info);
+
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-accent-dim: var(--accent-dim);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-info-soft: var(--info-soft);
+  --color-info-line: var(--info-line);
+  --color-fg-soft: var(--fg-soft);
+  --color-fg-faint: var(--fg-faint);
+  --color-inset: var(--inset);
+  --color-raise: var(--raise);
+  --color-scrim: var(--scrim);
+
+  /* ── fonts — three voices (§38.6) ───────────────────────────────────── */
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
+
+  /* ── radii — 3 / 5 / 8 / 10 (Hamoni --radius 8px = rounded-md) ──────── */
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius-lg);
+
+  /* ── spacing — 4px base keeps the 8px grid (1/2/4/6/10 = 4/8/16/24/40) ─ */
+  --spacing: 4px;
+  --spacing-ctl: var(--ctl);
+  --spacing-ctl-lg: var(--ctl-lg);
+  --spacing-touch: var(--touch);
+  --spacing-header: var(--header-h);
+
+  /* ── type scale (sizes carry their line-heights) ────────────────────── */
+  --text-h1: var(--fs-h1);
+  --text-h1--line-height: 1.15;
+  --text-h2: var(--fs-h2);
+  --text-h2--line-height: 1.25;
+  --text-h3: var(--fs-h3);
+  --text-h3--line-height: 1.35;
+  --text-body: var(--fs-body);
+  --text-body--line-height: 1.5;
+  --text-sm: var(--fs-sm);
+  --text-sm--line-height: 1.5;
+  --text-meta: var(--fs-meta);
+  --text-meta--line-height: 1.5;
+  --text-cap: var(--fs-cap);
+  --text-cap--line-height: 1.4;
+
+  /* ── motion — durations are Tailwind's own duration-100/200/300 (0.1/0.2/0.3s) ─ */
+  --ease-standard: var(--ease);
+  --ease-out: var(--ease-out);
+}
