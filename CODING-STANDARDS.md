@@ -94,9 +94,20 @@ concern, covered under UI design and language (Part III).
 ## 4. Security and secrets
 
 - **No passwords, ever.** Authentication is OpenID Connect; Hamoni stores no
-  password and derives identity from the provider's subject claim (ADR-0022).
-- **Tenant isolation is enforced at the data layer** — every tenant-scoped query
-  carries the tenant context (ADR-0025). A missing tenant filter is a defect.
+  password. A person is a provider-and-subject pair, and the same subject may
+  belong to many organisations (ADR-0022).
+- **Authentication and authorisation are separate** (ADR-0041). Authentication
+  proves identity through the provider; entering an organisation is a separate
+  grant. Never treat a signed-in person as a member, and never resolve an
+  authorisation failure with a sign-in control.
+- **Organisation isolation is enforced at the data layer** — every
+  organisation-scoped query carries the organisation context (ADR-0025). A
+  missing filter is a defect.
+- **Organisation access requires an enabled provider and a profile**; revocation
+  is removal from the organisation, not a change of team membership (ADR-0043).
+- **Never reveal an organisation on an unauthenticated surface** — render no
+  organisation name and give no way to enumerate which organisations exist
+  (ADR-0045).
 - **Authorisation is explicit** at the service boundary: view · edit · deploy ·
   start, resolved from the security model (ADR-0024). Do not invent per-screen
   checks.
@@ -313,6 +324,8 @@ controls.
   that copy.
 - Acronyms specific to the project are defined once in the
   [README](./README.md#acronyms).
+- Use the word **organisation**, never *tenant*, in copy shown to a user — *tenant*
+  stays technical and internal (ADR-0022).
 
 ### 18.3 All copy is localisable
 
@@ -360,7 +373,116 @@ controls.
   backend's OpenAPI description. Do not hand-write a client type that duplicates
   a contract.
 
-## 20. Components and the design system
+## 20. Angular services
+
+A **service** is the only place that talks to the server; a component or a store
+calls a service and never performs a request itself. A feature owns its service
+beside its components and its state (§19).
+
+### 20.1 Every method returns an Observable
+
+- **Every public method on a service returns an `Observable`.** A method that
+  writes returns `Observable<void>`; a method that reads returns the value it
+  reads. Nothing on a service returns a bare value or a promise.
+
+### 20.2 The standard method names
+
+**A service method is named as a verb, optionally followed by the noun it acts
+on — `<verb>(<noun>)?`.** The noun is **omitted when the method operates on the
+service's own entity**, and included when the method acts on something else, or
+when a noun is needed to disambiguate.
+
+- `approve(id)` — the noun is left out: the service's entity is a process, and
+  the verb alone reads correctly.
+- `assignOwner(id, ownerId)` — the noun is kept: the method acts on the owner,
+  not on the process itself.
+
+For the **ordinary read and write operations**, use these five standard names,
+and no others; the name states the contract.
+
+- **`list()`** returns a list of objects with **no server-side filtering**.
+- **`search()`** returns a list of objects and **expects server-side
+  filtering**; it **requires the search criteria as an argument**.
+- **`get()`** returns a single object; it **requires an identifier as an
+  argument**.
+- **`update()`** performs the update and returns `Observable<void>`; it
+  **requires the identifier and the object to update as arguments**.
+- **`create()`** performs the create and returns the **hydrated object**; it
+  **requires the partial object as an argument**. Do **not** put an identifier
+  in the request URL or in the embedded object — it is ignored.
+
+### 20.3 A list is the whole list, delivered once
+
+- A method that returns a list returns **`Observable<T[]>`** — the whole list as
+  one value — **not** the streaming form `Observable<T>` that emits one item at a
+  time.
+- Reason: most lists are small, and one array maps directly to a table in
+  Angular. Streaming would force the table to assemble and reconcile the
+  collection itself for no benefit at this size.
+
+### 20.4 The identifier comes from the URL, never the body
+
+- For an update or a create, the object identifier is taken from a **URL
+  parameter**, not from the object being sent.
+- Leave the identifier field on the embedded object **blank**; the server reads
+  the identifier from the URL and ignores the embedded one. The URL is the single
+  source of truth for which object is addressed.
+
+### 20.5 State: a private writable signal, a public read-only signal
+
+- A service may also expose an **HTTP resource** and hold state as an **Angular
+  signal**.
+- A **writable signal is private**; the service exposes a **public, read-only
+  view** of it:
+
+```ts
+readonly #jobs = signal<Job[]>([]);
+readonly jobs = this.#jobs.asReadonly();
+```
+
+- Expose the public signal as **writable only when a caller genuinely must write
+  to it**; otherwise update the private signal inside a method on the caller's
+  behalf.
+
+### 20.6 Map transport errors to the application error type
+
+- Where an HTTP call is made, map the `HttpErrorResponse` to the application's
+  error type, **`AppError`**, using **`getProblemDetailsFromError`**. Do not let a
+  raw `HttpErrorResponse` leave the service.
+- Reason: the interface reports failures as problem details (§11), and
+  `getProblemDetailsFromError` reads them into the one error shape the rest of
+  the application handles. A raw transport error is not a domain type.
+
+### 20.7 Log at the point of the call
+
+- Where an HTTP call errors, log it **at the point of the call** — inside the
+  service, where the operation, the method and the identifier are known.
+- Do not rely on a global interceptor or on a component to log it, and do not
+  log the same failure a second time further up.
+- Reason: the call site has the context that makes the log useful, and one record
+  per failure keeps the log trustworthy.
+
+### 20.8 Never change server state through GET
+
+- An operation that **changes server state must never be reachable through an
+  HTTP `GET`**. A `GET` retrieves; it never changes anything.
+- Example: **selecting an organisation changes the session's current
+  organisation on the server**, so it is a **`POST`**, not a `GET`.
+
+### 20.9 Use HTTP method semantics
+
+- **`PUT`** updates the **whole** existing object — an overwrite.
+- **`PATCH`** **partially** updates an object.
+- **`POST`** **creates** a new object.
+- **`POST`** is the **fallback** for any request that updates state or an object
+  and does not fit `PUT` or `PATCH` — for example, an action that changes the
+  session.
+- **`GET`** only **retrieves** data.
+- Treat retrieved data as valid **only at the moment of retrieval**: as time
+  passes it is increasingly likely to be stale, so a view that must be current
+  re-reads rather than trusting a cached copy.
+
+## 21. Components and the design system
 
 - **PrimeNG in styled mode**, driven by the generated Hamoni preset
   (ADR-0038). Re-colour the library from the preset; never override a component's
@@ -370,10 +492,15 @@ controls.
 - **Unstyled (pass-through) mode is per component only**, for a control the
   preset cannot express — and only when there is no preset-based answer.
 - Use a single icon set on the declared size scale.
+- **Provider marks are the registered vendor glyphs**, never drawn look-alikes
+  (ADR-0045).
+- On the sign-in surface, method buttons carry the application's control fill
+  (`--bg` over the surface), and hover is uniform across the method and accent
+  buttons (ADR-0045).
 - **Compose, do not fork.** A variant of an existing component is a prop or a
   slot on that component, not a copy of it.
 
-## 21. Frontend quality: linting, formatting and types
+## 22. Frontend quality: linting, formatting and types
 
 - Enforce linting and formatting with the shared front-end configuration
   (ESLint and Prettier), consistent with the backend's quality gates. A change
@@ -385,7 +512,7 @@ controls.
 - Keep components small and single-purpose; extract a shared component the second
   time it is needed.
 
-## 22. Testing (frontend)
+## 23. Testing (frontend)
 
 - **Mock Service Worker (MSW)** provides the interface during tests and local
   development (ADR-0039). Share the handlers between the two.
@@ -395,22 +522,39 @@ controls.
 - Do not test against hand-rolled fake clients; go through MSW so the component
   sees a real request.
 
-## 23. Anti-patterns — Frontend
+## 24. Anti-patterns — Frontend
 
 Do not:
 
 - Hard-code a colour, font or radius outside the design system tokens (§18.4).
 - Override a PrimeNG component's colour locally, or introduce a second layout
-  system beside Tailwind (§20).
+  system beside Tailwind (§21).
 - Write user-facing copy inline in a component, concatenate a sentence from
   fragments, or hard-format a date, number or currency by hand (§18.3).
 - Use an acronym in copy shown to a user (§18.2).
 - Add a per-screen or per-panel advanced-mode switch (§18.4).
 - Use implicit `any`, a non-null assertion to silence the compiler, or a
-  hand-rolled fake client instead of MSW (§21, §22).
+  hand-rolled fake client instead of MSW (§22, §23).
 - Leave console output, dead code or commented-out blocks in committed code
-  (§21).
-- Fork an existing component instead of composing a variant of it (§20).
+  (§22).
+- Fork an existing component instead of composing a variant of it (§21).
+- Return a bare value or a promise from a service method; name a method without
+  a leading verb; or use a non-standard name for an ordinary operation instead of
+  `list`, `search`, `get`, `update`, `create` (§20.1, §20.2).
+- Stream a list as `Observable<T>` instead of delivering it once as
+  `Observable<T[]>` (§20.3).
+- Send the object identifier in the body of an update or a create instead of in
+  the URL (§20.4).
+- Expose a service's writable signal publicly, or read or write a private signal
+  from outside (§20.5).
+- Let a raw `HttpErrorResponse` leave a service, or handle an HTTP error without
+  mapping it to `AppError` with `getProblemDetailsFromError` (§20.6).
+- Log an HTTP failure anywhere but the call site, or log it more than once
+  (§20.7).
+- Change server state through an `HTTP GET` request (§20.8).
+- Use a method that does not match the semantic — a `GET` that changes state, a
+  `PUT` for a partial update, a `PATCH` where a full `PUT` is meant, or a `POST`
+  where `PUT` or `PATCH` fits (§20.8, §20.9).
 
 ---
 

@@ -418,24 +418,25 @@ project level (ADR-0010).
 
 ### ADR-0022 — Identity is OpenID Connect only; there are no passwords
 
-**Status:** Accepted
+**Status:** Accepted (revised 2026-10-15)
 
-**Decision.** Hamoni never stores a password. Every route authenticates through
-an external identity provider using **OpenID Connect (OIDC)**. Identity is the
-provider's subject claim — **not** the email address, which can change. The
-**route decides the tenant**: a tenant-specific route lands in that tenant; the
-public route lands in the first tenant alphabetically; the person may switch
-tenant in-session.
+**Decision.** Hamoni stores no password; every route authenticates through an
+external identity provider using **OpenID Connect (OIDC)**. A person is a
+**provider and subject** pair. The same subject may belong to **many
+organisations**, and the same human on two providers is **two identities**. The
+word a person meets is **organisation**; *tenant* stays technical and internal.
+Multi-factor authentication stays provider-side.
 
-**Reason.** Storing passwords is a liability with no upside. Authenticating every
-route through an external provider removes that liability, and using the subject
-claim rather than the email gives a stable key for a person whose address may
-change. Deciding the tenant by the route lets a company offer a single link
-without presenting a chooser.
+**Reason.** Storing passwords is a liability with no upside. Using the subject —
+not the email address, which can change — gives a stable key for a person across
+identity changes; letting one subject belong to many organisations lets a person
+move between them without a second account, while two providers correctly remain
+two identities.
 
 **Consequences.** The profile surface shows the name **and** the email so a
 person can tell which account they are on. There is no local credential store to
-secure.
+secure, and no Hamoni multi-factor screen. The sign-in surfaces and flows are
+ADR-0041 to ADR-0046.
 
 ### ADR-0023 — Groups reference the directory; roles are derived and additive
 
@@ -480,21 +481,23 @@ designer's assignment rather than another grant keeps the model small.
 **Consequences.** "Execute" ("who can start") is separate from "view" and lives
 at process level; a reusable process may be startable by anyone.
 
-### ADR-0025 — Multi-tenancy with in-session tenant switching
+### ADR-0025 — Multi-organisation, with in-session switching
 
-**Status:** Accepted
+**Status:** Accepted (revised 2026-10-15)
 
-**Decision.** The organisation (tenant) is switchable in-session from the
-identity menu; there is no sign-in gate on the switch. Tenant context is carried
-through every request and enforced at the data layer.
+**Decision.** The platform serves many organisations. The organisation is
+switched **in-session** from the organisation menu; **sign-out** lives in the
+user menu. The organisation context is carried through every request and
+enforced at the data layer.
 
 **Reason.** People move between organisations without signing out, so switching
-should not force a round trip through sign-in. Carrying tenant context through
-every request and enforcing it at the data layer is what keeps organisations
-isolated when one deployment serves many.
+must not force a round trip through sign-in. Carrying the context through every
+request and enforcing it at the data layer is what keeps organisations isolated
+when one deployment serves many.
 
-**Consequences.** Every tenant-scoped query must carry the tenant context; a
-missing tenant filter is a defect.
+**Consequences.** Every organisation-scoped query must carry the context; a
+missing filter is a defect. The user-facing word is **organisation**, never
+*tenant* (ADR-0022).
 
 ### ADR-0026 — Auditing uses the Hamoni audit framework
 
@@ -755,6 +758,138 @@ graduate into structured pages as they stabilise.
 
 ---
 
+## G · Authentication and organisation access
+
+These records refine the identity and access model (section C) for the sign-in
+surfaces and the flows behind them. They were added after the sign-in design pass
+and are the current model; where they conflict with an earlier record, they win.
+
+### ADR-0041 — Authentication and authorisation are separate concerns
+
+**Status:** Accepted
+
+**Decision.** **Authentication** proves *who you are*, once, through an OpenID
+Connect provider. **Entering an organisation** is a separate grant. A signed-in
+person who holds no access to an organisation is **not an error** — it is an
+**authorisation outcome** with its own surface and next action.
+
+**Reason.** Conflating the two makes "signed in, but not a member" read as a
+failure, and tempts a switcher on the login page that cannot fix it. Kept apart,
+each gets the right treatment: authentication is a plain provider round-trip, and
+an authorisation failure is resolved where the person can actually act on it.
+
+**Consequences.** There is **no authentication-error surface**; a provider cancel
+or failure is not a designed page. Authorisation failures are handled by the
+organisation chooser (ADR-0044).
+
+### ADR-0042 — The three login pages and the three flows
+
+**Status:** Accepted
+
+**Decision.** There are **three login pages**: the **global (default)** page,
+which authenticates only and carries no organisation; and an **organisation login
+page**, its own route, configured as **A** public methods only · **B** public
+methods and private ("sign in with my company") · **C** private methods only.
+Config **C renders no page** — the visit redirects straight to the organisation's
+provider. There are **three flows**: **J1 global sign-in** (authenticate → select
+the organisation from session state, or determine the default → authorise);
+**J2 organisation sign-in** (authenticate by any method the page allows → select
+that organisation → authorise); **J3 authorisation** (with access, enter;
+without access, break and show the organisation chooser).
+
+**Reason.** The organisation's configuration, not a binary question, decides
+which methods its page offers. Consolidating the surface to three pages and three
+flows keeps the model small and matches a single-page frontend.
+
+**Consequences.** For the public methods, the provider order is **Microsoft, then
+Google, then Apple** — a method list is not a leaderboard: every public method
+carries equal weight, and only the organisation's own configured method is
+preferential.
+
+### ADR-0043 — Organisation access requires an enabled provider and a profile
+
+**Status:** Accepted
+
+**Decision.** Access to an organisation requires **both**: the **provider is
+enabled for the organisation** (configured explicitly, or an allowed public
+method), and **a profile exists** (the person is the organisation's owner, or
+holds an invited profile). **Revocation is organisational** — removal from the
+organisation. An **invite creates the profile** (carrying the invite code) before
+the person has an account; accepting fills it in. A directory sync **disables**
+the profile, and a disabled profile has no access.
+
+**Reason.** Team membership cannot express access — a person may leave every team
+and still belong — so revocation must be removal from the organisation. Creating
+the profile at invite time is what makes that removal possible before the person
+has an account, and disabling the provider is what closes the door for every
+identity that used it.
+
+**Consequences.** Disabling a provider removes access for all identities that used
+it. Assignments and team membership are never a substitute for access.
+
+### ADR-0044 — The organisation chooser never auto-decides; authorisation runs once
+
+**Status:** Accepted
+
+**Decision.** The **organisation chooser** validates the person's access to their
+remaining organisations but **never silently selects one**. **Authorisation runs
+once, at launch**; the grant holds for the session and is evaluated again only
+when the **organisation is switched** or the **application is reloaded**.
+
+**Reason.** Auto-selecting would answer one organisation and enter another, and
+because the organisation is only visible from the profile popup, the person would
+be quietly confused. A single-page frontend does not re-check authorisation on
+every page or request.
+
+**Consequences.** No access to the attempted organisation **breaks the journey**
+and prompts the chooser. The chooser is the surface for every "you cannot enter
+here" case — the happy case, an organisation turned private-only, revoked access,
+an unaccepted invite, and disabling by directory sync.
+
+### ADR-0045 — The login page is anonymous; it never names the organisation
+
+**Status:** Accepted
+
+**Decision.** The login page **never renders the organisation's name**, and
+offers **no "switch organisation" affordance**. The URL carries the organisation
+(`/auth/login?organisation=…`); the page shows none. With no organisation
+parameter, the **public page** is chosen. Provider marks are the **registered
+vendor glyphs**. Every method button carries the application's control fill
+(`--bg` over the surface), and hover is uniform across the method and accent
+buttons.
+
+**Reason.** Rendering the name would let anyone enumerate login pages to discover
+which organisations subscribe; the same risk removes the switcher. Authorisation
+is not the login page's problem (ADR-0041), so the page stays a plain
+authenticator.
+
+**Consequences.** The **organisation chooser**
+(`screens/organisation-selector.html`) is the separate, pre-organisation surface
+listing the organisations a person may enter; it keeps the sign-in shell because
+the person is not yet in an organisation.
+
+### ADR-0046 — Invitations are against an organisation, and two-way
+
+**Status:** Accepted
+
+**Decision.** An invite link is **always against an organisation**, never the
+public page (`/auth/login?organisation=…&invite=…`). The person **authenticates
+first**, then lands on the invitation surface **after login**, where the
+organisation is named **once** and a single **Join** action completes and
+activates the profile. There is **no decline control** — doing nothing adds no
+one, so closing the browser is the decline. The **24-hour expiry lives in the
+invitation email**, not on the surface. Inviting is **two-way** even when the
+person is already known.
+
+**Reason.** The invite creates the profile before an account exists (ADR-0043),
+which is what makes revocation organisational. Naming the organisation only once,
+and only after authentication, avoids leaking its existence to an unauthenticated
+visitor.
+
+**Consequences.** The invitation surface keeps only the next action.
+
+---
+
 ## Open questions
 
 These are deliberately **not** decided. Do not invent an answer; raise an ADR
@@ -770,3 +905,9 @@ when one is settled.
   **process-to-task data mapping** in both directions.
 - The **identity lifecycle** (whether disable precedes delete), the
   **local-to-enterprise** identity transition, and the **unmanaged team** state.
+- The **resolution rule** when session state and the default organisation
+  ordering disagree.
+- Whether the **global sign-in page** ever lists organisations *before* sign-in.
+- The **"create a new organisation"** flow's own journey.
+- The **process owner's** first journey: whether analytics (Activity) is the
+  primary destination, or the owner stays on Home and asks for performance there.
