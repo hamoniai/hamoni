@@ -4,8 +4,10 @@
  * (tailwind.theme.css) read the custom properties declared here by name.
  * Neither file writes a colour of its own.
  *
- * The registered palette is dark (the *Design System for Hamoni*): eight
- * hexes — the seven palette tokens plus the registered teal --info (#03dac5).
+ * The registered palette is dark (the *Design System for Hamoni*): eleven
+ * hexes — the seven palette tokens, the registered teal --info (#03dac5), and
+ * the three RAG status colours --success (#4AD371), --warn (#F4CF4A) and
+ * --error (#FF8389).
  * Everything softer is a color-mix(in oklch, …) of those hexes; no derived
  * tone is hand-picked and no extra hex is introduced.
  *
@@ -128,6 +130,9 @@
   --dim:     color-mix(in oklch, #121212 40%, white);
   --accent:  #bb86fc;
   --info:    #03dac5;
+  --success: #4AD371;   /* RAG green — status */
+  --warn:    #F4CF4A;   /* RAG amber — status */
+  --error:   #FF8389;   /* RAG red — status */
 
   --accent-soft:   color-mix(in oklch, var(--accent) 14%, transparent);
   --accent-line:   color-mix(in oklch, var(--accent) 52%, var(--border));
@@ -144,6 +149,12 @@
   --bar:           color-mix(in oklch, var(--fg) 42%, transparent);
   --bar-soft:      color-mix(in oklch, var(--fg) 16%, transparent);
   --scrim:         color-mix(in oklch, var(--fg) 44%, transparent);
+  --success-soft:  color-mix(in oklch, var(--success) 14%, transparent);
+  --success-line:  color-mix(in oklch, var(--success) 55%, var(--border));
+  --warn-soft:     color-mix(in oklch, var(--warn) 14%, transparent);
+  --warn-line:     color-mix(in oklch, var(--warn) 55%, var(--border));
+  --error-soft:    color-mix(in oklch, var(--error) 14%, transparent);
+  --error-line:    color-mix(in oklch, var(--error) 55%, var(--border));
 }
 
 /* ── dark scheme — the registered palette ─────────────────────────────────── */
@@ -158,6 +169,9 @@
   --dim:     #6c6c6c;
   --accent:  #bb86fc;
   --info:    #03dac5;
+  --success: #4AD371;   /* RAG green — status */
+  --warn:    #F4CF4A;   /* RAG amber — status */
+  --error:   #FF8389;   /* RAG red — status */
 
   --accent-soft:   color-mix(in oklch, var(--accent) 14%, transparent);
   --accent-line:   color-mix(in oklch, var(--accent) 52%, var(--border));
@@ -174,4 +188,10 @@
   --bar:           color-mix(in oklch, var(--fg) 42%, transparent);
   --bar-soft:      color-mix(in oklch, var(--fg) 16%, transparent);
   --scrim:         color-mix(in oklch, var(--bg) 70%, transparent);
+  --success-soft:  color-mix(in oklch, var(--success) 14%, transparent);
+  --success-line:  color-mix(in oklch, var(--success) 55%, var(--border));
+  --warn-soft:     color-mix(in oklch, var(--warn) 14%, transparent);
+  --warn-line:     color-mix(in oklch, var(--warn) 55%, var(--border));
+  --error-soft:    color-mix(in oklch, var(--error) 14%, transparent);
+  --error-line:    color-mix(in oklch, var(--error) 55%, var(--border));
 }

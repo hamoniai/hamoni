@@ -4,6 +4,7 @@
   "instructions": [
     "AGENTS.md",
     "CODING-STANDARDS.md",
-    "ARCHITECTURE-DECISIONS.md"
+    "ARCHITECTURE-DECISIONS.md",
+    "API-AND-DATABASE.md"
   ]
 }

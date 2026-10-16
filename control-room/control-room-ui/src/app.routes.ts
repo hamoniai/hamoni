@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { AppLayout } from './app/layout/component/app.layout';
 import { authenticatedGuard } from './app/guards/authenticated.guard';
+import { nonProductionGuard } from './app/guards/non-production.guard';
 import { ErrorComponent } from './app/pages/error/error'
 import { createUnknownProblemDetails, createNotFoundProblemDetails } from '@/app/services/logging.service';
 
@@ -12,6 +13,7 @@ export const routes: Routes = [
         component: AppLayout,
         children: [
             { path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/home/home').then(c => c.HomeComponent) },
+            { path: 'components', pathMatch: 'full', loadComponent: () => import('./app/pages/home/components').then(c => c.ComponentsComponent), canActivate: [nonProductionGuard] },
             //{ path: 'configuration', pathMatch: 'full', loadComponent: () => import('./app/pages/configuration/configuration-versions').then(c => c.ConfigurationVersions) },
             //{ path: 'configuration/editor', pathMatch: 'full', loadComponent: () => import('./app/pages/configuration/configuration-editor').then(c => c.Configuration) },
         ],

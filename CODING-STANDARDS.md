@@ -100,9 +100,17 @@ concern, covered under UI design and language (Part III).
   proves identity through the provider; entering an organisation is a separate
   grant. Never treat a signed-in person as a member, and never resolve an
   authorisation failure with a sign-in control.
-- **Organisation isolation is enforced at the data layer** — every
-  organisation-scoped query carries the organisation context (ADR-0025). A
-  missing filter is a defect.
+- **Organisation isolation is enforced at the data layer**, by **schema**: a
+  global schema for authentication profiles and one schema per organisation for
+  everything else (ADR-0025, ADR-0052). A missing or wrong tenant selection is a
+  defect.
+- **The backend is stateless.** No session or request state is held server-side;
+  the credential identifies the caller only, and the organisation travels in the
+  URL (ADR-0047, ADR-0048).
+- **There are no API keys.** Every actor — person, system account or agent — is
+  an OIDC principal of its own (ADR-0050, ADR-0051).
+- **Identity attributes are owned by the OIDC claims.** Name and email are read,
+  never edited in Hamoni (ADR-0056).
 - **Organisation access requires an enabled provider and a profile**; revocation
   is removal from the organisation, not a change of team membership (ADR-0043).
 - **Never reveal an organisation on an unauthenticated surface** — render no
@@ -197,6 +205,21 @@ Do not:
   conflict as a domain outcome, not a server error.
 - **Queries live on repositories**; no query construction in a resource or a
   transport type.
+- **Isolation is by schema, not by a discriminator column** (ADR-0052). Global
+  tables are addressed with an explicit schema qualifier; every other table
+  belongs to an organisation schema whose name is the organisation identifier.
+  The current tenant is resolved from the organisation path segment and set for
+  the request (Hibernate tenant resolution); this is the intended mechanism, to
+  be confirmed under reactive Panache.
+- **Migrations are split** into global and per-organisation sets, and applied to
+  every organisation schema (ADR-0035, ADR-0052). Creating an organisation
+  creates and migrates its schema. A rolling deployment may run two application
+  versions against one schema, so an upgrade may only make **safe, additive
+  changes** (ADR-0058, Proposed).
+- **No cross-schema foreign key.** Structural foreign keys live within a schema.
+- **Identity attributes come from the OIDC claims**; store them as a cached
+  projection refreshed on sign-in, never as an editable source of truth
+  (ADR-0056).
 
 ## 11. Interface
 
@@ -216,6 +239,21 @@ Do not:
   directly.
 - **Versioning** appears in the path only when a breaking change requires it;
   additive change is preferred. Record a breaking change in an ADR.
+- The interface is organised into **three annotated groups** (ADR-0049): **A**
+  authentication and account under `/api/auth/`, and **B** business and **C**
+  screen flow under `/api/{organisationId}/`. Groups A and B are documented from
+  the code; group C is marked internal and kept out of the published description.
+- **Resources are stateless.** The credential carries the **principal** only; the
+  organisation is a path segment resolved per request (ADR-0047, ADR-0048).
+- **OIDC validation is issuer-first**: read the issuer, resolve and cache the
+  provider's keys, validate the signature locally, and never forward a token to a
+  provider (ADR-0055).
+- **Authorisation outcomes may be cached**, positive and negative, for a
+  time-to-live that never exceeds the session lifetime, with invalidation on a
+  user-profile or organisation-provider change (ADR-0054).
+- **A write is a `POST`**, never a `GET`; the state-change endpoint's shape
+  (sub-resource, command or action) is settled in one place and applied
+  consistently (ADR-0048; the shape is an open question).
 
 ## 12. Concurrency and reactive programming
 
@@ -312,6 +350,21 @@ controls.
   approachable, competent, empathetic and supportive.
 - The product's one message to keep in view: *bring your people and AI together,
   as one workforce, built to scale*.
+- **The tone is guiding.** Copy is informative of **the next action** — what to do
+  to resolve something or return to normal business. It names the step, not just
+  the state.
+- **It is forward-looking.** Lead with **what is coming up or what is next**, not
+  with what has already happened.
+- **It is supportive and encouraging.** Most people using Hamoni do **repetitive
+  work**, so earned appreciation — *well done*, *congratulations* — is welcome.
+  **Never scold:** where a negative has to be conveyed, do not state it plainly
+  ("you did not do well yesterday", "you have 30% more tasks today") — fall back
+  to the guiding and forward-looking approaches, for example *"yesterday was
+  tough, but the good news is that you're already ahead for today"*. Encouragement
+  must be sincere and specific, never condescending.
+- **It is precise** — in **reporting and analytics only**. Be specific about what
+  is being displayed or shown, without wording so literal that it obscures the
+  intent.
 
 ### 18.2 Plain language in the interface
 
@@ -343,6 +396,19 @@ controls.
 
 - Bind the **Design System for Hamoni** tokens. **Never invent colours, fonts or
   radii** — use the registered palette and the declared type and radius scales.
+- **The registered palette is eleven colours:** the seven originals — canvas
+  `--bg`, surface `--surface`, foreground `--fg`, muted `--muted`, border
+  `--border`, tertiary `--dim`, accent `--accent` — the teal `--info` (the AI
+  voice and the next action in *form* only), and three RAG status colours,
+  `--success` / `--warn` / `--error`, for status only. Everything else is a
+  `color-mix()` of them; no other colour literal appears in the stylesheets.
+- **Pills are information, never actions.** A status pill carries **no hue** and
+  reads through fill, border and label — *normal* (aware of, nothing to do),
+  *increased* (aware of, acting on), *normal · alternative* (slightly off, done
+  on purpose), *reduced* (history). A pill never navigates: the forward move is
+  a control, not a pill. **RAG status** is the one coloured family, reserved for
+  status against a target (on track / at risk / breached), and it always carries
+  an icon, so it never relies on colour alone.
 - **One accent, used sparingly.** In any view, at most one primary action and at
   most one forward accent; everything else earns its place by hierarchy, not by
   hue.
@@ -361,6 +427,25 @@ controls.
 - Label every input, give meaningful images alternative text, and give decorative
   images empty alternative text.
 
+### 18.6 Fonts and third-party assets
+
+- **Self-host every font; never hotlink or `@import` a font CDN.** The faces
+  (Inter, JetBrains Mono and the monochrome Noto Emoji fallback) are pinned
+  woff2 files under the app's `public/fonts/` (served at `/fonts/…`), served with the one
+  deployment. A font CDN would send a visitor's request to a third party, can
+  change a family's metrics without notice, breaks under a strict `font-src`
+  content-security policy and in an air-gapped deployment, and — because
+  browsers now partition font caches per site — no longer shares a cache
+  benefit (ADR-0037).
+- **Carry the licence with the asset.** Every redistributed font or icon set
+  keeps its notice in the repository; the bundled third-party set is recorded in
+  `control-room-ui/NOTICE.md`. Inter, JetBrains Mono and Noto Emoji are SIL Open Font
+  License 1.1; PrimeIcons is MIT. A new third-party asset is not added without
+  its licence recorded.
+- **Do not recolour a third-party mark.** Fonts and icons are used as shipped;
+  the design system's colours are applied through the preset and the theme, not
+  by re-processing an asset.
+
 ## 19. Framework and project structure
 
 - The front end is **Angular**, built with **Quinoa** into the Quarkus
@@ -371,7 +456,8 @@ controls.
   keep data access in a service, not in a component.
 - Use **typed** interface clients generated from, or kept in step with, the
   backend's OpenAPI description. Do not hand-write a client type that duplicates
-  a contract.
+  a contract. Types are generated for all three API groups; only the publication
+  of group C is suppressed (ADR-0049).
 
 ## 20. Angular services
 
@@ -466,8 +552,11 @@ readonly jobs = this.#jobs.asReadonly();
 
 - An operation that **changes server state must never be reachable through an
   HTTP `GET`**. A `GET` retrieves; it never changes anything.
-- Example: **selecting an organisation changes the session's current
-  organisation on the server**, so it is a **`POST`**, not a `GET`.
+- Example: **selecting an organisation is a frontend concern** — it changes the
+  organisation segment of the URL and redirects the application's calls, so it is
+  **not** a server request at all (ADR-0048). An operation that *does* change
+  server state — **completing a task**, for instance — is a **`POST`**, never a
+  `GET`.
 
 ### 20.9 Use HTTP method semantics
 
@@ -475,8 +564,8 @@ readonly jobs = this.#jobs.asReadonly();
 - **`PATCH`** **partially** updates an object.
 - **`POST`** **creates** a new object.
 - **`POST`** is the **fallback** for any request that updates state or an object
-  and does not fit `PUT` or `PATCH` — for example, an action that changes the
-  session.
+  and does not fit `PUT` or `PATCH` — for example, an action that changes a
+  process instance's state.
 - **`GET`** only **retrieves** data.
 - Treat retrieved data as valid **only at the moment of retrieval**: as time
   passes it is increasingly likely to be stale, so a view that must be current

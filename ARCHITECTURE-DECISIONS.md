@@ -483,7 +483,8 @@ at process level; a reusable process may be startable by anyone.
 
 ### ADR-0025 — Multi-organisation, with in-session switching
 
-**Status:** Accepted (revised 2026-10-15)
+**Status:** Superseded in part by ADR-0047, ADR-0048 and ADR-0052 (the isolation
+mechanism and the session mechanism; the isolation *intent* stands).
 
 **Decision.** The platform serves many organisations. The organisation is
 switched **in-session** from the organisation menu; **sign-out** lives in the
@@ -829,7 +830,8 @@ it. Assignments and team membership are never a substitute for access.
 
 ### ADR-0044 — The organisation chooser never auto-decides; authorisation runs once
 
-**Status:** Accepted
+**Status:** Superseded in part by ADR-0048, ADR-0054 and ADR-0057 (the session
+mechanism and the cache; "never auto-decides" stands and is extended).
 
 **Decision.** The **organisation chooser** validates the person's access to their
 remaining organisations but **never silently selects one**. **Authorisation runs
@@ -890,6 +892,275 @@ visitor.
 
 ---
 
+## H · API and database contract
+
+These records settle the interface between the frontend and the backend and the
+rules that govern the database beneath it. They refine the identity and access
+model (section C) and the technical stack (section E); where they conflict with
+an earlier record, they win. The requirements sit in
+[`API-AND-DATABASE.md`](./API-AND-DATABASE.md).
+
+### ADR-0047 — The backend is stateless; the credential identifies the caller only
+
+**Status:** Accepted
+
+**Decision.** The backend holds **no session state and no request state**. The
+server issues one credential — a session cookie for the browser, a bearer token
+for a non-browser caller — that identifies only the authenticated **principal**,
+the inbound OIDC provider-and-subject pair. In Quarkus the principal is
+serialised and encrypted with the platform key into the token. The organisation
+and any other context are **not** placed in the credential and **not** held
+server-side; they are resolved per request.
+
+**Reason.** Holding the current organisation server-side forced one of two
+unwanted designs: shared session state across instances, which produces
+synchronisation faults; or a frontend-held cookie, which mutates the credential
+and breaks non-browser access. Restricting the credential to authentication keeps
+the backend horizontally scalable and makes browser and machine callers
+symmetric.
+
+**Consequences.** The platform key must be identical and stable across every
+instance, or a token issued by one instance cannot be read by another; rotating
+it invalidates live sessions. Organisation and authorisation are resolved per
+request (ADR-0048, ADR-0054). Supersedes the session-context aspects of
+ADR-0025 and ADR-0044.
+
+### ADR-0048 — The organisation is a path segment; switching is a frontend concern
+
+**Status:** Accepted
+
+**Decision.** Every business call carries the organisation as a path segment,
+`/api/{organisationId}/…`. Switching organisation is a **frontend route change**
+that redirects the application's calls to the new organisation; it is **not** a
+server state change and is not a `POST`. The credential does not change.
+
+**Reason.** With a stateless backend (ADR-0047) there is no server object to
+change when the organisation is switched, so modelling the switch as a server
+command would reintroduce session state or mutate the credential. A path segment
+makes the organisation part of the request's identity, which is also what the
+schema-based isolation keys on (ADR-0052).
+
+**Consequences.** The `CODING-STANDARDS.md` §20.8 example, which used
+organisation selection as its case for "never change state through `GET`", is
+replaced. A request without a valid organisation segment is not a business call.
+Supersedes the switch mechanism of ADR-0025 and refines ADR-0044.
+
+### ADR-0049 — The interface is three annotated groups of APIs
+
+**Status:** Accepted
+
+**Decision.** The interface is divided into three groups, marked in the code by
+an annotation that also drives documentation generation: **A** authentication and
+account (`/api/auth/…`), **B** business (`/api/{organisationId}/…`) and **C**
+screen flow (`/api/{organisationId}/…`). Groups A and B are **publicly
+documented** and every one of their resources carries the annotation that
+generates its OpenAPI description from the code. Group C is **available but not
+publicly documented**; it carries the internal marker that keeps it out of the
+published document, while its types are still generated for the frontend.
+
+**Reason.** Some endpoints exist to assemble a screen and are not part of a
+stable published contract, but they are still real endpoints the frontend calls.
+Separating them by annotation keeps the published description honest without
+forcing the frontend to hand-write the types for the endpoints it depends on.
+
+**Consequences.** Documentation is generated, never hand-written beside the code
+(§19). A group C endpoint is one the frontend may use but a third party should
+not; promoting one to the public contract is a deliberate change of annotation.
+
+### ADR-0050 — There are no API keys; every actor is an OIDC principal
+
+**Status:** Accepted
+
+**Decision.** Hamoni has **no API keys**. A system or an agent has **its own
+account**, authenticates through **its organisation's identity provider**
+(certificate authentication, domain trust or whatever the provider requires), and
+receives a **principal of its own** through the same OIDC flow a person uses.
+From Hamoni's point of view a system caller and a person caller are the same kind
+of thing.
+
+**Reason.** An API key lets a system act inside a person's context without being
+that person, which breaks the rule that work is always identifiable to an actor
+who participated. Because authentication is already OIDC (ADR-0022), a machine
+can be a first-class principal instead of borrowing one.
+
+**Consequences.** A system's actions are attributable to the system, not to a
+person. The grant a system holds is an open question (see below).
+
+### ADR-0051 — Principals: an inbound context resolved to an authentication principal
+
+**Status:** Accepted
+
+**Decision.** An inbound OIDC context is never used directly as a person. It is
+resolved to a **principal** with a type: **normal** (a `person`, a `system`, or
+an `agent`) or **on behalf of** (recording both the acting identity and the
+identity it acts for — a person on behalf of a person, or an agent on behalf of a
+person). Principals are **granted by the system**; for example, starting an
+AI-agent chat grants the agent a principal naming the agent and the person it
+works for. A principal identifies the **authentication** context only — never the
+organisation and never the authorisation context.
+
+**Reason.** Actors in this product are not only people: an agent may work in a
+chat on a person's behalf, and an autonomous agent worker may act on its own.
+Modelling these as principals keeps one authentication model while preserving the
+distinction an audit needs — who acted, and for whom.
+
+**Consequences.** Audit records the acting principal and, where one exists, the
+person behind it (ADR-0026, ADR-0027). Organisation and authorisation are
+resolved separately, per request (ADR-0047, ADR-0054).
+
+### ADR-0052 — Two tiers of schema, with schema-per-organisation isolation
+
+**Status:** Accepted
+
+**Decision.** There are two kinds of schema. A **global schema** holds the
+**authentication profiles** — the link from an inbound OIDC context to an
+identity UUID and its organisation pointers. It is application-managed and
+self-cleaning, and **no user transacts in it**. Each **organisation schema**
+holds everything organisation-scoped: user profiles, team and project
+configuration, process and deployment state, and the organisation's audit trail.
+Global tables are addressed with an **explicit schema qualifier**; every other
+table belongs to the organisation schema named by the organisation identifier.
+Isolation is therefore by **schema, not by a discriminator column**, and a query
+cannot cross organisations. Hibernate's tenant resolution
+(`MultiTenantConnectionProvider`, `CurrentTenantIdentifierResolver`) is the
+intended mechanism, to be confirmed under reactive Panache. A deployment-level
+flag selects multi- or single-organisation mode (ADR-0053).
+
+**Reason.** A single shared schema needs every query to remember a discriminator,
+and a forgotten filter is a cross-organisation leak. Making the schema part of
+the query's identity makes isolation structural: there is no filter to forget.
+Separating global from organisation data also gives a clean break for
+off-boarding — an organisation's data is removed by removing its schema, with no
+effect on any other organisation — and lets a dedicated installation run a single
+schema.
+
+**Consequences.** Flyway work is split into global and per-organisation sets and
+is applied to every organisation schema (ADR-0035); creating an organisation
+creates and migrates its schema. There is no cross-schema foreign key.
+Migrations must be safe under a rolling deployment (ADR-0058, Proposed).
+Refines ADR-0025: the isolation intent stands, the mechanism changes.
+
+### ADR-0053 — A deployment-level single-organisation flag, defaulting to single
+
+**Status:** Accepted
+
+**Decision.** A **deployment-level flag** selects multi-organisation or
+single-organisation mode. The **default is single-organisation**, in which the
+deployment supports exactly one organisation and **creating new organisations is
+disabled**.
+
+**Reason.** A dedicated or enterprise installation does not run a public sign-up
+and should not be able to create organisations it will never use. Defaulting to
+the smaller surface means the common dedicated case needs no configuration, and
+the multi-organisation capability is opted into deliberately.
+
+**Consequences.** The organisation-creation surface exists only in
+multi-organisation mode. In single-organisation mode the authorisation outcome
+"no access" is a hard stop rather than a choice among organisations (ADR-0057).
+
+### ADR-0054 — Authorisation outcomes are cached, bounded by the session lifetime
+
+**Status:** Accepted
+
+**Decision.** Determining whether an identity may enter an organisation — the
+provider is still enabled **and** the org-scoped user profile is still enabled
+(ADR-0043) — is cached, **positive and negative**, for a bounded time. The
+**time-to-live is never greater than the session lifetime**; a fixed short window
+is the working figure. A change to a **user profile** (disabling a user,
+accepting an invitation, creating an invitation) invalidates that identity's
+entry; a change to the organisation's **OIDC configuration** invalidates the
+whole organisation's entries. Listing an identity's organisations validates each
+pointer by the same rule and uses the same cache.
+
+**Reason.** The check touches the authentication profile, the provider
+configuration and the user profile on every request, which is too heavy to run
+uncached, and listing organisations repeats it for every pointer. A short,
+invalidation-aware cache bounds the cost while keeping revocation effective
+within the window. The cache is a derived structure, not authoritative state,
+which is what keeps the backend stateless (ADR-0047).
+
+**Consequences.** Revocation takes effect within the time-to-live, not
+instantly; the invalidation rules above are what keep the window honest.
+Refines ADR-0044.
+
+### ADR-0055 — Multi-provider OIDC validation is issuer-first and never proxies
+
+**Status:** Accepted
+
+**Decision.** An organisation may configure more than one identity provider.
+Validation reads the **issuer** claim without trusting the token, resolves the
+matching provider's keys from its discovery endpoint, **caches those keys** (they
+change rarely), and validates the **signature locally**. A token is accepted only
+when it validates against exactly one configured provider, and it is **never
+forwarded** to a provider.
+
+**Reason.** To know which key to validate with, the issuer must be read first —
+from an as-yet unverified token. Doing this carefully, with locally cached keys
+and local signature verification, avoids turning Hamoni into a proxy for an
+attack on a provider and avoids a request path that forwards credentials. Caching
+keys keeps the discovery round-trip off the hot path while a short window bounds
+the exposure.
+
+**Consequences.** Provider-key caching and the issuer-to-provider mapping need
+careful configuration so a token issued for one provider is never validated
+against another and never cross-pollinated.
+
+### ADR-0056 — Identity attributes are owned by the OIDC claims
+
+**Status:** Accepted
+
+**Decision.** Name and email are **owned by the OIDC claims** and are **never
+editable in Hamoni**. They are stored as a cached projection and refreshed on the
+next sign-in or token validation. A person who changes their name or email does
+so at the provider.
+
+**Reason.** Identity attributes belong to the identity provider (ADR-0022);
+letting Hamoni edit them would create a second source of truth that drifts from
+the provider on the next sign-in. Reading and caching them keeps one owner.
+
+**Consequences.** There is no Hamoni surface to edit name or email. A stale
+projection is corrected automatically at the next authentication.
+
+### ADR-0057 — Organisation choice never auto-enters; the access surface is neutral
+
+**Status:** Accepted
+
+**Decision.** A stored **default organisation** never auto-enters. If the person
+cannot enter it, they land on the **organisation selector** for their next action
+— select another, create one, or, in single-organisation mode, stop. The same
+surface is shown for an organisation that **does not exist**, so the existence of
+organisations cannot be enumerated. An optional **request access** action may
+raise a task for the organisation's managers; where no such organisation exists,
+the action leads nowhere.
+
+**Reason.** Auto-entering would answer one organisation and enter another. A
+neutral surface that behaves identically for "no access" and "no such
+organisation" preserves ADR-0045's rule that an unauthenticated (or unauthorised)
+visitor cannot enumerate organisations, and it gives the person one place to act.
+
+**Consequences.** Authorisation failure is not an error surface; it is the
+selector. Extends ADR-0044 and ADR-0045.
+
+### ADR-0058 — Schema upgrades must be forward-compatible across a rolling deployment
+
+**Status:** Proposed
+
+**Decision.** Because a rolling deployment may run an old and a new application
+version against the same schema at once, a migration may make only **safe,
+additive changes**; a breaking change must be made in steps that keep both
+versions viable.
+
+**Reason.** A Kubernetes rollout replaces pods gradually, so two application
+versions coexist. A migration that drops or renames something the old version
+still reads breaks whatever is mid-rollout. Restricting upgrades to additive
+change keeps either version runnable at every point.
+
+**Consequences.** Some changes take several migrations to complete safely. This
+record is **Proposed**: the mechanism needs investigation and testing before it
+is relied upon.
+
+---
+
 ## Open questions
 
 These are deliberately **not** decided. Do not invent an answer; raise an ADR
@@ -911,3 +1182,25 @@ when one is settled.
 - The **"create a new organisation"** flow's own journey.
 - The **process owner's** first journey: whether analytics (Activity) is the
   primary destination, or the owner stays on Home and asks for performance there.
+
+The following were raised by the API and database workstream (section H) and are
+deliberately not decided. See [`API-AND-DATABASE.md`](./API-AND-DATABASE.md) §6.
+
+- The **shape of the non-CRUD state changes** — pend, resume, cancel, claim,
+  assign, refer, deploy, publish — as a sub-resource, a command or an action
+  endpoint; decided once and consistently. Only that each is a `POST` is settled.
+- The **list contract** — server-side filtering, sorting, the pagination model,
+  and how the Angular "whole list, once" convention maps onto it.
+- The **`control-room` ↔ `process-runner` boundary** and specifically **where the
+  per-step execution history** lives, with the database-contention and scale
+  consequences.
+- **How much of the JSON Process** is normalised into tables versus stored as a
+  document.
+- The **session-credential lifetime** and the matching authorisation-cache
+  time-to-live.
+- The **system and agent grant model** — whether global, org-scoped grants exist
+  as a separate grant axis, and whether they sit on the user profile.
+- The **schema-change compatibility window** for rolling upgrades (ADR-0058).
+- The **versioning scheme** — per API group, or across the whole interface.
+- **Global-schema retention** — remove an unused authentication profile after a
+  window, or keep it in perpetuity.

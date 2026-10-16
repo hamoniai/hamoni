@@ -71,6 +71,22 @@
   .p-autocomplete-input,
   .p-inputnumber-input { font-size: var(--fs-sm); }
 
+  /* Status pill — four neutral highlight levels plus the coloured alert (RAG)
+     family (§38.5, §38.8). A process state carries no hue; RAG status does. */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: var(--fs-cap); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--fg); border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px;
+    white-space: nowrap;
+  }
+  .badge .pi { font-size: 11px; }
+  .badge--alt  { border-style: dashed; }                              /* normal · alternative */
+  .badge--up   { background: var(--bg); border-color: var(--muted); } /* increased */
+  .badge--down { color: var(--dim); border-color: var(--border); }    /* reduced */
+  .badge--success { background: var(--success-soft); border-color: var(--success-line); color: var(--success); }
+  .badge--warn    { background: var(--warn-soft);    border-color: var(--warn-line);    color: var(--warn); }
+  .badge--error   { background: var(--error-soft);   border-color: var(--error-line);   color: var(--error); }
+
   /* The field row — the mark is the preset box (checkbox.root / radiobutton
      .root); hovering the box or the row lights a box around it. PrimeNG has no
      hover-shadow token, so this is the one rule the preset cannot carry. */
