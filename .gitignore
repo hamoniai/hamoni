@@ -49,3 +49,7 @@ nb-configuration.xml
 
 # Quarkus
 .quarkus
+
+# UI project import
+screens
+wireframes
