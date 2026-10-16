@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { User, Organisation } from '@/app/services/auth.service'
+import { User, UserOrganisation } from '@/app/services/auth.service'
 
 /**
  * Create an API url
@@ -36,7 +36,7 @@ const authUser: User = {
   issuerSubject: "107654321098765432109"
 }
 
-const authUserOrganisations: Organisation[] = [
+const authUserOrganisations: UserOrganisation[] = [
   {
     id: window.crypto.randomUUID(),
     name: 'ABC Limited'
