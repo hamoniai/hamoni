@@ -69,11 +69,11 @@ scripts and the Gradle version catalog. Do not hard-code versions in a project.
 
 ## Run locally
 
-Run a project from its directory, for example the Control Room's user-interface
-project, in development mode (live reload):
+Run an application in development mode (live reload):
 
 ```bash
-./gradlew :control-room:quarkusDev
+./gradlew :control-room:quarkusDev        # Control Room (UI included)
+./gradlew :process-runner:quarkusDev      # Process Runner
 ```
 
 Development mode enables live reload and the development interface. Development
@@ -87,8 +87,8 @@ AsciiDoc. The documentation site is built as part of the Gradle build.
 
 ## Working standards
 
-These two documents are the contract for anyone — human or agent — who builds
-the software. Read them before you write code:
+These documents are the contract for anyone — human or agent — who builds the
+software. Read them before you write code:
 
 - **[`CODING-STANDARDS.md`](./CODING-STANDARDS.md)** — the technical standards, in
   three parts: Common, Backend and Frontend. A living document.
@@ -96,6 +96,9 @@ the software. Read them before you write code:
   Architecture Decision Records (ADRs) the platform is built on, each with its
   reasoning. A living document that will grow into the Antora architecture
   section.
+- **[`API-AND-DATABASE.md`](./API-AND-DATABASE.md)** — the frontend–backend
+  interface and the database rules: the contract the Angular application is
+  written against.
 
 Each directory carries its own `AGENTS.md` with the local rules, layout and
 commands for the projects it holds.

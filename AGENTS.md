@@ -23,6 +23,7 @@ project/
 ├── AGENTS.md                  ← you are here
 ├── CODING-STANDARDS.md        Common · Backend · Frontend standards
 ├── ARCHITECTURE-DECISIONS.md  Architecture Decision Records, with reasoning
+├── API-AND-DATABASE.md        frontend–backend interface + database rules
 ├── control-room/AGENTS.md     holding directory: user-facing projects
 ├── process-runner/AGENTS.md   holding directory: execution-runtime projects
 ├── common/AGENTS.md           holding directory: shared projects
@@ -54,10 +55,11 @@ Use the Gradle wrapper; never a system `gradle`.
 ./gradlew projects       # show the projects in the build
 ```
 
-Run a project in development mode from its own task, for example:
+Run an application in development mode:
 
 ```bash
-./gradlew :hamoni-cr-ui:quarkusDev
+./gradlew :control-room:quarkusDev        # Control Room (UI included)
+./gradlew :process-runner:quarkusDev      # Process Runner
 ```
 
 The build is driven by the shared **Hamoni Gradle convention scripts** (installed
@@ -70,6 +72,10 @@ not copy build logic into a project.
   each record stating its own reasoning. This is the only architecture reference
   the build needs.
 - **How to write the code** — [`CODING-STANDARDS.md`](./CODING-STANDARDS.md).
+- **The interface and the database rules** —
+  [`API-AND-DATABASE.md`](./API-AND-DATABASE.md): the frontend–backend contract
+  and the rules that govern the database. Read it before adding an endpoint or a
+  table.
 - **A directory's local rules** — that directory's `AGENTS.md`.
 - **Long-form documentation** — `docs/` (Antora).
 

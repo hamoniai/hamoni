@@ -4,8 +4,9 @@ This is the **Angular project for the Control Room's user interface**. It is one
 project inside the `control-room/` holding directory. Read the repository-level
 [`../../AGENTS.md`](../../AGENTS.md), the directory-level
 [`../AGENTS.md`](../AGENTS.md), [`../../CODING-STANDARDS.md`](../../CODING-STANDARDS.md)
-(Part III, Frontend) and [`../../ARCHITECTURE-DECISIONS.md`](../../ARCHITECTURE-DECISIONS.md)
-first; this file adds only what is specific to this Angular project.
+(Part III, Frontend), [`../../ARCHITECTURE-DECISIONS.md`](../../ARCHITECTURE-DECISIONS.md)
+and [`../../API-AND-DATABASE.md`](../../API-AND-DATABASE.md) — the interface it
+calls — first; this file adds only what is specific to this Angular project.
 
 ## What this project is
 
@@ -63,8 +64,8 @@ its service and its state together (CODING-STANDARDS §19).
 
 ## Bootstrapping
 
-The frontend is assembled into the `:control-room` project by the shared Gradle build
-and Quarkus Quinoa, which is outside the scope of this project.
+The frontend is assembled into the `:control-room` project by the shared Gradle
+build and Quarkus Quinoa, which is outside the scope of this project.
 
 For focused interface work, run the Angular dev server directly, against a
 running backend:
@@ -72,10 +73,12 @@ running backend:
 ```bash
 npm ci            # install the pinned dependencies
 npm start         # Angular dev server
-npm run build     # production build — Quinoa runs this in the Gradle build
+npm run build     # production build
 npm test          # unit tests
 npm run lint      # ESLint
 ```
+
+Use the project's own package scripts where they differ.
 
 ## Angular rules for this project
 
@@ -111,17 +114,25 @@ npm run lint      # ESLint
 
 ## Testing
 
-- **Mock Service Worker (MSW)** provides the backend during tests and local
-  development (CODING-STANDARDS §23, ADR-0039); the same handlers serve both.
+- **`vitest` is the default unit-test framework** — the default for testing case
+  handling: the branches, error paths and edge cases of a unit.
+- **Mock Service Worker (MSW)** is a mock backend so a real person can **log in
+  and browse the application** (CODING-STANDARDS §23, ADR-0039). **Every new
+  service ships happy-case handlers** for it.
+- **MSW does not replace `vitest`**, and `vitest` does not replace the browsing
+  handlers — the two are complementary.
 - Test **observable behaviour**, not implementation detail; cover loading, empty,
   error and populated.
-- Do not test against a hand-rolled fake client — go through MSW.
+- Do not test against a hand-rolled fake client — go through MSW for the browsing
+  path.
 
 ## Interfaces with the rest of the platform
 
 - **→ the Control Room backend**: its HTTP interface, through the typed services
-  in this project. Types are generated from, or kept in step with, the backend's
-  OpenAPI description — never hand-written twice (§19).
+  in this project. The interface and its error shape are defined in
+  [`../../API-AND-DATABASE.md`](../../API-AND-DATABASE.md); types are generated
+  from, or kept in step with, the backend's OpenAPI description — never
+  hand-written twice (§19).
 - **← the design system**: the palette, type and radius tokens, and the PrimeNG
   preset, are the only source of visual truth.
 

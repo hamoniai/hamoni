@@ -2,9 +2,10 @@
 
 This directory holds the **projects for the execution runtime** — the Process
 Runner. It is a holding area, not a project itself. Read the repository-level
-[`../AGENTS.md`](../AGENTS.md), [`../CODING-STANDARDS.md`](../CODING-STANDARDS.md)
-and [`../ARCHITECTURE-DECISIONS.md`](../ARCHITECTURE-DECISIONS.md) first; this
-file only adds what is specific to the projects here.
+[`../AGENTS.md`](../AGENTS.md), [`../CODING-STANDARDS.md`](../CODING-STANDARDS.md),
+[`../ARCHITECTURE-DECISIONS.md`](../ARCHITECTURE-DECISIONS.md) and
+[`../API-AND-DATABASE.md`](../API-AND-DATABASE.md) first; this file only adds what
+is specific to the projects here.
 
 ## What this directory holds
 
@@ -26,8 +27,10 @@ and their number and split are decided area by area.
 - **Signals** and timer handling (ADR-0020, ADR-0030).
 - **Persistence of instances**, their state data, and the **audit trail**
   (ADR-0026).
-- The **start and lifecycle interface** — `POST /processes/{processId}/instances`
-  (ADR-0029) and the transitions the Control Room issues.
+- **Consuming the lifecycle commands** the Control Room issues (start, advance,
+  pend, resume, cancel) over **JMS**. There is **no REST API** on the Process
+  Runner: starting a process is the Control Room's responsibility, and the
+  interface that begins one sits there (ADR-0029).
 - **Durability**: a run survives a restart; no in-memory-only state that loses
   work.
 
@@ -54,7 +57,7 @@ process-runner/
       state/                process + activity state machines
       pend/                 pend and exception handling
       signals/              signals, timers
-      api/                  start + lifecycle endpoints
+      messaging/            JMS consumers for the lifecycle commands
       persistence/          instance, state-data and audit repositories
     src/main/resources/
       application.properties
@@ -93,9 +96,13 @@ test (CODING-STANDARDS §16). In particular:
 ## Interfaces with the rest of the platform
 
 - **→ `common/`**: the JSON Process model, the state models and shared contracts.
-- **← `control-room/`**: commands (start, advance, pend, resume, cancel) and the
-  published, deployed process definition. These projects execute; they do not
-  decide who may.
+- **← `control-room/`**: the lifecycle commands (start, advance, pend, resume,
+  cancel) and the published, deployed process definition — exchanged over **JMS**.
+  There is **no REST API** on the Process Runner; the Control Room owns the
+  interface that starts a process. These projects execute; they do not decide who
+  may.
+- **→ the database** — the instance, state-data and audit stores follow
+  [`../API-AND-DATABASE.md`](../API-AND-DATABASE.md).
 
 ## Before you finish
 

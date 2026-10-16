@@ -555,7 +555,8 @@ own advanced switch.
 
 ### ADR-0029 — Starting a process is an explicit interface
 
-**Status:** Accepted
+**Status:** Accepted — the entry-point path is now organisation-scoped:
+`POST /api/{organisationId}/processes/{processId}/instances` (ADR-0048).
 
 **Decision.** The first release starts processes by activity, by a programmatic
 interface and by timer. The interface entry point is
@@ -737,6 +738,8 @@ real request rather than a stubbed module.
 
 **Consequences.** Interface handlers are shared between tests and local
 development; components are not tested against hand-rolled fake clients.
+
+**Refined by** ADR-0063 — the frontend's unit-test framework, and MSW's role.
 
 ---
 
@@ -1159,6 +1162,169 @@ change keeps either version runnable at every point.
 record is **Proposed**: the mechanism needs investigation and testing before it
 is relied upon.
 
+### ADR-0059 — One type per concept; exposure is controlled by annotation, not by copying
+
+**Status:** Accepted
+
+**Decision.** Wherever possible a concept is modelled by **one type**. The same
+class moves from the database to the interface; what is exposed is controlled by
+**serialisation annotations** that hide or include fields — not by copying into a
+parallel transport type or a separate domain type. For a **list or a search**, a
+**lighter projection view** (the few fields a list shows) is queried and returned;
+a **second call** retrieves the full object. So `list` and `search` return the
+light view and `get` returns the full representation. On the client the full type
+is `T` and `list`/`search` are typed `Partial<T>`. The concrete annotation and
+projection pattern is pinned by a hand-written example to be added.
+
+**Reason.** Parallel transport, domain and persistence types that mirror each
+other are a large amount of mechanical copying and casting that buys no safety
+and lets the three drift apart. Serialising a controlled view of one type keeps
+them consistent by construction. A light projection keeps list and search queries
+cheap — they do not drag the whole aggregate — while the detail call pays for the
+full object.
+
+**Consequences.** This revises `CODING-STANDARDS.md` §9 and §11: the rule is no
+longer "transport types are separate from domain types" but "carry one type, hide
+fields by annotation, and project a light view for lists." Exposure must still be
+deliberate — organisation isolation and secret hygiene are unaffected — and the
+language boundary still applies (the TypeScript client gets `Partial<T>`).
+
+### ADR-0060 — The interface shape is a resource with at most one sub-resource level
+
+**Status:** Accepted
+
+**Decision.** Every endpoint follows
+`/api/{organisationId}/{component}/{id}/{sub-resource}`: a top-level **component**
+collection scoped to the organisation, an object addressed by its identifier, and
+**at most one** sub-resource level beneath it. A sub-resource is one of two kinds:
+
+- a **value** — read with `GET`, overwritten with `PUT` — for example `state`
+  (the current task state) and `data` (the task's data). A state change is
+  therefore a `PUT` that overwrites the state sub-resource, and the transition is
+  **validated on write**.
+- an **operation** — invoked with `POST` — for example `assign`.
+
+The shape is **not nested further**: a sub-object is addressed by its own term
+(referenced by identifier in the parent's representation), never by a third path
+level. The same shape applies to the task component and will extend to processes
+and other components. On the task component:
+
+```
+GET  /api/{org}/tasks                 list/search (light view)
+GET  /api/{org}/tasks/{taskId}        detail (query parameters set depth)
+GET  /api/{org}/tasks/{taskId}/state  the current state
+PUT  /api/{org}/tasks/{taskId}/state  a validated state change
+GET  /api/{org}/tasks/{taskId}/data   the task's data
+PUT  /api/{org}/tasks/{taskId}/data   overwrite the data (PUT, or PATCH — open)
+GET  /api/{org}/tasks/{taskId}/history the audit-style history
+POST /api/{org}/tasks/{taskId}/assign  assignment / take / refer
+```
+
+**Reason.** A verb-per-transition sub-resource forces a **dynamic** state model
+into fixed URL segments, so every change to the state model becomes an API
+version change. A single generic command endpoint loses the per-operation
+schema, documentation and authorisation and is hard to unpick. A `PATCH` on the
+task cannot express a guarded transition and leaves the server guessing what
+changed. Modelling the **state as a sub-resource overwritten with `PUT`** keeps
+the state model free to change behind one stable endpoint, keeps the operation
+first-class and authorisable, and satisfies the HTTP semantics (`PUT`
+overwrites; `POST` for an operation that is not an overwrite).
+
+**Consequences.** Human tasks only — an **automated task does not appear** in the
+tasks component. The list is the light view and the detail call controls depth by
+query parameter (ADR-0059); there is no `create` or `update` on the task itself,
+because a task is created by execution and its mutable parts are its state and
+data. Refinements remain open: the state payload and legal transitions; whether
+`data` is `PUT` or `PATCH`; how `assign` distinguishes assignment from referral
+(and its overlap with the state change); the detail query parameters. Whoever
+extends the shape to processes follows these same rules.
+
+### ADR-0061 — Documents are references to a streamed blob, not API payloads
+
+**Status:** Accepted
+
+**Decision.** A document is a **pointer to a file blob**. Business data (a task's
+data, for example) holds the **document identifier**, never the document itself;
+the task's representation shows **which** documents it references, not their
+content. Document access is a separate component,
+`/api/{organisationId}/documents`. The document is **not held in memory and not
+carried in a JSON body**; upload and download are **multipart or streamed**,
+because a document may be large. Data may set a document-type value.
+
+**Reason.** A document can be massive, so carrying it in the JSON interface would
+bloat every response, defeat caching and threaten the non-blocking runtime.
+Treating it as a reference to a blob keeps business payloads small and lets the
+file move by the mechanism suited to it.
+
+**Consequences.** Upload and download are the only part of the interface that is
+not JSON, and must still respect the reactive, non-blocking rule (ADR-0032).
+Concrete storage, streaming and permission rules remain open — see the open
+questions.
+
+---
+
+### ADR-0062 — Localisation is driven by the user profile
+
+**Status:** Accepted
+
+**Decision.** The front end is **localisable and internationalisable**, and the
+**user profile is the single source of the locale**. The organisation sets a
+default locale; the individual person may override it, and that choice is stored
+on the profile as the person's locale information.
+
+- **Static copy and messages live in the front end.** Every user-facing string —
+  labels, messages, states, notifications and the assistant's replies — is held
+  in the front-end resource bundle and looked up by a key (CODING-STANDARDS
+  §18.3). No string is written inline in a component.
+- **Problem messages from the interface carry human, displayable text.** An error
+  the interface reports is a message written for a person, not a code; the
+  **backend does its best to localise it** into the profile's locale before it is
+  returned, so the client is not left translating server prose.
+- **Numbers and dates come from the profile's locale.** Formatting — dates,
+  times, numbers, currency and lists — is driven by the locale on the profile,
+  never by the browser's or the development machine's default.
+
+**Reason.** Hamoni serves business people across organisations and locales, and
+the interface has always been required to be localisable (§18.3). One locale held
+on the profile means a single decision — made by the organisation where it must
+and by the person where it can — governs the whole interface, including any text
+the backend produces.
+
+**Consequences.** A new string is added to the resource bundle in every supported
+locale. The interface error shape carries localised, displayable message text.
+Formatting goes through the shared locale helpers bound to the profile. The
+resource bundle and the organisation-default / user-override negotiation are
+implementation detail; the contract is the profile. There is no second source of
+locale.
+
+---
+
+## I · Frontend testing
+
+### ADR-0063 — Frontend unit tests use vitest; Mock Service Worker is the browsable mock backend
+
+**Status:** Accepted
+
+**Decision.** The frontend has **two testing tools with two jobs**, and neither
+replaces the other (refines ADR-0039).
+
+- **`vitest` is the default unit-test framework**, and the default for testing
+  **case handling** — the branches, error paths and edge cases of a unit of code.
+- **Mock Service Worker (MSW) is a mock backend.** Its purpose is to let a real
+  person **log in and browse the application** without the real backend, so
+  **every new service ships happy-case handlers**. A service is not complete
+  without them.
+
+**Reason.** Unit tests prove the different cases a unit must handle, and a unit
+runner is the right tool for that. MSW is not a unit-test tool: it stands in for
+the backend so the whole application can be walked through by a person, which is
+what makes a service demoable and reviewable the moment it exists. Conflating the
+two either leaves edge cases unproven or makes browsing depend on the real
+backend.
+
+**Consequences.** A new service ships both its happy-case MSW handlers and its
+`vitest` unit tests, and neither stands in for the other (CODING-STANDARDS §23).
+
 ---
 
 ## Open questions
@@ -1186,9 +1352,16 @@ when one is settled.
 The following were raised by the API and database workstream (section H) and are
 deliberately not decided. See [`API-AND-DATABASE.md`](./API-AND-DATABASE.md) §6.
 
-- The **shape of the non-CRUD state changes** — pend, resume, cancel, claim,
-  assign, refer, deploy, publish — as a sub-resource, a command or an action
-  endpoint; decided once and consistently. Only that each is a `POST` is settled.
+- The **state sub-resource's payload and legal transitions** (`PUT …/state`), and
+  whether the assignment and referral operations (`POST …/assign`) overlap with
+  it — an assignment changes the state map.
+- Whether **`data`** is overwritten with `PUT`, updated with `PATCH`, or broken
+  into finer assignments.
+- The **task-detail query parameters** that control depth (history, data schema,
+  current data, summary, process model).
+- Whether the **summary** is templated on the server or in the browser, and how
+  the template (process design) is kept apart from the data (task view).
+- **Document** storage, streaming and permission rules (ADR-0061).
 - The **list contract** — server-side filtering, sorting, the pagination model,
   and how the Angular "whole list, once" convention maps onto it.
 - The **`control-room` ↔ `process-runner` boundary** and specifically **where the
@@ -1196,6 +1369,9 @@ deliberately not decided. See [`API-AND-DATABASE.md`](./API-AND-DATABASE.md) §6
   consequences.
 - **How much of the JSON Process** is normalised into tables versus stored as a
   document.
+- **Dynamic (process-defined) parameters** — the arguments to start a process
+  vary by process definition; how they are described in the OpenAPI document and
+  validated at the boundary is deferred.
 - The **session-credential lifetime** and the matching authorisation-cache
   time-to-live.
 - The **system and agent grant model** — whether global, org-scoped grants exist

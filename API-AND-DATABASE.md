@@ -1,10 +1,18 @@
 # Hamoni — API and database contract
 
-This document details the **requirements and the architecture of the interface
-between the frontend and the backend**, and the **rules that govern the database**
-beneath it. It sits behind the UX: it defines the contract the Angular
-application is written against, not the screens themselves. It will graduate into
-the Antora architecture section (ADR-0040).
+This document details the **requirements and the architecture of the Control
+Room's interface** — the contract between the frontend and the **Control Room**
+application — and the **rules that govern the database** beneath it. It sits
+behind the UX: it defines the contract the Angular application is written
+against, not the screens themselves. It will graduate into the Antora
+architecture section (ADR-0040).
+
+**Scope — the Control Room's interface only.** This document covers the Control
+Room's interface and its database. The Control Room's communication with the
+**Process Runner** — its queues, message types and the events exchanged over
+JMS — is **not defined here** and is **not yet designed**; the Process Runner
+exposes **no REST interface** of its own. That contract is a separate piece of
+work.
 
 It is written to be obeyed. Where it conflicts with
 [`CODING-STANDARDS.md`](./CODING-STANDARDS.md) or
@@ -51,6 +59,11 @@ internal; the only user-facing word is *organisation*.
 ---
 
 ## 3. The interface
+
+This is the **Control Room's** interface — the REST contract the frontend and
+other API clients use. It is **not** the Process Runner's: the runner exposes no
+REST interface and is reached over JMS, whose queues and message types are not
+yet defined (see the scope note at the top).
 
 ### 3.1 Three groups of APIs
 
@@ -181,13 +194,13 @@ naturally as a service method:
 - `create(partial)` — a create; returns the hydrated object; no identifier in the
   body.
 - **verb-plus-noun** methods for everything else — `.start(processId)`,
-  `.complete(taskId)`, `.assignOwner(taskId, ownerId)`.
+  `.updateState(taskId, state)`, `.assignOwner(taskId, ownerId)`,
+  `.getHistory(taskId)`.
 
 Every method returns an `Observable`; a list is the whole list, delivered once,
 as `Observable<T[]>` (§20.1, §20.3). No operation that changes state is
-reachable through `GET` (§20.8). The **shape of the non-CRUD state changes** —
-whether each verb is a sub-resource, a command or an action endpoint — is not yet
-settled (§6), but it is settled that the verb is a `POST`.
+reachable through `GET` (§20.8). The concrete endpoint shape is settled in §3.11:
+a resource with at most one sub-resource level.
 
 ### 3.9 Documentation and the typed client
 
@@ -203,6 +216,42 @@ The standing rule holds: additive change is preferred, and a version appears in
 the path only when a breaking change requires it, recorded in a decision
 (ADR-0050 is the nearest precedent). Whether versioning is **per group** or
 applies to the whole interface is not yet settled (§6).
+
+### 3.11 The resource and sub-resource shape
+
+Every endpoint is `/api/{organisationId}/{component}/{id}/{sub-resource}`, at most
+**one** sub-resource level deep (ADR-0060). A sub-resource that is a **value** is
+read with `GET` and overwritten with `PUT`; one that is an **operation** is
+invoked with `POST`. The **task component** is the reference shape, and the same
+shape extends to processes and the other components:
+
+| Endpoint | Method | Service method (§20) | Returns |
+| --- | --- | --- | --- |
+| `/tasks` | `GET` (no filter) | `list()` | the light task view |
+| `/tasks` | `GET` (with criteria) | `search(criteria)` | the light task view |
+| `/tasks/{taskId}` | `GET` | `get(id)` | task detail; query parameters set depth |
+| `/tasks/{taskId}/state` | `GET` | `getState(id)` | the current state |
+| `/tasks/{taskId}/state` | `PUT` | `updateState(id, state)` | the validated transition |
+| `/tasks/{taskId}/data` | `GET` | `getData(id)` | the task's data |
+| `/tasks/{taskId}/data` | `PUT` | `updateData(id, data)` | overwrite (or `PATCH`: open) |
+| `/tasks/{taskId}/history` | `GET` | `getHistory(id)` | the audit-style history |
+| `/tasks/{taskId}/assign` | `POST` | `assign(id, request)` | assignment · take · refer |
+
+Two consequences worth stating plainly:
+
+- A **human** task only; an **automated** task does not appear in the tasks
+  component (ADR-0060).
+- There is **no `create` and no `update` on the task itself**: a task is created
+  by execution, and its mutable parts are its **state** and its **data**.
+
+### 3.12 Documents
+
+A document is a **reference to a file blob** (ADR-0061). Business data carries the
+document **identifier**; the task's representation shows which documents it
+references, never their content. Document access is its own component,
+`/api/{organisationId}/documents`, and upload and download are **multipart or
+streamed** — the one part of the interface that is not JSON. The concrete
+storage, streaming and permission rules are open (§6).
 
 ---
 
@@ -300,7 +349,9 @@ These apply unless a decision says otherwise, and refine `CODING-STANDARDS.md`
 - **Money** is a decimal value with an explicit currency; never a binary
   floating-point type.
 - **Booleans** are booleans. **Enumerated states** are stored as a constrained
-  string and mapped to the sealed domain type at the persistence boundary.
+  string; the holding entity's serialisation rule maps the value to the sealed
+  domain type, and the interface lists the valid values through a Swagger
+  annotation.
 - **Optimistic locking** guards aggregates that can be edited concurrently; a
   conflict surfaces as a **domain outcome** (a `409`), never a server error.
 - **Transactions** are explicit and short; **no remote call sits inside one**
@@ -324,7 +375,7 @@ holds no business rules (`control-room-ui` AGENTS.md). It follows
 - Every failure mapped to **`AppError`** through `getProblemDetailsFromError`;
   the error body is part of this contract.
 
-Two points that are specific to this platform:
+Three points that are specific to this platform:
 
 - **Switching organisation is a frontend concern.** It changes the organisation
   segment of the URL and redirects the application's calls; it is not a server
@@ -336,6 +387,11 @@ Two points that are specific to this platform:
   organisations cannot be enumerated (ADR-0045, ADR-0057). An optional **request
   access** action may raise a task for the organisation's managers; where no such
   organisation exists, the action leads nowhere.
+
+- **A list or a search returns a lighter representation than a detail call**
+  (ADR-0059): `list()` and `search()` yield the summary a list shows; `get(id)`
+  yields the full object. On the client the full type is `T`, and a list is
+  `Partial<T>`.
 
 **Authorisation presented in the interface is never the gate.** The client uses
 the credential to decide which areas to *show*; the server enforces the boundary
@@ -349,9 +405,9 @@ a security control.
 These are deliberately **not** decided. They are recorded here and in
 `ARCHITECTURE-DECISIONS.md` so that no one invents an answer.
 
-1. **The shape of the non-CRUD state changes** — pend, resume, cancel, claim,
-   assign, refer, deploy, publish. Sub-resource, command, or action endpoint;
-   decided once and consistently. It is settled only that each is a `POST`.
+1. **The state sub-resource's payload and legal transitions** (`PUT …/state`),
+   and whether the assignment and referral operations (`POST …/assign`) overlap
+   with it — an assignment changes the state map.
 2. **The list contract** — server-side filtering, sorting, the pagination model,
    and how the Angular "whole list, once" convention maps onto it. Revisit once
    the technical and UX constraints are on the table.
@@ -378,3 +434,16 @@ These are deliberately **not** decided. They are recorded here and in
 8. **The versioning scheme** — per API group, or across the whole interface.
 9. **Global-schema retention** — remove an unused authentication profile after a
    window, or keep it in perpetuity (the leaning).
+10. **Dynamic (process-defined) parameters.** Some payloads — the arguments to
+    start a process, for instance — vary by process definition. How they are
+    described in the OpenAPI document and validated at the boundary is deferred.
+11. **Task-detail depth** — the query parameters that control how much the detail
+    call returns (history, data schema, current data, summary, process model).
+12. **`data` update semantics** — overwrite with `PUT`, partial with `PATCH`, or
+    finer-grained assignments.
+13. **Summary templating** — server or browser, and how the template (process
+    design) is kept apart from the data (task view).
+14. **Document storage, streaming and permissions** — the blob store and the
+    multipart/streaming rules (ADR-0061).
+15. **The Control Room ↔ Process Runner contract** — the queues, message types
+    and events exchanged over JMS. Out of scope here, and not yet designed.

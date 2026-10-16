@@ -8,12 +8,28 @@ these components, and the full text of their license statements.
 You may also request a copy of the source code for any of these software
 components by sending an email to info@hamoni.ai.
 
-Components used by Hamoni
-=========================
+Components used by Hamoni frontend
+==================================
 
-* xxxxx (??? license)
+Inter
+    Path:        /fonts/inter-latin-{400,700}-normal.woff2
+    Licence:     SIL Open Font License 1.1
+    Copyright:   The Inter Project Authors (https://github.com/rsms/inter)
 
-Licenses used by multiple components
-====================================
+JetBrains Mono
+    Path:        /fonts/jetbrains-mono-latin-{400,700}-normal.woff2
+    Licence:     SIL Open Font License 1.1
+    Copyright:   The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
 
-TODO
+Noto Emoji
+    Path:        /fonts/noto-emoji/noto-emoji-{0..10}.woff2
+    Licence:     SIL Open Font License 1.1
+    Copyright:   Copyright 2013 Google LLC (https://github.com/googlefonts/noto-emoji)
+
+PrimeIcons
+    Path:        the primeicons package (primeicons.css and its fonts/)
+    Licence:     MIT
+    Copyright:   PrimeTek (https://primeng.org)
+
+Components used by Hamoni backend
+=================================

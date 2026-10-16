@@ -3,9 +3,10 @@
 This directory holds the **projects for the user-facing application** — the
 Control Room. It is a holding area, not a project itself. Read the
 repository-level [`../AGENTS.md`](../AGENTS.md),
-[`../CODING-STANDARDS.md`](../CODING-STANDARDS.md) and
-[`../ARCHITECTURE-DECISIONS.md`](../ARCHITECTURE-DECISIONS.md) first; this file
-only adds what is specific to the projects here.
+[`../CODING-STANDARDS.md`](../CODING-STANDARDS.md),
+[`../ARCHITECTURE-DECISIONS.md`](../ARCHITECTURE-DECISIONS.md) and
+[`../API-AND-DATABASE.md`](../API-AND-DATABASE.md) first; this file only adds what
+is specific to the projects here.
 
 ## What this directory holds
 
@@ -75,6 +76,9 @@ logic locally.
 - **→ `process-runner/`**: start, advance, pend, resume and cancel commands, and
   instance read models, over its interface. A published, deployed process
   definition is the artefact handed across this boundary.
+- **→ the interface and the database** — the endpoints these projects expose and
+  the database rules they follow are defined in
+  [`../API-AND-DATABASE.md`](../API-AND-DATABASE.md).
 
 ## Before you finish
 

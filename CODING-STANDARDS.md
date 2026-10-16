@@ -64,7 +64,7 @@ concern, covered under UI design and language (Part III).
 - Each project uses the standard Gradle layout: `src/main/kotlin`,
   `src/main/resources`, `src/test/kotlin`, `src/test/resources`.
 - Base package: `ai.hamoni`, with the area as the next segment (for example
-  `ai.hamoni.controlroom`, `ai.hamoni.processrunner`, `ai.hamoni.common`).
+  `ai.hamoni.control_room`, `ai.hamoni.process_runner`, `ai.hamoni.common`).
   *(Confirm the base group identifier with the shared Gradle scripts; see
   ADR-0002.)*
 - Organise by **feature or domain**, not by technical layer alone. A feature owns
@@ -191,8 +191,12 @@ Do not:
 - **Business rules are data, not code branches**, where the product models them
   as data (ADR-0016). A business rule is a project-scoped artefact, not a
   conditional in a service.
-- **Do not leak persistence types** into the domain. Map entities to and from
-  domain types at the repository boundary.
+- **Reuse one type per concept where possible.** The same class moves from the
+  database to the interface; what is exposed is controlled by **serialisation
+  annotations**, not by copying into a parallel transport or domain type. Hide or
+  remove fields rather than mapping to a duplicate object. For a list or a
+  search, query and return a **lighter projection view**; a second call retrieves
+  the full object (ADR-0059).
 
 ## 10. Persistence
 
@@ -228,15 +232,18 @@ Do not:
 - Resources are **thin**: validate, delegate to a service, map to a response. No
   business logic in a resource.
 - The public entry point for starting a process is
-  `POST /processes/{processId}/instances`, with the body validated against the
-  process's state schema (ADR-0029).
+  `POST /api/{organisationId}/processes/{processId}/instances`, with the body
+  validated against the process's state schema (ADR-0029, ADR-0048).
 - **Errors use the problem-details format (`application/problem+json`, RFC
   9457).** No stack traces on the wire, and no internal identifiers in error
   messages.
 - **Validation at the boundary.** A payload is validated against the process's
   declared state data (ADR-0017); a mismatch raises a mapped exception.
-- **Transport types are separate from domain types.** Never serialise an entity
-  directly.
+- **One type crosses the boundary.** The interface carries the same class the
+  database holds, with **serialisation annotations** controlling which fields are
+  exposed; a list or a search returns a **lighter projection view** and a detail
+  call returns the full object. Exposure is deliberate, never accidental
+  (ADR-0059).
 - **Versioning** appears in the path only when a breaking change requires it;
   additive change is preferred. Record a breaking change in an ADR.
 - The interface is organised into **three annotated groups** (ADR-0049): **A**
@@ -251,9 +258,16 @@ Do not:
 - **Authorisation outcomes may be cached**, positive and negative, for a
   time-to-live that never exceeds the session lifetime, with invalidation on a
   user-profile or organisation-provider change (ADR-0054).
-- **A write is a `POST`**, never a `GET`; the state-change endpoint's shape
-  (sub-resource, command or action) is settled in one place and applied
-  consistently (ADR-0048; the shape is an open question).
+- **The interface shape is a resource with at most one sub-resource level**
+  (ADR-0060): `/api/{organisationId}/{component}/{id}/{sub-resource}`. A
+  sub-resource that is a **value** is read with `GET` and overwritten with `PUT`
+  (`state`, `data`); one that is an **operation** is invoked with `POST`
+  (`assign`). Do not nest deeper — address a sub-object by its own term, not by
+  another path level. A write is never a `GET` (ADR-0048).
+- **Documents are references, not payloads** (ADR-0061): business data holds a
+  document identifier, and the file itself is streamed from
+  `/api/{organisationId}/documents`; it is never held in memory or carried inside
+  a JSON body.
 
 ## 12. Concurrency and reactive programming
 
@@ -294,13 +308,19 @@ Do not:
 
 ## 16. Testing (backend)
 
-- **JUnit 5** for all tests, **Quarkus Test** for anything that touches
-  dependency injection, configuration or persistence, and a REST client test
-  library for HTTP resources.
-- **Testcontainers or development services** for real backing services; do not
-  mock the database engine.
-- **ArchUnit** guards the boundaries (no dependency from an application area to
-  the other; `common/` depends on neither).
+- **JUnit is the test framework**, and every test runs under **`@QuarkusTest`**.
+- **Mock collaborators with Mockk.** Mock only what is genuinely external; use
+  real backing services through **Testcontainers or development services** — the
+  database engine is never mocked.
+- **Assert through the Quarkus `UniAsserter`.** Because the project is reactive, a
+  subscription is asserted inside a `UniAsserter`; within it, use **AssertJ**
+  fluent assertions for the actual checks.
+- **Structure every test as Given-When-Then** — the setup, the action and the
+  assertion, in that order.
+- **Reactive tests run on the Vert.x event loop:** annotate with
+  **`@RunOnVertxContext`**. **Secured paths are tested with `@TestSecurity`.**
+- **ArchUnit** guards the boundaries (no dependency from one application area
+  to the other; `common/` depends on neither).
 - Name tests for behaviour: `` `a pended process suspends all parallel paths` ``.
 - **Every domain state transition has a test.** The state models (ADR-0012,
   ADR-0013) and the pend and exception semantics (ADR-0014, ADR-0015) are the
@@ -317,8 +337,8 @@ Do not:
 - Use blocking database access; use reactive Panache (§10).
 - Auto-generate the production schema, or edit a migration that has been applied
   (§10).
-- Put business logic in a resource, or serialise an entity across the interface
-  (§11).
+- Put business logic in a resource (§11); and do not maintain a parallel copy of
+  a type merely to serialise it — control exposure by annotation (ADR-0059).
 - Return a stack trace, or an internal identifier, in an error response (§11).
 - Write a custom audit handler, or log an auditable action by hand instead of
   using the Hamoni audit framework (§13).
@@ -332,8 +352,9 @@ Do not:
 # Part III — Frontend
 
 The front end is an Angular single-page application, built and served by Quarkus
-through Quinoa (ADR-0037), using PrimeNG and Tailwind (ADR-0038) and tested with
-Mock Service Worker (ADR-0039).
+through Quinoa (ADR-0037), using PrimeNG and Tailwind (ADR-0038), unit-tested with
+`vitest`, and made browsable by a real person through Mock Service Worker
+(ADR-0039).
 
 ## 18. UI design and language
 
@@ -391,6 +412,17 @@ controls.
 - Do not assume a language, a direction or a date format: the interface must
   render correctly for a right-to-left language and for a locale whose date and
   number formats differ from the development machine.
+- **The locale comes from the user profile** (ADR-0062). The organisation sets a
+  default, which the person may override; the choice is held on the profile as
+  locale information. There is no second source of locale — not the browser, not
+  the build, not the development machine.
+- **Static copy lives in the front end.** Every label, message and state — and
+  the assistant's replies — is held in the front-end resource bundle. The backend
+  is never asked to supply interface prose it does not already own.
+- **Problem messages from the interface are human text** (ADR-0062). An error the
+  interface shows is a message written for a person, not a code; the **backend
+  localises it into the profile's locale** before returning it, and the client
+  renders it as given.
 
 ### 18.4 Design system and restraint
 
@@ -437,11 +469,14 @@ controls.
   content-security policy and in an air-gapped deployment, and — because
   browsers now partition font caches per site — no longer shares a cache
   benefit (ADR-0037).
-- **Carry the licence with the asset.** Every redistributed font or icon set
-  keeps its notice in the repository; the bundled third-party set is recorded in
-  `control-room-ui/NOTICE.md`. Inter, JetBrains Mono and Noto Emoji are SIL Open Font
-  License 1.1; PrimeIcons is MIT. A new third-party asset is not added without
-  its licence recorded.
+- **Carry the licence with the asset, in the `NOTICE` file's fixed structure.**
+  Every redistributed font or icon set keeps its notice in the repository, in the
+  project-root `NOTICE` file. That file has a **legal structure that must not be
+  reformatted**: a `Licenses` introduction, then one
+  `Components used by <component>` section per area, each component listed with
+  its `Path`, `Licence` and `Copyright`. A new third-party asset is not added
+  until its entry is recorded in that structure. Inter, JetBrains Mono and Noto
+  Emoji are SIL Open Font License 1.1; PrimeIcons is MIT.
 - **Do not recolour a third-party mark.** Fonts and icons are used as shipped;
   the design system's colours are applied through the preset and the theme, not
   by re-processing an asset.
@@ -505,6 +540,9 @@ and no others; the name states the contract.
 - Reason: most lists are small, and one array maps directly to a table in
   Angular. Streaming would force the table to assemble and reconcile the
   collection itself for no benefit at this size.
+- A **list** or a **search** may return a **lighter representation** of the type —
+  `Observable<Partial<T>[]>` — than `get(id)`, which returns the full `T`
+  (ADR-0059).
 
 ### 20.4 The identifier comes from the URL, never the body
 
@@ -603,12 +641,22 @@ readonly jobs = this.#jobs.asReadonly();
 
 ## 23. Testing (frontend)
 
-- **Mock Service Worker (MSW)** provides the interface during tests and local
-  development (ADR-0039). Share the handlers between the two.
-- Test components for **behaviour the user can observe**, not implementation
-  detail.
+Two tools, two jobs. They are complementary and neither replaces the other.
+
+- **`vitest` is the default test runner**, and the default for testing **case
+  handling** — the different branches, error paths and edge cases of a unit of
+  code.
+- **Mock Service Worker (MSW) is a mock backend** (ADR-0039): its purpose is to
+  let a real person **log in and browse the application** without the real
+  backend. **Every new service ships happy-case handlers** for it, so the
+  application is usable end to end the moment the service exists.
+- **MSW does not replace `vitest`**, and `vitest` does not replace the browsing
+  handlers — a unit's edge cases are proven by a `vitest` test, not by a
+  happy-case handler.
+- Test components and services for **behaviour the user can observe**, not
+  implementation detail.
 - Cover the states each screen can be in: loading, empty, error and populated.
-- Do not test against hand-rolled fake clients; go through MSW so the component
+- Do not test against a hand-rolled fake client; go through MSW so the component
   sees a real request.
 
 ## 24. Anti-patterns — Frontend
@@ -624,6 +672,8 @@ Do not:
 - Add a per-screen or per-panel advanced-mode switch (§18.4).
 - Use implicit `any`, a non-null assertion to silence the compiler, or a
   hand-rolled fake client instead of MSW (§22, §23).
+- Treat the Mock Service Worker handlers as a substitute for `vitest`, or ship a
+  new service without its happy-case handlers (§23).
 - Leave console output, dead code or commented-out blocks in committed code
   (§22).
 - Fork an existing component instead of composing a variant of it (§21).
