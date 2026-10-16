@@ -1,6 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { User } from '@/app/services/auth.service'
-import { Organisation } from '@/app/services/organisation.service';
+import { User, Organisation } from '@/app/services/auth.service'
 
 /**
  * Create an API url
@@ -26,16 +25,18 @@ function toObject(obj: any) {
   return JSON.parse(serialised);
 }
 
-// Objects for client success (cs) cases
+// Objects for auth services
 const defaultUserUUID = window.crypto.randomUUID()
 
-const crUser: User = {
+const authUser: User = {
   id: defaultUserUUID,
   name: 'Bob Smith',
-  email: "bob.smith@example.com"
+  email: "bob.smith@example.com",
+  issuer: "https://accounts.google.com",
+  issuerSubject: "107654321098765432109"
 }
 
-const crOrganisations: Organisation[] = [
+const authUserOrganisations: Organisation[] = [
   {
     id: window.crypto.randomUUID(),
     name: 'ABC Limited'
@@ -44,20 +45,22 @@ const crOrganisations: Organisation[] = [
 
 export const success_handlers = [
   // Auth services
-  http.get(api(`/auth/me`), () => {
-    return HttpResponse.json(toObject(crUser))
+  http.get(api(`/auth/profile`), ({ request }) => {
+    const url = new URL(request.url);
+    const hydrate = url.searchParams.get('hydrate')?.split(" ") || []
+
+    if (hydrate.includes("organisations")) {
+      return HttpResponse.json(toObject({...authUser, organisations: authUserOrganisations}))
+    } else {
+      return HttpResponse.json(toObject(authUser))
+    }
+  }),
+  http.get(api(`/auth/profile/organisations`), () => {
+    return HttpResponse.json(toObject(authUserOrganisations), { status: 200 });
   }),
   http.get(api(`/auth/logout`), () => {
     return HttpResponse.json(toObject(true), { status: 200 });
   }),
-
-  // Organisation services
-  http.get(api(`/organisation`), () => {
-    return HttpResponse.json(toObject(crOrganisations), { status: 200 });
-  }),
-  http.post(api(`/organisation/select`), () => {
-    return new HttpResponse(null, { status: 204 });
-  })
 
   // http.get<{ id: string }>(api(`/teams/:id`), ({ params }) => {
   //   const { id } = params;

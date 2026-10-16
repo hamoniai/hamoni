@@ -49,3 +49,14 @@ export function generateRandomString(length: number): string {
 export function observableFilterIsValue<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
 }
+
+/**
+ * A consistent way to generate hydrations parameters
+ */
+export function createHydrationQueryParameters(hydrationIncludes: string[] | undefined): Record<string, string> {
+    if (!hydrationIncludes || hydrationIncludes.length == 0) {
+        return {}
+    } else {
+        return {hydrate: hydrationIncludes.join("+")}
+    }
+}

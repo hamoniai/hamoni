@@ -1,6 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { AuthService, User } from '@/app/services/auth.service';
-import { Organisation, OrganisationService } from '@/app/services/organisation.service';
+import { AuthService, User, UserOrganisation } from '@/app/services/auth.service';
 
 
 /**
@@ -8,7 +7,7 @@ import { Organisation, OrganisationService } from '@/app/services/organisation.s
  */
 export interface AppState {
     user: User | null,
-    organisations: Organisation[] | null,
+    organisations: UserOrganisation[] | null,
     selectedOrganisation: string | null,
     theme: string,
 }
@@ -26,10 +25,10 @@ const THEME_LIGHT = 'light';
 })
 export class AppStateService {
     readonly #authService = inject(AuthService);
-    readonly #organisationService = inject(OrganisationService);
 
     // global state, with a public read only view. Initial state is loaded from local storage.
     // Operations on global state, such as accepting an invite should update/refresh the application state object by reloading.
+    // Store the user and organisations independently to allow a dual stage update, the profile is quick, organisations are not.
     readonly #appState = signal<AppState>({
         user: null,
         organisations: null,
@@ -60,8 +59,8 @@ export class AppStateService {
                     user: user
                 }));
 
-                // Do not actually change the selected organisation, that is the job of the startup or organisation switcher.
-                this.#organisationService.list().subscribe({
+                // Get the organisations, the organisation switcher will display the curent value selected.
+                this.#authService.getProfileOrganisations().subscribe({
                     next: (data) => {
                         this.#appState.update(currentState => ({
                             ...currentState,
@@ -111,6 +110,7 @@ export class AppStateService {
      * Change between organisations the user has access to.
      */
     setOrganisation(newOrganisation: string) {
+        // TODO: needs to fail if the organisation is not in the list of allowed organisations.
         // this.#appState.update(currentState => ({
         //     ...currentState,
         //     client: newClient,

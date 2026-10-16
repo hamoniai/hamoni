@@ -2,23 +2,27 @@ import { TestBed } from '@angular/core/testing';
 import { httpResource, HttpResourceRef } from '@angular/common/http';
 import { provideLumberjack } from '@ngworker/lumberjack';
 import { provideLumberjackConsoleDriver } from '@ngworker/lumberjack/console-driver';
-import { of } from 'rxjs';
+import { defer, of } from 'rxjs';
 import { describe, it, expect, beforeEach, vi, type Mocked } from 'vitest';
 import { AppStateService } from './app-state.service';
-import { AuthService, User } from './auth.service';
-import { OrganisationService } from './organisation.service';
+import { AuthService, User, UserOrganisation } from './auth.service';
 
 
 describe('AppStateService', () => {
-    let appStateService: AppStateService;
-    let organisationService: OrganisationService;
-
-    let authService: Mocked<Partial<AuthService>> = {
-        userResource: undefined
-    };
-
     // Dummy http resources
     let mockUserResource: HttpResourceRef<User | undefined>;
+
+    // Data references
+    let dataUser: User;
+    let dataUserOrganisations: UserOrganisation[] = []
+
+    // Mocks & services
+    let appStateService: AppStateService;
+    let authService: Mocked<Partial<AuthService>> = {
+        userResource: undefined,
+        getProfileOrganisations: vi.fn().mockReturnValue(defer(() => of(dataUserOrganisations)))
+    };
+
 
     beforeEach(() => {
         // Need to mock the AuthService entirely to prevent the default httpResource from loading
@@ -28,7 +32,6 @@ describe('AppStateService', () => {
                 provideLumberjackConsoleDriver(),
                 AppStateService,
                 { provide: AuthService, useValue: authService },
-                OrganisationService
             ]
         });
 
@@ -37,20 +40,24 @@ describe('AppStateService', () => {
         });
         (authService as any).userResource = mockUserResource
 
-        organisationService = TestBed.inject(OrganisationService);
         appStateService = TestBed.inject(AppStateService);
     });
 
     it('should load organisations only once', async () => {
         // Given
-        const dataUser = {id: window.crypto.randomUUID(), name: 'Bob Smith', email: 'bob.smith@example.com'};
-        const dataaOrganisations = [
+        dataUser = {
+            id: window.crypto.randomUUID(),
+            name: 'Bob Smith',
+            email: 'bob.smith@example.com',
+            issuer: 'https://accounts.google.com',
+            issuerSubject: '107654321098765432109'
+        };
+        dataUserOrganisations = [
             {id: window.crypto.randomUUID(), name: "Organisation 1"},
             {id: window.crypto.randomUUID(), name: "Organisation 2"},
         ];
 
         vi.spyOn(authService, 'userResource', 'get').mockReturnValue(mockUserResource)
-        const osListSpy = vi.spyOn(organisationService, 'list').mockReturnValue(of(dataaOrganisations));
 
         // When
         mockUserResource.set(dataUser);
@@ -64,7 +71,7 @@ describe('AppStateService', () => {
 
         // Then
         expect(appStateService.appState().user).toStrictEqual(dataUser);
-        expect(appStateService.appState().organisations).toEqual(dataaOrganisations);
-        expect(osListSpy).toHaveBeenCalledTimes(1);
+        expect(appStateService.appState().organisations).toEqual(dataUserOrganisations);
+        expect(authService.getProfileOrganisations).toHaveBeenCalledTimes(1);
     });
 });
