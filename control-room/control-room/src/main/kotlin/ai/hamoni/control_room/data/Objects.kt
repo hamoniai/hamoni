@@ -1,7 +1,6 @@
 package ai.hamoni.control_room.data
 
 import ai.hamoni.common.platform.GLOBAL_SCHEMA
-import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
 import java.time.Instant
@@ -51,12 +50,12 @@ class AuthenticationProfile (
     @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status")
     var enabled: String,
 
-    @JsonIgnore
+    @kotlinx.serialization.Transient
     @Column(name = "created", nullable = false, updatable = false, comment = "Date the account was created (UTC)")
     @CreationTimestamp
     var created: Instant? = null,
 
-    @JsonIgnore
+    @kotlinx.serialization.Transient
     @Column(name = "updated", nullable = false, updatable = false, comment = "Date the account was last updated (UTC)")
     var updated: Instant? = null,
 ) {
