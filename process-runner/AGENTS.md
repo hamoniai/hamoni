@@ -28,9 +28,9 @@ and their number and split are decided area by area.
 - **Persistence of instances**, their state data, and the **audit trail**
   (ADR-0026).
 - **Consuming the lifecycle commands** the Control Room issues (start, advance,
-  pend, resume, cancel) over **JMS**. There is **no REST API** on the Process
-  Runner: starting a process is the Control Room's responsibility, and the
-  interface that begins one sits there (ADR-0029).
+  pend, resume, cancel) over **Quarkus Reactive Messaging**. There is **no REST
+  API** on the Process Runner: starting a process is the Control Room's
+  responsibility, and the interface that begins one sits there (ADR-0029).
 - **Durability**: a run survives a restart; no in-memory-only state that loses
   work.
 
@@ -57,7 +57,7 @@ process-runner/
       state/                process + activity state machines
       pend/                 pend and exception handling
       signals/              signals, timers
-      messaging/            JMS consumers for the lifecycle commands
+      messaging/            Quarkus Reactive Messaging consumers for the lifecycle commands
       persistence/          instance, state-data and audit repositories
     src/main/resources/
       application.properties
@@ -97,10 +97,10 @@ test (CODING-STANDARDS §16). In particular:
 
 - **→ `common/`**: the JSON Process model, the state models and shared contracts.
 - **← `control-room/`**: the lifecycle commands (start, advance, pend, resume,
-  cancel) and the published, deployed process definition — exchanged over **JMS**.
-  There is **no REST API** on the Process Runner; the Control Room owns the
-  interface that starts a process. These projects execute; they do not decide who
-  may.
+  cancel) and the published, deployed process definition — exchanged over
+  **Quarkus Reactive Messaging**. There is **no REST API** on the Process Runner;
+  the Control Room owns the interface that starts a process. These projects
+  execute; they do not decide who may.
 - **→ the database** — the instance, state-data and audit stores follow
   [`../API-AND-DATABASE.md`](../API-AND-DATABASE.md).
 

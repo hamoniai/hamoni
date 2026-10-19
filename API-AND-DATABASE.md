@@ -10,9 +10,9 @@ architecture section (ADR-0040).
 **Scope — the Control Room's interface only.** This document covers the Control
 Room's interface and its database. The Control Room's communication with the
 **Process Runner** — its queues, message types and the events exchanged over
-JMS — is **not defined here** and is **not yet designed**; the Process Runner
-exposes **no REST interface** of its own. That contract is a separate piece of
-work.
+Quarkus Reactive Messaging — is **not defined here** and is **not yet designed**;
+the Process Runner exposes **no REST interface** of its own. That contract is a
+separate piece of work.
 
 It is written to be obeyed. Where it conflicts with
 [`CODING-STANDARDS.md`](./CODING-STANDARDS.md) or
@@ -62,8 +62,8 @@ internal; the only user-facing word is *organisation*.
 
 This is the **Control Room's** interface — the REST contract the frontend and
 other API clients use. It is **not** the Process Runner's: the runner exposes no
-REST interface and is reached over JMS, whose queues and message types are not
-yet defined (see the scope note at the top).
+REST interface and is reached over Quarkus Reactive Messaging, whose queues and
+message types are not yet defined (see the scope note at the top).
 
 ### 3.1 Three groups of APIs
 
@@ -415,9 +415,10 @@ These are deliberately **not** decided. They are recorded here and in
    and how the Angular "whole list, once" convention maps onto it. Revisit once
    the technical and UX constraints are on the table.
 3. **The `control-room` ↔ `process-runner` boundary.** The working idea is that
-   the runner is essentially **stateless**, triggered by a **JMS** message from
-   the control room, running until it blocks (a manual task, a pend, an exception,
-   a completion) and reporting back. Open within that: **where the per-step
+   the runner is essentially **stateless**, triggered by a **Quarkus Reactive
+   Messaging** message from the control room, running until it blocks (a manual
+   task, a pend, an exception, a completion) and reporting back. Open within
+   that: **where the per-step
    execution history** — assigned, started, completed — lives, whether in a
    separate operational database the runner owns, in the organisation schema, or
    read directly by the control room, and how database contention and scale are
@@ -449,4 +450,4 @@ These are deliberately **not** decided. They are recorded here and in
 14. **Document storage, streaming and permissions** — the blob store and the
     multipart/streaming rules (ADR-0061).
 15. **The Control Room ↔ Process Runner contract** — the queues, message types
-    and events exchanged over JMS. Out of scope here, and not yet designed.
+    and events exchanged over Quarkus Reactive Messaging. Out of scope here, and not yet designed.
