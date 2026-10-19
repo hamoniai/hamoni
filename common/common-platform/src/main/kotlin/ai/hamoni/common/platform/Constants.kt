@@ -22,6 +22,14 @@ import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.MediaType.APPLICATION_JSON_TYPE
 import java.nio.charset.StandardCharsets
 
+/*
+ * Global database definitions
+ */
+const val GLOBAL_SCHEMA = "platform"
+
+/*
+ * media types with character set.
+ */
 const val APPLICATION_JSON_UTF8 = MediaType.APPLICATION_JSON + "; charset=utf-8"
 val APPLICATION_JSON_UTF8_TYPE = MediaType(APPLICATION_JSON_TYPE.type, APPLICATION_JSON_TYPE.subtype,
     StandardCharsets.UTF_8.name())
@@ -30,6 +38,7 @@ const val APPLICATION_PROBLEM_JSON_UTF8 = "application/problem+json; charset=utf
 val APPLICATION_PROBLEM_JSON_UTF8_TYPE = MediaType(APPLICATION_JSON_TYPE.type, "problem+json",
     StandardCharsets.UTF_8.name())
 
-
-// Request/response properties
+/*
+ * Request/response properties.
+ */
 const val REQUEST_PROPERTY_ID = "Request-Id"

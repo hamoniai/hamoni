@@ -54,10 +54,13 @@ dependencies {
 
     implementation("io.quarkus:quarkus-arc")
     implementation("io.quarkus:quarkus-kotlin")
-    implementation("io.quarkus:quarkus-rest-jackson")
     implementation("io.quarkus:quarkus-rest-kotlin")
+    implementation("io.quarkus:quarkus-rest-kotlin-serialization")
     implementation("io.quarkus:quarkus-security")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+    // Messaging: compile only as a real implementation needs to provide the annotations
+    compileOnly("io.smallrye.reactive:smallrye-reactive-messaging-api")
 
     val extMockk = libs.findLibrary("platform.quarkus.ext.mockk").get()
     testImplementation(extMockk)

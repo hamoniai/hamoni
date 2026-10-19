@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw'
+import { passthrough } from 'msw/utils/passthrough';
 import { User, UserOrganisation } from '@/app/services/auth.service'
 
 /**
@@ -73,4 +74,15 @@ export const success_handlers = [
   // http.post(api(`/teams/:id`), () => {
   //   return new HttpResponse(null, { status: 204 });
   // }),
+
+  // Catch-all handler for everything else not matching /api
+  http.all('*', ({ request }) => {
+    const url = new URL(request.url);
+
+    if (!url.pathname.startsWith('/api')) {
+      return passthrough();
+    } else {
+      return new HttpResponse(null, { status: 500 });
+    }
+  }),
 ];

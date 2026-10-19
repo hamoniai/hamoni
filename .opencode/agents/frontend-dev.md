@@ -70,19 +70,27 @@ holds no business rules. The design system is already exported into the project 
   every method returns an `Observable`; a list is delivered whole, once;
   identifiers come from the URL.
 - **The API contract** is `API-AND-DATABASE.md` §3: the three groups of APIs, the
-  paths, the stateless backend, the principal model, and the **Angular service
-  shapes** (§3.8). Consume the typed client generated from the backend's OpenAPI
-  description; never hand-write a type that duplicates it.
+  paths, the stateless backend, the principal model, the **Angular service
+  shapes** (§3.8), and the **resource and sub-resource shape** (§3.11). Consume
+  the typed client generated from the backend's OpenAPI description; never
+  hand-write a type that duplicates it.
 - **Map transport errors to `AppError`** with `getProblemDetailsFromError`, and
   **log at the point of the call**.
-- **HTTP semantics:** `GET` retrieves only; `PUT` overwrites; `PATCH` updates
-  partially; `POST` creates and is the fallback for any state change. Never change
-  server state through a `GET`.
+- **HTTP semantics:** `GET` retrieves only; `PUT` overwrites — including the
+  `state` and `data` sub-resources (ADR-0060); `PATCH` updates partially; `POST`
+  creates and invokes an operation (such as `assign`), and is the fallback for a
+  state change that fits neither. Never change server state through a `GET`.
 - **Bind the design system** through the generated PrimeNG preset and the
   Tailwind theme — no local colour, font or radius overrides; compose shared
   components rather than forking them.
 - **Every user-facing string is localisable**, plain, and in the product's voice
   (people-powered, people-led).
+- **Document any deviation.** Where a method, function or class must break a
+  coding standard or an architectural decision, document the deviation and the
+  reason at the declaration (CODING-STANDARDS §5).
+- **Write for a human reviewer.** Document every function, method and class,
+  keep names human-readable, and comment the non-obvious — a human reviews the
+  code for quality on every pull request (CODING-STANDARDS §5, §6).
 - **Test as you build.** **`vitest` is the default unit-test framework** — use it
   for case handling: the branches, error paths and edge cases of a unit. **Mock
   Service Worker** is a mock backend so a person can **log in and browse the

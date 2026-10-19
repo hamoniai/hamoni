@@ -37,6 +37,7 @@ export class ErrorComponent {
 
     constructor() {
         const nav = this.#router.currentNavigation()
+        console.log("Got nav", nav);
         this.problemMessage = (nav?.extras?.state as ProblemMessage | undefined) || createUnknownProblemDetails()
     }
 

@@ -338,16 +338,19 @@ either way it is a job, not a request path.
 These apply unless a decision says otherwise, and refine `CODING-STANDARDS.md`
 §9 and §10:
 
-- **Keys** are typed identifiers, generated as universally unique identifiers at
-  the boundary. A **business key** (for example a process reference) is never the
-  system identifier.
+- **Identifiers are `java.util.UUID`**, generated at the boundary; the database
+  stores the native UUID type and the interface presents a string (OpenAPI and
+  TypeScript have no UUID type). A **business key** is rare and is never the
+  system identifier; object equality uses the technical identifier.
 - **Foreign keys** express structural relationships within a schema; there is no
   cross-schema foreign key.
-- **Naming** is `snake_case` for tables and columns.
-- **Timestamps** are `java.time` in **Coordinated Universal Time**; stored as a
-  timezone-aware column and converted only at the edge.
-- **Money** is a decimal value with an explicit currency; never a binary
-  floating-point type.
+- **Naming** is `snake_case` for tables and columns; the Kotlin and TypeScript
+  identifiers are the corresponding `camelCase` (a `given_name` column is
+  `givenName`). The technical identifier is the column `id`, property `id`; a
+  foreign key is `<table>_id` / `<table>Id`.
+- **Timestamps** are `java.time.Instant` in **Coordinated Universal Time**.
+- **Money and other decimals are `BigDecimal`** (precision 15, scale 5), never a
+  binary floating-point type; money carries an explicit currency.
 - **Booleans** are booleans. **Enumerated states** are stored as a constrained
   string; the holding entity's serialisation rule maps the value to the sealed
   domain type, and the interface lists the valid values through a Swagger

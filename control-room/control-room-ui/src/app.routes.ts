@@ -9,6 +9,9 @@ import { createUnknownProblemDetails, createNotFoundProblemDetails } from '@/app
 export const routes: Routes = [
     // Main app pages
     {
+        // FIXME: because this has an auteenticated guard and '' matches the url, then it returns a redirect to the error page. It still should show unauthenticated.
+        // However, it should actually be authenticated....
+        // actually it's worse. It should redirect to eh lgoin page, which would be not found, however, it should also be logged in. Debug the guard.
         path: '',
         component: AppLayout,
         children: [

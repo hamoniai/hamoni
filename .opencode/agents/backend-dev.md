@@ -71,11 +71,21 @@ Then — and only then — read the code of the component you decided owns the w
 - **Kotlin on Quarkus, reactive** — follow `CODING-STANDARDS.md` Part II, not
   Part III.
 - Model the state machines as sealed types; keep value objects immutable and
-  self-validating; keep persistence types out of the domain.
+  self-validating. Carry **one type per concept** from the database to the
+  interface — exposure by annotation, a lighter projection for lists, never a
+  parallel transport type (ADR-0059). Identifiers are `java.util.UUID`, and
+  equality uses the technical identifier, not a display field; times are
+  `java.time.Instant`; decimals are `BigDecimal` (precision 15, scale 5).
 - Data access is reactive Hibernate ORM with Panache; schema is migrated
   forward-only with Flyway; transactions are short and hold no remote call.
 - The interface is Quarkus REST (RESTEasy Reactive); errors are problem+json; the
   resource is thin and the identifier travels in the URL.
+- **Document any deviation.** Where a method, function or class must break a
+  coding standard or an architectural decision, document the deviation and the
+  reason at the declaration (CODING-STANDARDS §5).
+- **Write for a human reviewer.** Document every function, method and class,
+  keep names human-readable, and comment the non-obvious — a human reviews the
+  code for quality on every pull request (CODING-STANDARDS §5, §6).
 - **Test as you build** with **JUnit under `@QuarkusTest`**, collaborators mocked
   with **Mockk**, and real backing services through Testcontainers or development
   services. Assert inside a **`UniAsserter`** with **AssertJ** checks; write every

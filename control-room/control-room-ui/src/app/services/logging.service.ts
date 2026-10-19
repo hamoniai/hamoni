@@ -67,10 +67,12 @@ export function createGenericProblemDetails(status: number, title: string, detai
 }
 
 export function createUnknownProblemDetails(): ProblemMessage {
+        console.log("unknown");
     return createGenericProblemDetails(HttpStatusCode.InternalServerError, UNKNOWN_ERROR_TITLE, UNKNOWN_ERROR_DETAIL);
 }
 
 export function createNotFoundProblemDetails(): ProblemMessage {
+    console.log("not found");
     return createGenericProblemDetails(HttpStatusCode.NotFound, NOTFOUND_ERROR_TITLE, NOTFOUND_ERROR_DETAIL);
 }
 

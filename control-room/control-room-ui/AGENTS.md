@@ -96,9 +96,10 @@ Use the project's own package scripts where they differ.
   `.assignOwner(id, ownerId)`); the five standard names (`list`, `search`, `get`,
   `update`, `create`) for the ordinary operations; every method returns an
   `Observable`; a list is returned whole, once; identifiers come from the URL.
-- **HTTP semantics** (§20.9): `GET` retrieves only; `PUT` overwrites;
-  `PATCH` updates partially; `POST` creates and is the fallback for any state
-  change. Nothing that changes server state is reachable through `GET`.
+- **HTTP semantics** (§20.9): `GET` retrieves only; `PUT` overwrites — including
+  the `state` and `data` sub-resources (ADR-0060); `PATCH` updates partially;
+  `POST` creates and invokes an operation (such as `assign`). Nothing that changes
+  server state is reachable through `GET`.
 
 ## Components and the design system
 
