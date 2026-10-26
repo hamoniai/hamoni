@@ -2,7 +2,7 @@
 kotlin-core = "2.4.21"
 kotlin-serialization = "1.11.0"
 platform-quarkus = "3.40.1"
-platform-quarkus-ext-quinoa = "2.9.2"
+platform-quarkus-ext-quinoa = "2.9.3"
 platform-quarkus-ext-aws = "3.23.0"
 platform-quarkus-ext-h2db = "0.8.0"
 platform-quarkus-ext-mockk = "latest.release"
