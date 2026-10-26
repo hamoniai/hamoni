@@ -59,17 +59,36 @@ concern, covered under UI design and language (Part III).
 ## 2. Project structure and namespaces
 
 - The three directories `control-room/`, `process-runner/` and `common/` are
-  **holding areas for one or more build projects** (ADR-0003). The projects
-  inside are named for what they are (for example a user-interface and a
-  data-model project inside `control-room/`).
+  **holding areas for one or more build projects** (ADR-0003).
+- A project is named **`<area>-<name>`** and maps to the package
+  **`ai.hamoni.<area>.<name>`**, with a hyphen in the area becoming an underscore.
+  For example `common-platform` maps to `ai.hamoni.common.platform` and
+  `control-room-<name>` to `ai.hamoni.control_room.<name>`. An assembly project
+  named after the area (`control-room`, `process-runner`) maps to the area root
+  (`ai.hamoni.control_room`, `ai.hamoni.process_runner`). Confirm the base group
+  identifier with the shared Gradle scripts (ADR-0002).
 - Each project uses the standard Gradle layout: `src/main/kotlin`,
-  `src/main/resources`, `src/test/kotlin`, `src/test/resources`.
-- Base package: `ai.hamoni`, with the area as the next segment (for example
-  `ai.hamoni.control_room`, `ai.hamoni.process_runner`, `ai.hamoni.common`).
-  *(Confirm the base group identifier with the shared Gradle scripts; see
-  ADR-0002.)*
-- Organise by **feature or domain**, not by technical layer alone. A feature owns
-  its interface, service, persistence and tests together.
+  `src/main/java` (only where Java is required, §1.1), `src/main/resources`,
+  `src/test/kotlin`, `src/test/resources`.
+- Under the package root, use these **standard packages**, creating only the
+  ones a project needs:
+  - **`data`** — JPA entities and data objects, including their projections.
+  - **`processor`** — Quarkus Reactive Messaging endpoints.
+  - **`service`** — service beans.
+  - **`resource`** — REST API endpoints. In a shared library this normally holds
+    shared request and response plumbing (filters, exception mappers) rather
+    than a user-facing endpoint.
+- A feature is spread across the standard packages — its entity in `data`, its
+  logic in `service`, its endpoint in `resource` — rather than copied into a
+  parallel feature tree. Project-wide declarations, such as configuration and
+  constants, may sit directly at the package root. Any further package is added
+  only when it has a clear purpose of its own.
+- **Group classes by package, not one class per file.** A package may hold one
+  file for its cohesive classes (for example `data/Objects.kt`) or several files
+  grouped by related area (for example `resource/AuthResources.kt`). A Kotlin file
+  may contain several related classes; grouping related classes together is the
+  preferred default. Split a file only when it grows unwieldy or its classes stop
+  belonging together.
 - **Dependency direction is one-way.** Projects under `control-room/` and
   `process-runner/` may depend on projects under `common/`; the two application
   areas never depend on each other; `common/` depends on neither.
