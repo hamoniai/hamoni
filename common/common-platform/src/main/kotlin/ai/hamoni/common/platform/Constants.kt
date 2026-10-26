@@ -23,10 +23,20 @@ import jakarta.ws.rs.core.MediaType.APPLICATION_JSON_TYPE
 import java.nio.charset.StandardCharsets
 
 /*
+ * Product/platform names
+ */
+const val PRODUCT_ID = "hamoni"
+const val PRODUCT_NAME = "hamoni"
+
+/*
  * Global database definitions
  */
 const val GLOBAL_SCHEMA = "platform"
 
+/*
+ * Error handling constants
+ */
+const val PROBLEM_TYPE_PREFIX = "https://hamoni.ai/problem/"
 /*
  * media types with character set.
  */

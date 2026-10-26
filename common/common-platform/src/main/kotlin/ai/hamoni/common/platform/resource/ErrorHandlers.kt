@@ -18,15 +18,20 @@
 
 package ai.hamoni.common.platform.resource
 
+import ai.hamoni.common.platform.APPLICATION_PROBLEM_JSON_UTF8
 import ai.hamoni.common.platform.APPLICATION_PROBLEM_JSON_UTF8_TYPE
+import ai.hamoni.common.platform.PROBLEM_TYPE_PREFIX
+import ai.hamoni.common.platform.PRODUCT_NAME
 import ai.hamoni.common.platform.REQUEST_PROPERTY_ID
 import ai.hamoni.common.platform.ResourceLogger
 import ai.hamoni.common.platform.data.Problem
+import ai.hamoni.common.platform.data.ValidationError
 import ai.hamoni.common.platform.exception.EntityNotFoundException
 import ai.hamoni.common.platform.exception.SecurityException
 import jakarta.validation.ConstraintViolationException
 import jakarta.validation.ValidationException
 import jakarta.ws.rs.NotFoundException
+import jakarta.ws.rs.Produces
 import jakarta.ws.rs.container.ContainerRequestContext
 import jakarta.ws.rs.container.ContainerResponseContext
 import org.jboss.resteasy.reactive.RestResponse
@@ -68,7 +73,6 @@ class Filters {
 
 /**
  * Exception mappers
- * FIXME
  */
 class ExceptionMappers {
     fun getRequestId(context: ContainerRequestContext) =
@@ -78,8 +82,16 @@ class ExceptionMappers {
         return "${source.javaMethod!!.declaringClass.simpleName}#${source.name}"
     }
 
+    fun createErrorInstance(context: ContainerRequestContext, code: Int) =
+        if (context.hasProperty(REQUEST_PROPERTY_ID)) {
+            "urn:${PRODUCT_NAME}:error?requestId=${context.getProperty(REQUEST_PROPERTY_ID)}&code=${code}"
+        } else {
+            "urn:${PRODUCT_NAME}:error?code=${code}"
+        }
+
     // Service exceptions
     @ServerExceptionMapper
+    @Produces(APPLICATION_PROBLEM_JSON_UTF8)
     fun handleConstraintViolationException(exception: ConstraintViolationException, context: ContainerRequestContext): RestResponse<Problem> {
         val reference = getRequestId(context)
         val message = exception.constraintViolations
@@ -91,31 +103,58 @@ class ExceptionMappers {
         ResourceLogger.LOGGER.restValidationError(reference, "<unknown>", message)
 
         val errorStatus = RestResponse.Status.BAD_REQUEST
-        val errorObject: Problem = Problem() //Error(reference, message) - TODO convert to a structured message, see RFC example
+        val errorObject: Problem = Problem.ValidationProblem(
+            "$PROBLEM_TYPE_PREFIX/bad-request",
+            errorStatus.reasonPhrase,
+            errorStatus.statusCode,
+            exception.message ?: errorStatus.reasonPhrase,
+            createErrorInstance(context, errorStatus.statusCode),
+            exception.constraintViolations.map { e ->
+                ValidationError(e.message, e.propertyPath.toString())
+            }
+        )
+
         return RestResponse.ResponseBuilder.create(errorStatus, errorObject)
             .type(APPLICATION_PROBLEM_JSON_UTF8_TYPE)
             .build()
     }
 
     @ServerExceptionMapper
+    @Produces(APPLICATION_PROBLEM_JSON_UTF8)
     fun handleNotFoundExceptionMapper(exception: EntityNotFoundException, context: ContainerRequestContext): RestResponse<Problem> {
         val reference = getRequestId(context)
         ResourceLogger.LOGGER.restNotFoundError(reference, getServiceName(exception.serviceMethod))
 
         val errorStatus = RestResponse.Status.NOT_FOUND
-        val errorObject: Problem = Problem() //Error(reference, "Object not found")
+        val errorObject: Problem = Problem.GenericProblem(
+            "$PROBLEM_TYPE_PREFIX/not-found",
+            errorStatus.reasonPhrase,
+            errorStatus.statusCode,
+            exception.message ?: errorStatus.reasonPhrase,
+            createErrorInstance(context, errorStatus.statusCode)
+        )
         return RestResponse.ResponseBuilder.create(errorStatus, errorObject)
             .type(APPLICATION_PROBLEM_JSON_UTF8_TYPE)
             .build()
     }
 
+    /**
+     * Handle an authorisation exception. Determine if we want to show the detail.
+     */
     @ServerExceptionMapper
+    @Produces(APPLICATION_PROBLEM_JSON_UTF8)
     fun handleSecurityExceptionMapper(exception: SecurityException, context: ContainerRequestContext): RestResponse<Problem> {
         val reference = getRequestId(context)
         ResourceLogger.LOGGER.restSecurityError(reference, getServiceName(exception.serviceMethod), exception.message)
 
-        val errorStatus = RestResponse.Status.NOT_FOUND // FIXME
-        val errorObject: Problem = Problem() //Error(reference, "Security error")
+        val errorStatus = RestResponse.Status.FORBIDDEN
+        val errorObject: Problem = Problem.GenericProblem(
+            "$PROBLEM_TYPE_PREFIX/forbidden",
+            errorStatus.reasonPhrase,
+            errorStatus.statusCode,
+            exception.message ?: errorStatus.reasonPhrase,
+            createErrorInstance(context, errorStatus.statusCode)
+        )
         return RestResponse.ResponseBuilder.create(errorStatus, errorObject)
             .type(APPLICATION_PROBLEM_JSON_UTF8_TYPE)
             .build()
@@ -123,12 +162,19 @@ class ExceptionMappers {
 
     // Framework exceptions
     @ServerExceptionMapper
+    @Produces(APPLICATION_PROBLEM_JSON_UTF8)
     fun handleResourceNotFoundExceptionMapper(exception: NotFoundException, context: ContainerRequestContext): RestResponse<Problem> {
         val reference = getRequestId(context)
         ResourceLogger.LOGGER.restNotFoundError(reference, context.uriInfo.requestUri.toString())
 
         val errorStatus = RestResponse.Status.NOT_FOUND
-        val errorObject: Problem = Problem() //Error(reference, "Not found")
+        val errorObject: Problem = Problem.GenericProblem(
+            "$PROBLEM_TYPE_PREFIX/not-found",
+            errorStatus.reasonPhrase,
+            errorStatus.statusCode,
+            exception.message ?: errorStatus.reasonPhrase,
+            createErrorInstance(context, errorStatus.statusCode)
+        )
         return RestResponse.ResponseBuilder.create(errorStatus, errorObject)
             .type(APPLICATION_PROBLEM_JSON_UTF8_TYPE)
             .build()
@@ -149,6 +195,7 @@ class ExceptionMappers {
      * The actual ConstraintValidation is wrapped further up in the exception hierarchy.
      */
     @ServerExceptionMapper
+    @Produces(APPLICATION_PROBLEM_JSON_UTF8)
     fun handleValidationExceptionMapper(exception: ValidationException, context: ContainerRequestContext): RestResponse<Problem> {
         var e = exception.cause
         while (e != null) {
@@ -157,18 +204,24 @@ class ExceptionMappers {
            }
             e = e.cause
         }
-        // FIXME: convert to an error object: https://www.rfc-editor.org/info/rfc9457/ section 3.
         return handleExceptionMapper(exception, context)
     }
 
-    // General handler
+    // General handler - do not display the message here, it is not sanitised
     @ServerExceptionMapper
+    @Produces(APPLICATION_PROBLEM_JSON_UTF8)
     fun handleExceptionMapper(exception: Exception, context: ContainerRequestContext): RestResponse<Problem> {
         val reference = getRequestId(context)
         ResourceLogger.LOGGER.restError(reference, exception)
 
         val errorStatus = RestResponse.Status.INTERNAL_SERVER_ERROR
-        val errorObject: Problem = Problem() //Error(reference, "Unknown error")
+        val errorObject: Problem = Problem.GenericProblem(
+            "$PROBLEM_TYPE_PREFIX/internal-server-error",
+            errorStatus.reasonPhrase,
+            errorStatus.statusCode,
+            errorStatus.reasonPhrase,
+            createErrorInstance(context, errorStatus.statusCode)
+        )
         return RestResponse.ResponseBuilder.create(errorStatus, errorObject)
             .type(APPLICATION_PROBLEM_JSON_UTF8_TYPE)
             .build()

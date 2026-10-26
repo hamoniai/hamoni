@@ -21,15 +21,64 @@ package ai.hamoni.common.platform.data
 /**
  * An object that maps to an error being sent to the frontend. Maps RFC9457
  */
-class Problem (
-    val type: String,
-    val title: String,
-    val status: Int,
-    val detail: String,
-    val instance: String,
+sealed class Problem {
+    /**
+     * Reference RFC9457 type
+     */
+    abstract val type: String
+    /**
+     * Reference RFC9457 title
+     */
+    abstract val title: String
+    /**
+     * Reference RFC9457 status
+     */
+    abstract val status: Int
+    /**
+     * Reference RFC9457 detail
+     */
+    abstract val detail: String
+    /**
+     * Reference RFC9457 instance. Should contain:
+     * urn:hamoni:error?requestId=<requestId>&code=<code>
+     */
+    abstract val instance: String
 
     /**
-     * Holder for the request identifier
+     * A subclass of problem specifically for general errors
      */
-    val requestId: String
+    data class GenericProblem(
+        override val type: String,
+        override val title: String,
+        override val status: Int,
+        override val detail: String,
+        override val instance: String) : Problem()
+
+    /**
+     * A subclass of problem specifically for validation errors.
+     */
+    data class ValidationProblem(
+        override val type: String,
+        override val title: String,
+        override val status: Int,
+        override val detail: String,
+        override val instance: String,
+        /**
+         * Additional field - validation errors
+         */
+        val errors: List<ValidationError>) : Problem()
+}
+
+/**
+ * A class representing a validation problem
+ */
+data class ValidationError (
+    /**
+     * The exact error message of the error
+     */
+    val detail: String,
+    /**
+     * The source of the error. Usually a JSON message pointer
+     */
+    val source: String
 )
