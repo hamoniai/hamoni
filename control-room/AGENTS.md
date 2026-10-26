@@ -12,11 +12,13 @@ is specific to the projects here.
 
 Projects for everything the user sees and drives: the **process designer**, the
 operational **lists** (Inbox, Processes), **Teams**, **Projects** and their
-security, the **Home** prompt-first surface, dashboards, and the tenant and
-preference surfaces. The projects are Kotlin · Quarkus. How many there are, and
-their split, is decided area by area — for example one project for the user
-interface and one for the data model (`control-room/hamoni-cr-ui`,
-`control-room/hamoni-cr-model`) — and the names above are illustrative.
+security, the **Home** prompt-first surface, dashboards, and the organisation and
+preference surfaces. There are two projects today:
+
+- `control-room/control-room` — the Kotlin · Quarkus backend assembly (Gradle
+  `:control-room`), which serves the front end through Quinoa.
+- `control-room/control-room-ui` — the Angular front end. It is outside backend
+  scope: never read or edit it.
 
 ## Responsibilities (of the projects here)
 
@@ -43,31 +45,60 @@ interface and one for the data model (`control-room/hamoni-cr-ui`,
 
 ## Layout
 
+The backend projects follow the same convention as `common/`: a project named
+`control-room-<name>` maps to the package `ai/hamoni/control_room/<name>`. The
+assembly project `control-room` maps to `ai/hamoni/control_room` itself.
+
 ```
 control-room/
   AGENTS.md
-  <project>/                     e.g. hamoni-cr-ui, hamoni-cr-model
-    src/main/kotlin/ai/hamoni/<area>/
-      <feature>/                 one package per feature: api, service, repository, model
+  <project>/                        e.g. control-room, control-room-<name>
+    build.gradle.kts
+    README.md
+    src/main/docker/
+      Dockerfile.native             native-image build
+    src/main/kotlin/ai/hamoni/control_room/<name>/   omit <name> for the assembly project
+      data/                         entities and data objects
+      processor/                    Quarkus Reactive Messaging endpoints
+      service/                      service beans
+      resource/                     REST API endpoints
     src/main/resources/
       application.properties
-    src/test/kotlin/ai/hamoni/<area>/
+    src/test/kotlin/ai/hamoni/control_room/<name>/
+  control-room-ui/                  Angular front end (separate agent; do not read or edit)
 ```
 
-Organise by **feature**, not by layer: a feature carries its own interface,
-service and persistence together (CODING-STANDARDS §2).
+The assembly project carries application-wide code at the area root (such as
+`ModeOverrides.kt`) alongside the standard packages. Create only the packages a
+project actually uses.
+
+### Files and classes
+
+Classes are grouped by **package**, not one class per file. Within a standard
+package, either:
+
+- put all of the package's classes in one file when they are cohesive — for
+  example `data/Objects.kt`; or
+- split them into files grouped by related area — for example
+  `resource/AuthResources.kt`.
+
+A Kotlin file may contain several related classes, and that grouping is the
+preferred default for ease of reading and maintenance. Split a file only when it
+grows unwieldy or its classes stop belonging together.
+
+Keep the resource thin (CODING-STANDARDS §11) and business logic in the service.
 
 ## Bootstrapping
 
-Each project is its own Gradle project. Build and run it by name:
+The backend project is a Gradle project. Build and run it by name:
 
 ```bash
 ./gradlew :<project>:test             # this project's tests
-./gradlew :<project>:quarkusDev       # dev mode, live reload
+./gradlew :<project>:quarkusDev       # dev mode, live reload (serves control-room-ui)
 ./gradlew :<project>:quarkusBuild     # build the runnable artefact
 ```
 
-Each project applies the shared Hamoni Gradle convention plugin; do not add build
+The backend applies the shared Hamoni Gradle convention plugin; do not add build
 logic locally.
 
 ## Interfaces with the rest of the platform
