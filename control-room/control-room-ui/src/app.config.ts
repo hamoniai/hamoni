@@ -1,6 +1,6 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter, withDisabledInitialNavigation, withInMemoryScrolling, withPreloading, PreloadAllModules } from '@angular/router';
+import { provideRouter, withComponentInputBinding, withDisabledInitialNavigation, withInMemoryScrolling, withPreloading, PreloadAllModules } from '@angular/router';
 import { provideLumberjack } from '@ngworker/lumberjack';
 import { providePrimeNG } from 'primeng/config';
 import { provideLumberjackConsoleDriver } from '@ngworker/lumberjack/console-driver';
@@ -19,6 +19,7 @@ export const appConfig: ApplicationConfig = {
     provideLumberjack(),
     provideLumberjackConsoleDriver(),
     provideRouter(routes,
+      withComponentInputBinding(),
       withInMemoryScrolling({ anchorScrolling: 'enabled', scrollPositionRestoration: 'enabled' }),
       withDisabledInitialNavigation(),
       withPreloading(PreloadAllModules)

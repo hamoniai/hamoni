@@ -10,35 +10,42 @@ import { createUnknownProblemDetails, createNotFoundProblemDetails } from '@/app
 
 export const routes: Routes = [
     // Error pages go first to not trigger guards
-    { path: 'error', component: ErrorComponent, data: createUnknownProblemDetails() },
-
-    // Login component got next as it's also not authenticated. Will only trigger here is specifcally called
-    // The implication is that even if logged in and making a request to the login page, it will send the user
-    // down the login path. This is okay.
     {
-        path: 'login',
+        path: 'error',
         component: CardPageLayout,
-        data: { wide: false },
+        data: { wide: true },
         children: [
-            //{ path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/login/login').then(c => c.LoginComponent) },
+            { path: '', component: ErrorComponent, data: createUnknownProblemDetails() },
         ]
     },
 
-    // TODO: authenticated guard only returns true or false, not redirects.
-    // a new notAuthenticatedGuard protects the login page
+    // // Login component got next as it's also not authenticated. Will only trigger here is specifcally called
+    // // The implication is that even if logged in and making a request to the login page, it will send the user
+    // // down the login path. This is okay.
+    // {
+    //     path: 'login',
+    //     component: CardPageLayout,
+    //     data: { wide: false },
+    //     children: [
+    //         //{ path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/login/login').then(c => c.LoginComponent) },
+    //     ]
+    // },
 
-    // Main app pages - all protected by a guard.
-    {
-        path: '',
-        component: AppLayout,
-        children: [
-            { path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/home/home').then(c => c.HomeComponent) },
-            { path: 'components', pathMatch: 'full', loadComponent: () => import('./app/pages/home/components').then(c => c.ComponentsComponent), canActivate: [nonProductionGuard] },
-            //{ path: 'configuration', pathMatch: 'full', loadComponent: () => import('./app/pages/configuration/configuration-versions').then(c => c.ConfigurationVersions) },
-            //{ path: 'configuration/editor', pathMatch: 'full', loadComponent: () => import('./app/pages/configuration/configuration-editor').then(c => c.Configuration) },
-        ],
-        canActivate: [authenticatedGuard]
-    },
+    // // TODO: authenticated guard only returns true or false, not redirects.
+    // // a new notAuthenticatedGuard protects the login page
+
+    // // Main app pages - all protected by a guard.
+    // {
+    //     path: '',
+    //     component: AppLayout,
+    //     children: [
+    //         { path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/home/home').then(c => c.HomeComponent) },
+    //         { path: 'components', pathMatch: 'full', loadComponent: () => import('./app/pages/home/components').then(c => c.ComponentsComponent), canActivate: [nonProductionGuard] },
+    //         //{ path: 'configuration', pathMatch: 'full', loadComponent: () => import('./app/pages/configuration/configuration-versions').then(c => c.ConfigurationVersions) },
+    //         //{ path: 'configuration/editor', pathMatch: 'full', loadComponent: () => import('./app/pages/configuration/configuration-editor').then(c => c.Configuration) },
+    //     ],
+    //     canActivate: [authenticatedGuard]
+    // },
 
     // Catch any request that is specifically not logged in, and redirect. If actually a 404, then this will skip
     {

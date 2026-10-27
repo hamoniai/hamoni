@@ -1,13 +1,13 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { describe, expect, it } from 'vitest';
 import { CardPageLayout } from './card-page.layout';
 
 /** A routed page used to prove that the layout renders its child through the outlet. */
 @Component({
-  selector: 'app-card-page-test-child',
+  selector: 'app-test-card-page-child',
   standalone: true,
   template: `<section data-testid="routed-card">Card content</section>`,
 })
@@ -69,6 +69,25 @@ describe('CardPageLayout', () => {
     expect(column?.querySelector('[data-testid="routed-card"]')).not.toBeNull();
   });
 
+  it('reads the wide flag from the route data', async () => {
+    // Given
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: 'page', component: CardPageLayout, data: { wide: true } }], withComponentInputBinding()),
+      ],
+    });
+
+    // When
+    const harness = await RouterTestingHarness.create('/page');
+
+    // Then
+    const host = harness.routeNativeElement;
+    if (!host) {
+      throw new Error('The page route did not render the card page layout.');
+    }
+    expect(getColumn(host)?.style.maxWidth).toBe('560px');
+  });
+
   it('pins the shared footer below the main content', () => {
     // Given / When
     const fixture = renderLayout();
@@ -76,9 +95,9 @@ describe('CardPageLayout', () => {
     // Then
     const host: HTMLElement = fixture.nativeElement;
     const main = host.querySelector('main');
-    const footer = host.querySelector('app-card-page-footer');
+    const footer = host.querySelector('card-page-footer');
     expect(footer).not.toBeNull();
     expect(main?.nextElementSibling).toBe(footer);
-    expect(getColumn(host)?.querySelector('app-card-page-footer')).toBeNull();
+    expect(getColumn(host)?.querySelector('card-page-footer')).toBeNull();
   });
 });

@@ -14,7 +14,10 @@ import { CardPageFooter } from './card-page.footer';
  * so the page stays usable on a narrow viewport.
  */
 @Component({
-  selector: 'app-card-page-layout',
+  // The selector mirrors the class name; the card page components do not carry
+  // the project-wide `app` prefix.
+  // eslint-disable-next-line @angular-eslint/component-selector
+  selector: 'card-page-layout',
   standalone: true,
   imports: [RouterOutlet, CardPageFooter],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,7 +31,7 @@ import { CardPageFooter } from './card-page.footer';
           <router-outlet></router-outlet>
         </div>
       </main>
-      <app-card-page-footer></app-card-page-footer>
+      <card-page-footer></card-page-footer>
     </div>
   `,
 })

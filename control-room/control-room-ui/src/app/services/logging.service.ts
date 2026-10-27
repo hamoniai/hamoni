@@ -6,12 +6,30 @@ import { LumberjackLogger, LumberjackLogPayload } from '@ngworker/lumberjack';
  * An RFC9457 style message
  */
 export interface ProblemMessage extends LumberjackLogPayload {
-    readonly type?: string;
+    readonly type: string;
     readonly title: string;
-    readonly status?: number;
+    readonly status: number;
     readonly detail: string;
-    readonly instance?: string;
-    readonly requestId?: string;
+    /**
+     * The instantce identifier. The is formatted as
+     * urn:hamoni:error?requestId=<requestId>&code=<code>
+     */
+    readonly instance: string;
+    readonly errors?: ValidationError[];
+}
+
+/**
+ * An application specific holder for validation errors
+ */
+export interface ValidationError {
+    /**
+     * The validation message detail
+     */
+    readonly detail: string,
+    /**
+     * The source field/property/bean/pointer that caused the validation error
+     */
+    readonly source: string
 }
 
 const UNKNOWN_ERROR_TITLE = 'Unknown error';
@@ -22,6 +40,21 @@ const UNAUTHORISED_ERROR_TITLE = 'Page not found';
 const UNAUTHORISED_ERROR_DETAIL = 'The requested page was not found.';
 const BACKENDNOTREADY_ERROR_TITLE = 'Application not ready';
 const BACKENDNOTREADY_ERROR_DETAIL = 'An invalid response was recieved from the backend.';
+const PROBLEM_INSTANCE_PREFIX = 'urn:hamoni:error';
+
+/**
+ * Build the RFC 9457 instance reference the backend uses. The request
+ * identifier and the status code are the two query parameters a person can
+ * quote when reporting the problem.
+ */
+function createErrorInstance(requestId: string | undefined, code: number): string {
+    const parameters = new URLSearchParams();
+    if (requestId) {
+        parameters.set('requestId', requestId);
+    }
+    parameters.set('code', String(code));
+    return `${PROBLEM_INSTANCE_PREFIX}?${parameters.toString()}`;
+}
 
 /**
  * Create a problem message from an http error.
@@ -29,14 +62,16 @@ const BACKENDNOTREADY_ERROR_DETAIL = 'An invalid response was recieved from the 
  * @returns A parsed RFC9457 problem message
  */
 export function getProblemDetailsFromHttpError(error: HttpErrorResponse, defaultTitle?: string): ProblemMessage {
+    const requestId = error.headers.has("Request-Id") ? (error.headers.get("Request-Id") as string) : undefined;
+
     if (error.error && typeof error.error === 'object' && 'detail' in error.error) {
+        const status = error.error.status || error.status;
         return {
             type: error.error.type || 'about:blank',
             title: defaultTitle || error.error.title || UNKNOWN_ERROR_TITLE,
-            status: error.error.status || undefined,
-            detail: error.error.detail || undefined,
-            instance: error.error.instance || undefined,
-            requestId: error.error.requestId || (error.headers.has("Request-Id") ? (error.headers.get("Request-Id") as string) : undefined)
+            status: status,
+            detail: error.error.detail || UNKNOWN_ERROR_DETAIL,
+            instance: error.error.instance || createErrorInstance(requestId, status)
         };
     } else if (error.message) {
         return {
@@ -44,7 +79,7 @@ export function getProblemDetailsFromHttpError(error: HttpErrorResponse, default
             title: defaultTitle || UNKNOWN_ERROR_TITLE,
             status: error.status,
             detail: error.message,
-            requestId: error.headers.has("Request-Id") ? (error.headers.get("Request-Id") as string) : undefined
+            instance: createErrorInstance(requestId, error.status)
         };
     } else {
         return {
@@ -52,7 +87,7 @@ export function getProblemDetailsFromHttpError(error: HttpErrorResponse, default
             title: defaultTitle || UNKNOWN_ERROR_TITLE,
             status: error.status,
             detail: UNKNOWN_ERROR_DETAIL,
-            requestId: error.headers.has("Request-Id") ? (error.headers.get("Request-Id") as string) : undefined
+            instance: createErrorInstance(requestId, error.status)
         };
     }
 }
@@ -63,7 +98,7 @@ export function createGenericProblemDetails(status: number, title: string, detai
         title: title,
         status: status,
         detail: detail,
-        requestId: requestId
+        instance: createErrorInstance(requestId, status)
     };
 }
 

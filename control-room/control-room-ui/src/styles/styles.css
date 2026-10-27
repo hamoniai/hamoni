@@ -42,6 +42,13 @@
     outline-offset: 2px;
     border-radius: var(--radius-xs);
   }
+
+  /* A programmatic focus target — the card page's title on a route change, a
+     skip-link destination — is tabindex="-1" and not in the tab order, so it
+     must not draw the keyboard ring. The accent stays on the page action
+     (§38.5, §42). */
+  [tabindex='-1']:focus,
+  [tabindex='-1']:focus-visible { outline: none; }
 }
 
 /* The three type voices as reusable classes (§38.6). */

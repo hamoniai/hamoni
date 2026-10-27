@@ -12,7 +12,10 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
  * (CODING-STANDARDS §18.3).
  */
 @Component({
-  selector: 'app-card-page-footer',
+  // The selector mirrors the class name; the card page components do not carry
+  // the project-wide `app` prefix.
+  // eslint-disable-next-line @angular-eslint/component-selector
+  selector: 'card-page-footer',
   standalone: true,
   imports: [DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -20,13 +23,12 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   template: `
     <footer data-testid="card-page-footer" class="px-6 pt-[18px] pb-7 text-center text-meta text-muted">
       <span data-testid="copyright">
-        &copy; {{ currentDate | date: 'yyyy' }}
         <a
           class="underline underline-offset-[3px] hover:text-fg"
           href="https://hamoni.ai"
           target="_blank"
           rel="noopener noreferrer"
-          >Hamoni Limited</a
+          >&copy; {{ currentDate | date: 'yyyy' }} Hamoni Limited</a
         >
       </span>
       <span class="mx-2 opacity-50" aria-hidden="true">·</span>
