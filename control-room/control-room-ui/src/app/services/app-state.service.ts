@@ -1,3 +1,4 @@
+import { HttpStatusCode } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { AuthService, User, UserOrganisation } from '@/app/services/auth.service';
 
@@ -36,7 +37,7 @@ export class AppStateService {
         theme: localStorage.getItem(STOREKEY_THEME) || THEME_DARK
     });
     readonly appState = this.#appState.asReadonly();
-    // Store the last updated timestamp
+    // Store the last updated timestamp (whether the result is llogged in or not)
     readonly #appStateLoaded = signal<number | undefined>(undefined);
     readonly appStateLoaded = this.#appStateLoaded.asReadonly();
 
@@ -48,12 +49,20 @@ export class AppStateService {
     constructor() {
         // Start a login check on app start. This accelerates teh happy case where a user is already logged in.
         // In the case this fails, when a login flow is completed, this app state can be reset.
+        // If the user is undefined, i.e. the user is not logged in, then we still set the loaded timestamp to show
+        // that although null, it is complete. Need to be careful to read as anything could go wrong here, i.e. even
+        // if the backend returns 200, btu the object is bad it could fail. 
         effect(() => {
-            const user = this.#authService.userResource.value();
+            const hasValue = this.#authService.userResource.hasValue();
+            const status = this.#authService.userResourceStatus();
 
-            if (user) {
+            if (status == HttpStatusCode.Ok && hasValue) {
+                // Only get this after we have checked to see if there is a value.
+                const user = this.#authService.userResource.value();
+
                 // Authenticated, get the organisations we can access. This is a heavier request and so
-                // we start it in the background to accelerate the startup. Store the user information first.
+                // we start it in the background to accelerate the startup. Store the user information first
+                // so that other processes can get going.
                 this.#appState.update(currentState => ({
                     ...currentState,
                     user: user
@@ -64,14 +73,29 @@ export class AppStateService {
                     next: (data) => {
                         this.#appState.update(currentState => ({
                             ...currentState,
+                            user: user,
                             organisations: data
                         }));
                     },
-                    error: (err) => {},
+                    error: (err) => {
+                        this.#appState.update(currentState => ({
+                            ...currentState,
+                            user: user,
+                            organisations: null
+                        }));
+                    },
                     complete: () => {
                         this.#appStateLoaded.set(Date.now());
                     }
                 });
+            } else {
+                // Effectively loaded, bot not logged in or error. Clear the user state.
+                this.#appState.update(currentState => ({
+                    ...currentState,
+                    user: null,
+                    organisations: null
+                }));
+                this.#appStateLoaded.set(Date.now());
             }
         });
 

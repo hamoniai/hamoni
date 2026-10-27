@@ -68,9 +68,10 @@ export class AuthService {
     // Note that this will trigger under all conditions, even if accessing unauthenticated pages. That is
     // okay because this is a light service. However, it may not resolve if the user is not logged in.
     // This is special, it starts on startup, which is different to most other services, but we want this done
-    // as soon as possible.
+    // as soon as possible. Need to expose the status differently because the asReadOnly() strips the http properties.
     readonly #userResource = httpResource<User | undefined>(() => `${this.#apiBase}/profile`);
     readonly userResource = this.#userResource.asReadonly();
+    readonly userResourceStatus = this.#userResource.statusCode;
 
     // State data (returns signals)
 

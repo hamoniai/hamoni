@@ -1,17 +1,34 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Routes, Router } from '@angular/router';
 import { AppLayout } from './app/layout/component/app.layout';
-import { authenticatedGuard } from './app/guards/authenticated.guard';
+import { authenticatedGuard, notAuthenticatedGuard } from './app/guards/authentication.guard';
 import { nonProductionGuard } from './app/guards/non-production.guard';
 import { ErrorComponent } from './app/pages/error/error'
 import { createUnknownProblemDetails, createNotFoundProblemDetails } from '@/app/services/logging.service';
 
 
 export const routes: Routes = [
-    // Main app pages
+    // Error pages go first to not trigger guards
+    { path: 'error', component: ErrorComponent, data: createUnknownProblemDetails() },
+
+    // Login component got next as it's also not authenticated. Will only trigger here is specifcally called
+    // The implication is that even if logged in and making a request to the login page, it will send the user
+    // down the login path. This is okay.
+    /*
     {
-        // FIXME: because this has an auteenticated guard and '' matches the url, then it returns a redirect to the error page. It still should show unauthenticated.
-        // However, it should actually be authenticated....
-        // actually it's worse. It should redirect to eh lgoin page, which would be not found, however, it should also be logged in. Debug the guard.
+        path: 'login',
+        component: OnboardingLayout,
+        children: [
+            { path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/login/login').then(c => c.LoginComponent) },
+        ]
+    },
+    */
+
+    // TODO: authenticated guard only returns true or false, not redirects.
+    // a new notAuthenticatedGuard protects the login page
+
+    // Main app pages - all protected by a guard.
+    {
         path: '',
         component: AppLayout,
         children: [
@@ -22,15 +39,19 @@ export const routes: Routes = [
         ],
         canActivate: [authenticatedGuard]
     },
-    // The following pages utilise login style view
-    // TODO
-    /*{
-        path: 'login',
-        component: OnboardingLayout,
-        children: [
-            { path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/login/login').then(c => c.LoginComponent) },
-        ]
-    },*/
-    { path: 'error', component: ErrorComponent, data: createUnknownProblemDetails() },
+
+    // Catch any request that is specifically not logged in, and redirect. If actually a 404, then this will skip
+    {
+        path: '**',
+        redirectTo: (routeData) => {
+            const router = inject(Router);
+            return router.createUrlTree(['/login'], {
+                queryParams: { returnUrl: routeData.url }
+            });
+        },
+        canActivate: [notAuthenticatedGuard]
+    },
+
+    // Catch-all, would implicitly require being logged in.
     { path: '**', component: ErrorComponent, data: createNotFoundProblemDetails() }
 ];

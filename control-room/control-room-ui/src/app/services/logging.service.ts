@@ -20,7 +20,8 @@ const NOTFOUND_ERROR_TITLE = 'Page not found';
 const NOTFOUND_ERROR_DETAIL = 'The requested page was not found.';
 const UNAUTHORISED_ERROR_TITLE = 'Page not found';
 const UNAUTHORISED_ERROR_DETAIL = 'The requested page was not found.';
-
+const BACKENDNOTREADY_ERROR_TITLE = 'Application not ready';
+const BACKENDNOTREADY_ERROR_DETAIL = 'An invalid response was recieved from the backend.';
 
 /**
  * Create a problem message from an http error.
@@ -67,18 +68,21 @@ export function createGenericProblemDetails(status: number, title: string, detai
 }
 
 export function createUnknownProblemDetails(): ProblemMessage {
-        console.log("unknown");
     return createGenericProblemDetails(HttpStatusCode.InternalServerError, UNKNOWN_ERROR_TITLE, UNKNOWN_ERROR_DETAIL);
 }
 
 export function createNotFoundProblemDetails(): ProblemMessage {
-    console.log("not found");
     return createGenericProblemDetails(HttpStatusCode.NotFound, NOTFOUND_ERROR_TITLE, NOTFOUND_ERROR_DETAIL);
 }
 
 export function createUnauthorisedProblemDetails(): ProblemMessage {
     return createGenericProblemDetails(HttpStatusCode.Forbidden, UNAUTHORISED_ERROR_TITLE, UNAUTHORISED_ERROR_DETAIL);
 }
+
+export function createBackendNotReadyProblemDetails(): ProblemMessage {
+    return createGenericProblemDetails(HttpStatusCode.InternalServerError, BACKENDNOTREADY_ERROR_TITLE, BACKENDNOTREADY_ERROR_DETAIL);
+}
+
 
 /**
  * Logger creation

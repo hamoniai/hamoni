@@ -1,3 +1,5 @@
+import { HttpStatusCode } from '@angular/common/http';
+import { signal, WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { httpResource, HttpResourceRef } from '@angular/common/http';
 import { provideLumberjack } from '@ngworker/lumberjack';
@@ -20,9 +22,9 @@ describe('AppStateService', () => {
     let appStateService: AppStateService;
     let authService: Mocked<Partial<AuthService>> = {
         userResource: undefined,
+        userResourceStatus: signal(undefined),
         getProfileOrganisations: vi.fn().mockReturnValue(defer(() => of(dataUserOrganisations)))
     };
-
 
     beforeEach(() => {
         // Need to mock the AuthService entirely to prevent the default httpResource from loading
@@ -43,6 +45,17 @@ describe('AppStateService', () => {
         appStateService = TestBed.inject(AppStateService);
     });
 
+    /**
+     * Set the http resource mock data
+     * @param status The http status
+     * @param user The user object to set (or undefined)
+     */
+    function setResourceData(status: number, user: User | undefined) {
+        mockUserResource.set(user);
+        (authService.userResourceStatus as WritableSignal<number | undefined>).set(status);
+    }
+
+    // test cases
     it('should load organisations only once', async () => {
         // Given
         dataUser = {
@@ -60,7 +73,7 @@ describe('AppStateService', () => {
         vi.spyOn(authService, 'userResource', 'get').mockReturnValue(mockUserResource)
 
         // When
-        mockUserResource.set(dataUser);
+        setResourceData(HttpStatusCode.Ok, dataUser);
 
         // Need to wait because of the async nature
         await vi.waitFor(() => {
