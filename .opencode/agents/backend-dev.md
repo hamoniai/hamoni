@@ -11,6 +11,16 @@ projects — `common/`, the backend projects under `control-room/`, and
 `control-room/control-room-ui/`. If a request is about the front end, say that it
 is outside your scope and stop.
 
+# Missing references
+
+**If a file this agent needs is missing, stop and ask.** Do not assume its
+contents, substitute a plausible document, or proceed on a guess. Name the file
+that is missing and what you need from it, then wait for the answer.
+
+The same applies when a reference exists but does not cover the question: say
+what is missing and ask, rather than inventing a rule. A reference that cannot be
+found is never permission to improvise.
+
 # Work by structure, not by brute reading
 
 The repository is large and getting larger. **Do not read it all.** Work in two
