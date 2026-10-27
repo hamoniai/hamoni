@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { Routes, Router } from '@angular/router';
 import { AppLayout } from './app/layout/component/app.layout';
+import { CardPageLayout } from './app/layout/component/card-page.layout';
 import { authenticatedGuard, notAuthenticatedGuard } from './app/guards/authentication.guard';
 import { nonProductionGuard } from './app/guards/non-production.guard';
 import { ErrorComponent } from './app/pages/error/error'
@@ -14,15 +15,14 @@ export const routes: Routes = [
     // Login component got next as it's also not authenticated. Will only trigger here is specifcally called
     // The implication is that even if logged in and making a request to the login page, it will send the user
     // down the login path. This is okay.
-    /*
     {
         path: 'login',
-        component: OnboardingLayout,
+        component: CardPageLayout,
+        data: { wide: false },
         children: [
-            { path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/login/login').then(c => c.LoginComponent) },
+            //{ path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/login/login').then(c => c.LoginComponent) },
         ]
     },
-    */
 
     // TODO: authenticated guard only returns true or false, not redirects.
     // a new notAuthenticatedGuard protects the login page
@@ -53,5 +53,12 @@ export const routes: Routes = [
     },
 
     // Catch-all, would implicitly require being logged in.
-    { path: '**', component: ErrorComponent, data: createNotFoundProblemDetails() }
+    {
+        path: '**',
+        component: CardPageLayout,
+        data: { wide: true },
+        children: [
+            { path: '', loadComponent: () => import('./app/pages/error/error').then(c => c.ErrorComponent), data: createNotFoundProblemDetails() },
+        ]
+    }
 ];
