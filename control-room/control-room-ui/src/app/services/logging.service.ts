@@ -61,7 +61,7 @@ function createErrorInstance(requestId: string | undefined, code: number): strin
  * @param error The http error object
  * @returns A parsed RFC9457 problem message
  */
-export function getProblemDetailsFromHttpError(error: HttpErrorResponse, defaultTitle?: string): ProblemMessage {
+export function getProblemDetailsFromHttpError(error: HttpErrorResponse, defaultTitle?: string, defaultDetail?: string): ProblemMessage {
     const requestId = error.headers.has("Request-Id") ? (error.headers.get("Request-Id") as string) : undefined;
 
     if (error.error && typeof error.error === 'object' && 'detail' in error.error) {
@@ -70,7 +70,7 @@ export function getProblemDetailsFromHttpError(error: HttpErrorResponse, default
             type: error.error.type || 'about:blank',
             title: defaultTitle || error.error.title || UNKNOWN_ERROR_TITLE,
             status: status,
-            detail: error.error.detail || UNKNOWN_ERROR_DETAIL,
+            detail: defaultDetail || error.error.detail || UNKNOWN_ERROR_DETAIL,
             instance: error.error.instance || createErrorInstance(requestId, status)
         };
     } else if (error.message) {
@@ -78,7 +78,7 @@ export function getProblemDetailsFromHttpError(error: HttpErrorResponse, default
             type: 'about:blank',
             title: defaultTitle || UNKNOWN_ERROR_TITLE,
             status: error.status,
-            detail: error.message,
+            detail: defaultDetail || error.message,
             instance: createErrorInstance(requestId, error.status)
         };
     } else {
@@ -86,7 +86,7 @@ export function getProblemDetailsFromHttpError(error: HttpErrorResponse, default
             type: 'about:blank',
             title: defaultTitle || UNKNOWN_ERROR_TITLE,
             status: error.status,
-            detail: UNKNOWN_ERROR_DETAIL,
+            detail: defaultDetail || UNKNOWN_ERROR_DETAIL,
             instance: createErrorInstance(requestId, error.status)
         };
     }
