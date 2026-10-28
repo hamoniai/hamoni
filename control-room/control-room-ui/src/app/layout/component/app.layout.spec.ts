@@ -1,11 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
+import { provideTranslocoTesting } from '@/app/testing/transloco-testing';
 import { AppLayout } from './app.layout';
 
 /** Render the shell with the router the outlet needs. */
 function renderLayout(): HTMLElement {
-  TestBed.configureTestingModule({ providers: [provideRouter([])] });
+  TestBed.configureTestingModule({
+    imports: [provideTranslocoTesting()],
+    providers: [provideRouter([])],
+  });
   const fixture = TestBed.createComponent(AppLayout);
   fixture.detectChanges();
   return fixture.nativeElement as HTMLElement;

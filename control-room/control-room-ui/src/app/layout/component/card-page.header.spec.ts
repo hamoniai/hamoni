@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { provideTranslocoTesting } from '@/app/testing/transloco-testing';
 import { CardPageHeader } from './card-page.header';
 
 /** A page that supplies the title and, optionally, the context. */
@@ -22,6 +23,10 @@ class CardPageHeaderTestHost {
 }
 
 describe('CardPageHeader', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [provideTranslocoTesting()] });
+  });
+
   it('shows the Hamoni logo and wordmark', () => {
     // Given / When
     const fixture = TestBed.createComponent(CardPageHeaderTestHost);

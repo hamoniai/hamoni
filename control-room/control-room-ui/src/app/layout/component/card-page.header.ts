@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, contentChild, viewChild } from '@angular/core';
+import { TranslocoDirective } from '@jsverse/transloco';
 
 /**
  * The header inside a standalone card page.
@@ -20,21 +21,30 @@ import { ChangeDetectionStrategy, Component, ElementRef, contentChild, viewChild
   // eslint-disable-next-line @angular-eslint/component-selector
   selector: 'card-page-header',
   standalone: true,
+  imports: [TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
-    <header data-testid="card-page-header">
+    <header data-testid="card-page-header" *transloco="let t">
       <div class="flex items-center justify-between gap-4 mb-7 max-[560px]:mb-6">
         <span class="inline-flex min-w-0 items-center gap-[9px]">
-          <img src="/img/logo.svg" alt="" width="280" height="288" class="h-[22px] w-auto flex-none" />
-          <span class="font-display text-[15px] font-bold tracking-[-0.012em] text-fg">Hamoni</span>
+          <img
+            src="/img/logo.svg"
+            [alt]="t('brand.logoAlt')"
+            width="280"
+            height="288"
+            class="h-[22px] w-auto flex-none"
+          />
+          <span class="font-display text-[15px] font-bold tracking-[-0.012em] text-fg" aria-hidden="true">{{
+            t('brand.name')
+          }}</span>
         </span>
         @if (context()) {
           <span
             data-testid="card-page-context"
             class="flex-none font-mono text-[22px] leading-none tracking-[-0.01em] tabular-nums text-muted max-[560px]:text-[20px]"
           >
-            <span class="sr-only">Error </span>
+            <span class="sr-only">{{ t('layout.cardpage.header.errorContext') }} </span>
             <ng-content select="[card-page-context]"></ng-content>
           </span>
         }

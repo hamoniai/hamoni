@@ -8,6 +8,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
 import { CardPageHeader } from '@/app/layout/component/card-page.header';
 import { ProblemMessage, createUnknownProblemDetails } from '@/app/services/logging.service';
@@ -55,13 +56,14 @@ function isProblemMessage(value: unknown): value is ProblemMessage {
 @Component({
   selector: 'app-error',
   standalone: true,
-  imports: [ButtonModule, RouterLink, CardPageHeader],
+  imports: [ButtonModule, RouterLink, CardPageHeader, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
     <section
       class="w-full rounded-lg border border-border bg-surface p-8 max-[560px]:rounded-md max-[560px]:p-6"
       aria-labelledby="card-page-title"
+      *transloco="let t"
     >
       <card-page-header>
         <span card-page-title>{{ problemMessage.title }}</span>
@@ -80,14 +82,16 @@ function isProblemMessage(value: unknown): value is ProblemMessage {
 
       @if (requestId) {
         <div data-problem-ref class="mt-7 flex flex-wrap items-center gap-x-3 gap-y-[10px] border-t border-border pt-5">
-          <span class="text-cap font-semibold uppercase tracking-[0.07em] text-muted">Request ID</span>
+          <span class="text-cap font-semibold uppercase tracking-[0.07em] text-muted">{{
+            t('pages.error.requestId')
+          }}</span>
           <code data-problem-id class="select-all font-mono text-sm tracking-[0.08em] text-fg">{{ requestId }}</code>
           <button
             pButton
             type="button"
             severity="secondary"
             class="ml-auto min-w-24 max-[560px]:h-11 max-[560px]:min-w-[104px]"
-            [attr.aria-label]="'Copy request ID ' + requestId"
+            [attr.aria-label]="t('pages.error.components.copy.ariaLabel', { id: requestId })"
             (click)="copyRequestId()"
           >
             @if (copied()) {
@@ -95,14 +99,18 @@ function isProblemMessage(value: unknown): value is ProblemMessage {
             } @else {
               <i class="pi pi-copy" aria-hidden="true"></i>
             }
-            <span>{{ copied() ? 'Copied' : 'Copy' }}</span>
+            <span>{{
+              copied() ? t('pages.error.components.copy.copiedLabel') : t('pages.error.components.copy.label')
+            }}</span>
           </button>
         </div>
-        <p data-problem-hint class="mt-2 text-meta text-muted">Quote this if you report the problem.</p>
+        <p data-problem-hint class="mt-2 text-meta text-muted">{{ t('pages.error.hint') }}</p>
       }
 
       <div class="mt-7">
-        <a pButton routerLink="/" severity="primary" size="large" class="max-[560px]:h-11">Back to home</a>
+        <a pButton routerLink="/" severity="primary" size="large" class="max-[560px]:h-11">{{
+          t('pages.error.backHome')
+        }}</a>
       </div>
 
       <span class="sr-only" role="status" aria-live="polite">{{ copyAnnouncement() }}</span>
@@ -112,6 +120,7 @@ function isProblemMessage(value: unknown): value is ProblemMessage {
 export class ErrorComponent {
   readonly #router = inject(Router);
   readonly #route = inject(ActivatedRoute);
+  readonly #transloco = inject(TranslocoService);
   readonly #destroyRef = inject(DestroyRef);
 
   /** The problem to display, from navigation state or the route's data. */
@@ -156,7 +165,9 @@ export class ErrorComponent {
   /** Show the copied state for a moment, then return the control to Copy. */
   #confirmCopy(): void {
     this.#copied.set(true);
-    this.#copyAnnouncement.set(`Request ID ${this.requestId} copied`);
+    this.#copyAnnouncement.set(
+      this.#transloco.translate<string>('pages.error.components.copy.copiedAnnouncement', { id: this.requestId }),
+    );
     clearTimeout(this.#resetCopyTimer);
     this.#resetCopyTimer = setTimeout(() => {
       this.#copied.set(false);
@@ -169,7 +180,9 @@ export class ErrorComponent {
     if (this.#legacyCopy(this.requestId)) {
       this.#confirmCopy();
     } else {
-      this.#copyAnnouncement.set(`Could not copy — the request ID is ${this.requestId}`);
+      this.#copyAnnouncement.set(
+        this.#transloco.translate<string>('pages.error.components.copy.failedAnnouncement', { id: this.requestId }),
+      );
     }
   }
 

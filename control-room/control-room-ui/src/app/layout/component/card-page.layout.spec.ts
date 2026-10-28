@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { describe, expect, it } from 'vitest';
+import { provideTranslocoTesting } from '@/app/testing/transloco-testing';
 import { CardPageLayout } from './card-page.layout';
 
 /** A routed page used to prove that the layout renders its child through the outlet. */
@@ -15,7 +16,10 @@ class CardPageTestChild {}
 
 /** Render the layout with only the router it needs to compile the outlet. */
 function renderLayout(wide?: boolean) {
-  TestBed.configureTestingModule({ providers: [provideRouter([])] });
+  TestBed.configureTestingModule({
+    imports: [provideTranslocoTesting()],
+    providers: [provideRouter([])],
+  });
   const fixture = TestBed.createComponent(CardPageLayout);
   if (wide !== undefined) {
     fixture.componentRef.setInput('wide', wide);
@@ -49,6 +53,7 @@ describe('CardPageLayout', () => {
   it('renders the routed page inside the content column', async () => {
     // Given
     TestBed.configureTestingModule({
+      imports: [provideTranslocoTesting()],
       providers: [
         provideRouter([
           {
@@ -72,6 +77,7 @@ describe('CardPageLayout', () => {
   it('reads the wide flag from the route data', async () => {
     // Given
     TestBed.configureTestingModule({
+      imports: [provideTranslocoTesting()],
       providers: [
         provideRouter([{ path: 'page', component: CardPageLayout, data: { wide: true } }], withComponentInputBinding()),
       ],

@@ -1,7 +1,6 @@
-import { inject, Component } from '@angular/core';
-import { AppStateService } from '@/app/services/app-state.service';
+import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
-
+import { TranslocoDirective } from '@jsverse/transloco';
 
 /**
  * Main home/landing page.
@@ -9,12 +8,12 @@ import { RouterModule } from '@angular/router';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterModule],
+  imports: [RouterModule, TranslocoDirective],
   template: `
-    <p>This is the home page</p>
-    <router-outlet></router-outlet>
-  `
+    <ng-container *transloco="let t">
+      <p>{{ t('pages.home.placeholder') }}</p>
+      <router-outlet></router-outlet>
+    </ng-container>
+  `,
 })
-export class HomeComponent {
-  //readonly #appState = inject(AppStateService);
-}
+export class HomeComponent {}

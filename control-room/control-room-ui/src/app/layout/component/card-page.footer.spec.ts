@@ -1,8 +1,13 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { provideTranslocoTesting } from '@/app/testing/transloco-testing';
 import { CardPageFooter } from './card-page.footer';
 
 describe('CardPageFooter', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [provideTranslocoTesting()] });
+  });
+
   it('shows the copyright and legal links in order on one line', () => {
     // Given / When
     const fixture = TestBed.createComponent(CardPageFooter);

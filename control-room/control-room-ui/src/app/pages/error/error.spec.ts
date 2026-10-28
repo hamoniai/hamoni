@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { provideTranslocoTesting } from '@/app/testing/transloco-testing';
 import { createNotFoundProblemDetails, ProblemMessage } from '@/app/services/logging.service';
 import { ErrorComponent } from './error';
 
@@ -23,6 +24,7 @@ describe('ErrorComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       teardown: { destroyAfterEach: true },
+      imports: [provideTranslocoTesting()],
       providers: [
         provideRouter([
           { path: 'state', component: ErrorComponent, data: createNotFoundProblemDetails() },

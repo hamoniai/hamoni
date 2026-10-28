@@ -1,8 +1,13 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { provideTranslocoTesting } from '@/app/testing/transloco-testing';
 import { AppUserProfile } from './app.user-profile';
 
 describe('AppUserProfile', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [provideTranslocoTesting()] });
+  });
+
   it('shows the current account and the organisation choices', () => {
     // Given / When
     const fixture = TestBed.createComponent(AppUserProfile);

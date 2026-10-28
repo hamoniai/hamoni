@@ -1,0 +1,124 @@
+{
+  "brand": {
+    "name": "Hamoni",
+    "logoAlt": "Hamoni",
+    "legalName": "Hamoni Limited"
+  },
+  "layout": {
+    "app": {
+      "header": {
+        "collapseNavigation": "Collapse navigation",
+        "searchPlaceholder": "Search or jump to…",
+        "searchAriaLabel": "Search or jump to a team, process or screen",
+        "actions": "Actions — approvals and access requests",
+        "actionsAriaLabel": "Actions — approvals and access requests · {{ count }} waiting",
+        "actionsPanel": {
+          "waiting": "Waiting on you · no deadline",
+          "approveTitle": "Approve process change",
+          "approveDetail": "Contractor offboarding · from {{ name }} · {{ days }} days",
+          "accessTitle": "Access request",
+          "accessDetail": "Invoice exception handling · from {{ name }}",
+          "review": "Review",
+          "footnote": "Deliberately not in the work list: these have no time limit and you are not blocking a run."
+        }
+      },
+      "nav": {
+        "sections": "Sections",
+        "startWork": "Start work",
+        "groups": {
+          "work": "Work",
+          "manage": "Manage",
+          "design": "Design",
+          "configure": "Configure"
+        },
+        "userProfile": {
+          "organisation": "Organisation",
+          "member": "Member",
+          "available": "Available",
+          "currentOrganisation": "Current organisation",
+          "preferences": "Preferences",
+          "darkMode": "Dark mode",
+          "advancedMode": "Advanced mode"
+        }
+      }
+    },
+    "cardpage": {
+      "header": {
+        "errorContext": "Error"
+      },
+      "footer": {
+        "copyright": "© {{ year }} {{ legalName }}",
+        "privacy": "Privacy policy",
+        "terms": "Terms of service"
+      }
+    }
+  },
+  "pages": {
+    "home": {
+      "title": "Home",
+      "placeholder": "This is the home page"
+    },
+    "inbox": {
+      "title": "Inbox"
+    },
+    "activity": {
+      "title": "Activity"
+    },
+    "processes": {
+      "title": "Processes"
+    },
+    "tasks": {
+      "title": "Tasks"
+    },
+    "people": {
+      "title": "People"
+    },
+    "documents": {
+      "title": "Documents"
+    },
+    "projects": {
+      "title": "Projects"
+    },
+    "templates": {
+      "title": "Templates"
+    },
+    "organisation": {
+      "title": "Organisation"
+    },
+    "teams": {
+      "title": "Teams"
+    },
+    "security": {
+      "title": "Security"
+    },
+    "login": {
+      "title": "Welcome back",
+      "description": "Use the account you use for work.",
+      "components": {
+        "providers": {
+          "microsoft": "Continue with Microsoft",
+          "google": "Continue with Google",
+          "apple": "Continue with Apple"
+        }
+      }
+    },
+    "error": {
+      "requestId": "Request ID",
+      "hint": "Quote this if you report the problem.",
+      "backHome": "Back to home",
+      "components": {
+        "copy": {
+          "label": "Copy",
+          "copiedLabel": "Copied",
+          "ariaLabel": "Copy request ID {{ id }}",
+          "copiedAnnouncement": "Request ID {{ id }} copied",
+          "failedAnnouncement": "Could not copy — the request ID is {{ id }}"
+        }
+      }
+    },
+    "logout": {
+      "title": "Logged out",
+      "description": "You have been logged out successfully. Please close this page/window."
+    }
+  }
+}

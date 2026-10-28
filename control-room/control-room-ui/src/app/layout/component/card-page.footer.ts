@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { TranslocoDirective } from '@jsverse/transloco';
 
 /**
  * The legal footer shown beneath a standalone card page.
@@ -17,24 +18,33 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   // eslint-disable-next-line @angular-eslint/component-selector
   selector: 'card-page-footer',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block flex-none' },
   template: `
-    <footer data-testid="card-page-footer" class="px-6 pt-[18px] pb-7 text-center text-meta text-muted">
+    <footer
+      data-testid="card-page-footer"
+      class="px-6 pt-[18px] pb-7 text-center text-meta text-muted"
+      *transloco="let t"
+    >
       <span data-testid="copyright">
         <a
           class="underline underline-offset-[3px] hover:text-fg"
           href="https://hamoni.ai"
           target="_blank"
           rel="noopener noreferrer"
-          >&copy; {{ currentDate | date: 'yyyy' }} Hamoni Limited</a
+          >{{
+            t('layout.cardpage.footer.copyright', {
+              year: (currentDate | date: 'yyyy'),
+              legalName: t('brand.legalName'),
+            })
+          }}</a
         >
       </span>
       <span class="mx-2 opacity-50" aria-hidden="true">·</span>
-      <a class="underline underline-offset-[3px] hover:text-fg" href="#">Privacy policy</a>
+      <a class="underline underline-offset-[3px] hover:text-fg" href="#">{{ t('layout.cardpage.footer.privacy') }}</a>
       <span class="mx-2 opacity-50" aria-hidden="true">·</span>
-      <a class="underline underline-offset-[3px] hover:text-fg" href="#">Terms of service</a>
+      <a class="underline underline-offset-[3px] hover:text-fg" href="#">{{ t('layout.cardpage.footer.terms') }}</a>
     </footer>
   `,
 })

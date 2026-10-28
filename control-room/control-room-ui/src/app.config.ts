@@ -2,10 +2,13 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withComponentInputBinding, withDisabledInitialNavigation, withInMemoryScrolling, withPreloading, PreloadAllModules } from '@angular/router';
 import { provideLumberjack } from '@ngworker/lumberjack';
+import { provideTransloco } from '@jsverse/transloco';
 import { providePrimeNG } from 'primeng/config';
 import { provideLumberjackConsoleDriver } from '@ngworker/lumberjack/console-driver';
 
 import { routes } from './app.routes';
+import { TranslocoLoaderService } from './app/services/transloco-loader.service';
+import { environment } from './environments/environment';
 import { HamoniPreset } from './styles/hamoni.preset';
 
 export const appConfig: ApplicationConfig = {
@@ -18,6 +21,16 @@ export const appConfig: ApplicationConfig = {
     ),
     provideLumberjack(),
     provideLumberjackConsoleDriver(),
+    provideTransloco({
+      config: {
+        availableLangs: ['en-GB'],
+        defaultLang: 'en-GB',
+        fallbackLang: 'en-GB',
+        reRenderOnLangChange: true,
+        prodMode: environment.production,
+      },
+      loader: TranslocoLoaderService,
+    }),
     provideRouter(routes,
       withComponentInputBinding(),
       withInMemoryScrolling({ anchorScrolling: 'enabled', scrollPositionRestoration: 'enabled' }),

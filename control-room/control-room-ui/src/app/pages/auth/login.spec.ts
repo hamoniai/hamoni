@@ -1,8 +1,13 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { provideTranslocoTesting } from '@/app/testing/transloco-testing';
 import { LoginComponent } from './login';
 
 describe('LoginComponent', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [provideTranslocoTesting()] });
+  });
+
   it('renders the public sign-in card', () => {
     // Given / When
     const fixture = TestBed.createComponent(LoginComponent);

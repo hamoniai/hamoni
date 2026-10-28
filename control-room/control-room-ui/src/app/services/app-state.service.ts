@@ -2,19 +2,20 @@ import { HttpStatusCode } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { AuthService, User, UserOrganisation } from '@/app/services/auth.service';
 
-
 /**
  * This component stores the whole application state of which client/subscription is being modified.
  */
 export interface AppState {
-  user: User | null,
-  organisations: UserOrganisation[] | null,
-  selectedOrganisation: string | null,
-  theme: string,
+  user: User | null;
+  organisations: UserOrganisation[] | null;
+  selectedOrganisation: string | null;
+  theme: string;
+  lang: string;
 }
 
-const STOREKEY_THEME = 'app.theme';
 const STOREKEY_DEFAULT_ORGANISATION = 'app.default-organisation';
+const STOREKEY_LANG = 'app.lang';
+const STOREKEY_THEME = 'app.theme';
 const THEME_DARK = 'dark';
 const THEME_LIGHT = 'light';
 
@@ -22,7 +23,7 @@ const THEME_LIGHT = 'light';
  * Manage the application state.
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AppStateService {
   readonly #authService = inject(AuthService);
@@ -34,7 +35,8 @@ export class AppStateService {
     user: null,
     organisations: null,
     selectedOrganisation: localStorage.getItem(STOREKEY_DEFAULT_ORGANISATION),
-    theme: localStorage.getItem(STOREKEY_THEME) || THEME_DARK
+    theme: localStorage.getItem(STOREKEY_THEME) || THEME_DARK,
+    lang: localStorage.getItem(STOREKEY_LANG) || 'en-GB',
   });
   readonly appState = this.#appState.asReadonly();
   // Store the last updated timestamp (whether the result is llogged in or not)
@@ -45,13 +47,12 @@ export class AppStateService {
   readonly #appStateTheme = computed(() => this.#appState().theme);
   readonly #appStateSelectedOrganisation = computed(() => this.#appState().selectedOrganisation);
 
-
   constructor() {
     // Start a login check on app start. This accelerates teh happy case where a user is already logged in.
     // In the case this fails, when a login flow is completed, this app state can be reset.
     // If the user is undefined, i.e. the user is not logged in, then we still set the loaded timestamp to show
     // that although null, it is complete. Need to be careful to read as anything could go wrong here, i.e. even
-    // if the backend returns 200, btu the object is bad it could fail. 
+    // if the backend returns 200, btu the object is bad it could fail.
     effect(() => {
       const hasValue = this.#authService.userResource.hasValue();
       const status = this.#authService.userResourceStatus();
@@ -63,43 +64,47 @@ export class AppStateService {
         // Authenticated, get the organisations we can access. This is a heavier request and so
         // we start it in the background to accelerate the startup. Store the user information first
         // so that other processes can get going.
-        this.#appState.update(currentState => ({
+        this.#appState.update((currentState) => ({
           ...currentState,
-          user: user
+          user: user,
         }));
 
         // Get the organisations, the organisation switcher will display the curent value selected.
         this.#authService.getProfileOrganisations().subscribe({
           next: (data) => {
-            this.#appState.update(currentState => ({
+            this.#appState.update((currentState) => ({
               ...currentState,
               user: user,
-              organisations: data
+              organisations: data,
             }));
           },
-          error: (err) => {
-            this.#appState.update(currentState => ({
+          error: () => {
+            this.#appState.update((currentState) => ({
               ...currentState,
               user: user,
-              organisations: null
+              organisations: null,
             }));
           },
           complete: () => {
             this.#appStateLoaded.set(Date.now());
-          }
+          },
         });
-      } else if (!!status) {
+      } else if (status) {
         // Effectively loaded, bot not logged in or error. Clear the user state.
-        this.#appState.update(currentState => ({
+        this.#appState.update((currentState) => ({
           ...currentState,
           user: null,
-          organisations: null
+          organisations: null,
         }));
         this.#appStateLoaded.set(Date.now());
       }
     });
 
     // Handlers to write back the theme and default organisation to local storage as an effect to make sure they stay in sync.
+    effect(() => {
+      const newLang = this.#appStateTheme();
+      localStorage.setItem(STOREKEY_LANG, newLang);
+    });
     effect(() => {
       const newTheme = this.#appStateTheme();
       localStorage.setItem(STOREKEY_THEME, newTheme);
@@ -123,9 +128,20 @@ export class AppStateService {
    * Toggle the theme.
    */
   toggleTheme(): void {
-    this.#appState.update(currentState => ({
+    this.#appState.update((currentState) => ({
       ...currentState,
-      theme: currentState.theme === THEME_DARK ? THEME_LIGHT : THEME_DARK
+      theme: currentState.theme === THEME_DARK ? THEME_LIGHT : THEME_DARK,
+    }));
+  }
+
+  /**
+   * Set the language.
+   * This might need validation of the requested language against supported languages.
+   */
+  setLang(lang: string): void {
+    this.#appState.update((currentState) => ({
+      ...currentState,
+      lang: lang,
     }));
   }
 
@@ -133,6 +149,7 @@ export class AppStateService {
    * Change between organisations the user has access to.
    */
   setOrganisation(newOrganisation: string) {
+    void newOrganisation; // reserved for the organisation switch
     // TODO: needs to fail if the organisation is not in the list of allowed organisations.
     // this.#appState.update(currentState => ({
     //     ...currentState,
