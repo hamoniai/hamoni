@@ -22,6 +22,7 @@ const organisations = [
 describe('AppUserProfile', () => {
   let appState: WritableSignal<AppState>;
   let toggleTheme: ReturnType<typeof vi.fn>;
+  let setAdvancedMode: ReturnType<typeof vi.fn>;
   let setOrganisation: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -31,9 +32,13 @@ describe('AppUserProfile', () => {
       selectedOrganisation: 'org-acme',
       theme: THEME_DARK,
       lang: 'en-GB',
+      advancedMode: false,
     });
     toggleTheme = vi.fn(() => {
       appState.update((state) => ({ ...state, theme: state.theme === THEME_DARK ? THEME_LIGHT : THEME_DARK }));
+    });
+    setAdvancedMode = vi.fn((advancedMode: boolean) => {
+      appState.update((state) => ({ ...state, advancedMode }));
     });
     setOrganisation = vi.fn((organisationId: string) => {
       appState.update((state) => ({ ...state, selectedOrganisation: organisationId }));
@@ -49,7 +54,9 @@ describe('AppUserProfile', () => {
             appStateOrganisations: computed(() => appState().organisations ?? []),
             appStateSelectedOrganisation: computed(() => appState().selectedOrganisation),
             appStateTheme: computed(() => appState().theme),
+            appStateAdvancedMode: computed(() => appState().advancedMode),
             toggleTheme,
+            setAdvancedMode,
             setOrganisation,
           },
         },
@@ -186,5 +193,30 @@ describe('AppUserProfile', () => {
     expect(toggleTheme).toHaveBeenCalledTimes(1);
     expect(darkMode?.checked).toBe(false);
     expect(host.textContent).toContain('Advanced mode');
+  });
+
+  it('shows the advanced mode state and updates it through the app state', async () => {
+    // Given
+    const fixture = TestBed.createComponent(AppUserProfile);
+    fixture.detectChanges();
+    const host: HTMLElement = fixture.nativeElement;
+    host.querySelector<HTMLButtonElement>('button[aria-haspopup="true"]')?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const advancedMode = host.querySelector<HTMLInputElement>('#pref-advanced');
+    const advancedModeRow = advancedMode?.closest('label');
+    expect(advancedModeRow).not.toBeNull();
+    expect(advancedMode?.checked).toBe(false);
+
+    // When
+    advancedModeRow?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Then
+    expect(setAdvancedMode).toHaveBeenCalledWith(true);
+    expect(advancedMode?.checked).toBe(true);
   });
 });

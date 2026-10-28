@@ -12,10 +12,12 @@ export interface AppState {
   selectedOrganisation: string | null;
   theme: string;
   lang: string;
+  advancedMode: boolean;
 }
 
 const STOREKEY_DEFAULT_ORGANISATION = 'app.default-organisation';
 const STOREKEY_LANG = 'app.lang';
+const STOREKEY_ADVANCED_MODE = 'app.advanced-mode';
 const STOREKEY_THEME = 'app.theme';
 export const THEME_DARK = 'dark';
 export const THEME_LIGHT = 'light';
@@ -42,6 +44,7 @@ export class AppStateService {
       localStorage.getItem(STOREKEY_THEME) ||
       (document.documentElement.classList.contains(THEME_DARK_CLASS) ? THEME_DARK : THEME_LIGHT),
     lang: localStorage.getItem(STOREKEY_LANG) || this.#translocoService.getDefaultLang(),
+    advancedMode: localStorage.getItem(STOREKEY_ADVANCED_MODE) === 'true',
   });
   readonly appState = this.#appState.asReadonly();
   // Store the last updated timestamp (whether the result is llogged in or not)
@@ -52,6 +55,7 @@ export class AppStateService {
   readonly appStateUser = computed(() => this.#appState().user);
   readonly appStateLang = computed(() => this.#appState().lang);
   readonly appStateTheme = computed(() => this.#appState().theme);
+  readonly appStateAdvancedMode = computed(() => this.#appState().advancedMode);
   readonly appStateOrganisations = computed(() => this.#appState().organisations || []); // remove null for convienence
   readonly appStateSelectedOrganisation = computed(() => this.#appState().selectedOrganisation);
 
@@ -108,7 +112,7 @@ export class AppStateService {
       }
     });
 
-    // Handlers to write back the theme and default organisation to local storage as an effect to make sure they stay in sync.
+    // Handlers to write back the language, theme, advanced mode and default organisation to local storage as an effect to make sure they stay in sync.
     effect(() => {
       const newLang = this.appStateLang();
       localStorage.setItem(STOREKEY_LANG, newLang);
@@ -116,6 +120,10 @@ export class AppStateService {
     effect(() => {
       const newTheme = this.appStateTheme();
       localStorage.setItem(STOREKEY_THEME, newTheme);
+    });
+    effect(() => {
+      const newAdvancedMode = this.appStateAdvancedMode();
+      localStorage.setItem(STOREKEY_ADVANCED_MODE, String(newAdvancedMode));
     });
     effect(() => {
       const newSelectedOrganisation = this.appStateSelectedOrganisation();
@@ -206,6 +214,24 @@ export class AppStateService {
       lang: lang,
     }));
     return true;
+  }
+
+  /**
+   * Set whether advanced mode is on. It is the single application-wide preference (ADR-0028).
+   * @param advancedMode true to show advanced surfaces, false otherwise.
+   */
+  setAdvancedMode(advancedMode: boolean): void {
+    this.#appState.update((currentState) => ({
+      ...currentState,
+      advancedMode: advancedMode,
+    }));
+  }
+
+  /**
+   * Toggle advanced mode on or off.
+   */
+  toggleAdvancedMode(): void {
+    this.setAdvancedMode(!this.appStateAdvancedMode());
   }
 
   /**

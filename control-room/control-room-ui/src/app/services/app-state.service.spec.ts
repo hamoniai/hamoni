@@ -27,6 +27,9 @@ describe('AppStateService', () => {
   };
 
   beforeEach(() => {
+    // Keep each test independent of any preference left behind by another test.
+    localStorage.clear();
+
     // Need to mock the AuthService entirely to prevent the default httpResource from loading
     TestBed.configureTestingModule({
       imports: [provideTranslocoTesting()],
@@ -57,6 +60,70 @@ describe('AppStateService', () => {
   }
 
   // test cases
+  it('should start with advanced mode off by default', () => {
+    // Given - a fresh application state with no stored preference
+
+    // When - the service is created by the setup
+
+    // Then
+    expect(appStateService.appStateAdvancedMode()).toBe(false);
+  });
+
+  it('should set advanced mode and persist it', () => {
+    // Given - advanced mode is off
+    expect(appStateService.appStateAdvancedMode()).toBe(false);
+
+    // When
+    appStateService.setAdvancedMode(true);
+    TestBed.tick();
+
+    // Then
+    expect(appStateService.appStateAdvancedMode()).toBe(true);
+    expect(localStorage.getItem('app.advanced-mode')).toBe('true');
+  });
+
+  it('should toggle advanced mode on and off', () => {
+    // Given - advanced mode is off
+
+    // When - it is toggled on
+    appStateService.toggleAdvancedMode();
+
+    // Then
+    expect(appStateService.appStateAdvancedMode()).toBe(true);
+
+    // When - it is toggled off again
+    appStateService.toggleAdvancedMode();
+
+    // Then
+    expect(appStateService.appStateAdvancedMode()).toBe(false);
+  });
+
+  it('should restore advanced mode from local storage', () => {
+    // Given - a stored preference for advanced mode
+    localStorage.setItem('app.advanced-mode', 'true');
+
+    // When - a new application state is created
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [provideTranslocoTesting()],
+      providers: [
+        provideLumberjack(),
+        provideLumberjackConsoleDriver(),
+        AppStateService,
+        { provide: AuthService, useValue: authService },
+      ],
+    });
+    const restoredUserResource = TestBed.runInInjectionContext(() =>
+      httpResource<User | undefined>(() => undefined),
+    );
+    (authService as unknown as { userResource: HttpResourceRef<User | undefined> }).userResource =
+      restoredUserResource;
+    const restoredService = TestBed.inject(AppStateService);
+
+    // Then
+    expect(restoredService.appStateAdvancedMode()).toBe(true);
+  });
+
   it('should load organisations only once', async () => {
     // Given
     dataUser = {

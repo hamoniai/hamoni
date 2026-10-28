@@ -23,6 +23,7 @@ function provideAppState() {
     selectedOrganisation: null,
     theme: THEME_DARK,
     lang: 'en-GB',
+    advancedMode: false,
   });
 
   return {

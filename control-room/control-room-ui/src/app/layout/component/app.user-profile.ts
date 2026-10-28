@@ -11,8 +11,8 @@ import { UserOrganisation } from '@/app/services/auth.service';
  * The user chip and profile popup in the navigation rail.
  *
  * The chip and popup read the application state for the user, the
- * organisations, the selected organisation and the theme. Organisation
- * switching and the advanced-mode preference remain future work.
+ * organisations, the selected organisation, the theme and advanced mode.
+ * Organisation switching remains future work.
  */
 @Component({
   selector: 'app-user-profile',
@@ -121,7 +121,12 @@ import { UserOrganisation } from '@/app/services/auth.service';
                   class="flex w-full cursor-pointer items-center justify-between text-sm text-muted"
                 >
                   <span>{{ t('layout.app.nav.userProfile.advancedMode') }}</span>
-                  <p-toggleswitch inputId="pref-advanced" [ngModel]="false" />
+                  <p-toggleswitch
+                    inputId="pref-advanced"
+                    data-testid="advanced-mode"
+                    [ngModel]="appState.appStateAdvancedMode()"
+                    (ngModelChange)="appState.setAdvancedMode($event)"
+                  />
                 </label>
               </div>
             </div>
