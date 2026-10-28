@@ -155,7 +155,13 @@ export class AppStateService {
       return false;
     }
 
-    this.#translocoService.setActiveLang(lang);
+    if (!!document.startViewTransition) {
+      document.startViewTransition(() => {
+        this.#translocoService.setActiveLang(lang);
+      });
+    } else {
+      this.#translocoService.setActiveLang(lang);
+    }
     this.#appState.update((currentState) => ({
       ...currentState,
       lang: lang,
