@@ -10,41 +10,38 @@ import { AppStateService } from './app-state.service';
 import { AuthService, User, UserOrganisation } from './auth.service';
 import { provideTranslocoTesting } from '@/app/testing/transloco-testing';
 
-
 describe('AppStateService', () => {
   // Dummy http resources
   let mockUserResource: HttpResourceRef<User | undefined>;
 
   // Data references
   let dataUser: User;
-  let dataUserOrganisations: UserOrganisation[] = []
+  let dataUserOrganisations: UserOrganisation[] = [];
 
   // Mocks & services
   let appStateService: AppStateService;
-  let authService: Mocked<Partial<AuthService>> = {
+  const authService: Mocked<Partial<AuthService>> = {
     userResource: undefined,
     userResourceStatus: signal(undefined),
-    getProfileOrganisations: vi.fn().mockReturnValue(defer(() => of(dataUserOrganisations)))
+    getProfileOrganisations: vi.fn().mockReturnValue(defer(() => of(dataUserOrganisations))),
   };
 
   beforeEach(() => {
     // Need to mock the AuthService entirely to prevent the default httpResource from loading
     TestBed.configureTestingModule({
-      imports: [
-        provideTranslocoTesting(),
-      ],
+      imports: [provideTranslocoTesting()],
       providers: [
         provideLumberjack(),
         provideLumberjackConsoleDriver(),
         AppStateService,
         { provide: AuthService, useValue: authService },
-      ]
+      ],
     });
 
     mockUserResource = TestBed.runInInjectionContext(() => {
       return httpResource<User | undefined>(() => undefined);
     });
-    (authService as any).userResource = mockUserResource
+    (authService as unknown as { userResource: HttpResourceRef<User | undefined> }).userResource = mockUserResource;
 
     appStateService = TestBed.inject(AppStateService);
   });
@@ -65,26 +62,30 @@ describe('AppStateService', () => {
     dataUser = {
       id: window.crypto.randomUUID(),
       name: 'Bob Smith',
+      initials: 'BS',
       email: 'bob.smith@example.com',
       issuer: 'https://accounts.google.com',
-      issuerSubject: '107654321098765432109'
+      issuerSubject: '107654321098765432109',
     };
     dataUserOrganisations = [
-      { id: window.crypto.randomUUID(), name: "Organisation 1" },
-      { id: window.crypto.randomUUID(), name: "Organisation 2" },
+      { id: window.crypto.randomUUID(), name: 'Organisation 1' },
+      { id: window.crypto.randomUUID(), name: 'Organisation 2' },
     ];
 
-    vi.spyOn(authService, 'userResource', 'get').mockReturnValue(mockUserResource)
+    vi.spyOn(authService, 'userResource', 'get').mockReturnValue(mockUserResource);
 
     // When
     setResourceData(HttpStatusCode.Ok, dataUser);
 
     // Need to wait because of the async nature
-    await vi.waitFor(() => {
-      if (!appStateService.appStateLoaded()) {
-        throw new Error('Signal not ready yet');
-      }
-    }, { timeout: 1000, interval: 50 });
+    await vi.waitFor(
+      () => {
+        if (!appStateService.appStateLoaded()) {
+          throw new Error('Signal not ready yet');
+        }
+      },
+      { timeout: 1000, interval: 50 },
+    );
 
     // Then
     expect(appStateService.appState().user).toStrictEqual(dataUser);

@@ -17,9 +17,10 @@ export interface AppState {
 const STOREKEY_DEFAULT_ORGANISATION = 'app.default-organisation';
 const STOREKEY_LANG = 'app.lang';
 const STOREKEY_THEME = 'app.theme';
-const THEME_DARK = 'dark';
+export const THEME_DARK = 'dark';
+export const THEME_LIGHT = 'light';
 const THEME_DARK_CLASS = 'app-dark';
-const THEME_LIGHT = 'light';
+
 
 /**
  * Manage the application state.
@@ -46,10 +47,12 @@ export class AppStateService {
   readonly #appStateLoaded = signal<number | undefined>(undefined);
   readonly appStateLoaded = this.#appStateLoaded.asReadonly();
 
-  // Private fields to track changes to the theme
-  readonly #appStateLang = computed(() => this.#appState().lang);
-  readonly #appStateTheme = computed(() => this.#appState().theme);
-  readonly #appStateSelectedOrganisation = computed(() => this.#appState().selectedOrganisation);
+  // Utility signals to track changes to the state. Really only helpful to the profile popups
+  readonly appStateUser = computed(() => this.#appState().user);
+  readonly appStateLang = computed(() => this.#appState().lang);
+  readonly appStateTheme = computed(() => this.#appState().theme);
+  readonly appStateOrganisations = computed(() => this.#appState().organisations || []); // remove null for convienence
+  readonly appStateSelectedOrganisation = computed(() => this.#appState().selectedOrganisation);
 
   constructor() {
     // Start a login check on app start. This accelerates teh happy case where a user is already logged in.
@@ -106,15 +109,15 @@ export class AppStateService {
 
     // Handlers to write back the theme and default organisation to local storage as an effect to make sure they stay in sync.
     effect(() => {
-      const newLang = this.#appStateLang();
+      const newLang = this.appStateLang();
       localStorage.setItem(STOREKEY_LANG, newLang);
     });
     effect(() => {
-      const newTheme = this.#appStateTheme();
+      const newTheme = this.appStateTheme();
       localStorage.setItem(STOREKEY_THEME, newTheme);
     });
     effect(() => {
-      const newSelectedOrganisation = this.#appStateSelectedOrganisation();
+      const newSelectedOrganisation = this.appStateSelectedOrganisation();
       if (newSelectedOrganisation) {
         localStorage.setItem(STOREKEY_DEFAULT_ORGANISATION, newSelectedOrganisation);
       }
@@ -123,13 +126,13 @@ export class AppStateService {
     // One time setup to sync the langauge between the user selected and the transloco service. It will also verify that
     // the selected langauage exists. If there is no change, then the signals will not fire and the Transloco service will
     // not perform and change.
-    if (this.#translocoService.isLang(this.#appStateLang())) {
-      this.setLang(this.#appStateLang());
+    if (this.#translocoService.isLang(this.appStateLang())) {
+      this.setLang(this.appStateLang());
     } else {
       this.setLang(this.#translocoService.getDefaultLang());
     }
     // Set the theme on start (really only applies if light mode is selected)
-    this.transitionTheme(this.#appStateTheme());
+    this.transitionTheme(this.appStateTheme());
   }
 
   /**
@@ -143,7 +146,7 @@ export class AppStateService {
    * Toggle the theme.
    */
   toggleTheme(): void {
-    const newTheme = this.#appStateTheme() == THEME_DARK ? THEME_LIGHT : THEME_DARK;
+    const newTheme = this.appStateTheme() == THEME_DARK ? THEME_LIGHT : THEME_DARK;
 
     this.transitionTheme(newTheme);
     this.#appState.update((currentState) => ({
@@ -206,13 +209,10 @@ export class AppStateService {
    * Change between organisations the user has access to.
    */
   setOrganisation(newOrganisation: string) {
-    void newOrganisation; // reserved for the organisation switch
-    // TODO: needs to fail if the organisation is not in the list of allowed organisations.
-    // this.#appState.update(currentState => ({
-    //     ...currentState,
-    //     client: newClient,
-    //     subscription: undefined
-    // }))
-    // Needs to trigger a call to the backend
+    // Need to determine how to switch organisation. Might be a full page reload. For now, just sync.
+    this.#appState.update((currentState) => ({
+      ...currentState,
+      selectedOrganisation: newOrganisation,
+    }));
   }
 }

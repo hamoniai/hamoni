@@ -1,6 +1,6 @@
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse } from 'msw';
 import { passthrough } from 'msw/utils/passthrough';
-import { User, UserOrganisation } from '@/app/services/auth.service'
+import { User, UserOrganisation } from '@/app/services/auth.service';
 
 /**
  * Create an API url
@@ -8,7 +8,7 @@ import { User, UserOrganisation } from '@/app/services/auth.service'
  * @returns The full URI.
  */
 function api(path: string) {
-  return new URL('/api' + path, window.location.href).href
+  return new URL('/api' + path, window.location.href).href;
 }
 
 /**
@@ -16,7 +16,7 @@ function api(path: string) {
  * @param obj The object to erase
  * @returns A basic object with the same properties, sanitised and ready for wire sending.
  */
-function toObject(obj: any) {
+function toObject(obj: unknown) {
   const serialised = JSON.stringify(obj, (key, value) => {
     if (value instanceof Date) {
       return value.toISOString();
@@ -27,33 +27,38 @@ function toObject(obj: any) {
 }
 
 // Objects for auth services
-const defaultUserUUID = window.crypto.randomUUID()
+const defaultUserUUID = window.crypto.randomUUID();
 
 const authUser: User = {
   id: defaultUserUUID,
   name: 'Bob Smith',
-  email: "bob.smith@example.com",
-  issuer: "https://accounts.google.com",
-  issuerSubject: "107654321098765432109"
-}
+  initials: 'BS',
+  email: 'bob.smith@example.com',
+  issuer: 'https://accounts.google.com',
+  issuerSubject: '107654321098765432109',
+};
 
 const authUserOrganisations: UserOrganisation[] = [
   {
     id: window.crypto.randomUUID(),
-    name: 'ABC Limited'
-  }
-]
+    name: 'ABC Limited',
+  },
+  {
+    id: window.crypto.randomUUID(),
+    name: 'XYZ Limited',
+  },
+];
 
 export const success_handlers = [
   // Auth services
   http.get(api(`/auth/profile`), ({ request }) => {
     const url = new URL(request.url);
-    const hydrate = url.searchParams.get('hydrate')?.split(" ") || []
+    const hydrate = url.searchParams.get('hydrate')?.split(' ') || [];
 
-    if (hydrate.includes("organisations")) {
-      return HttpResponse.json(toObject({...authUser, organisations: authUserOrganisations}))
+    if (hydrate.includes('organisations')) {
+      return HttpResponse.json(toObject({ ...authUser, organisations: authUserOrganisations }));
     } else {
-      return HttpResponse.json(toObject(authUser))
+      return HttpResponse.json(toObject(authUser));
     }
   }),
   http.get(api(`/auth/profile/organisations`), () => {

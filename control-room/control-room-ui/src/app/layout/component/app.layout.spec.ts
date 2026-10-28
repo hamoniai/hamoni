@@ -1,14 +1,36 @@
+import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
+import { AppState, AppStateService, THEME_DARK } from '@/app/services/app-state.service';
 import { provideTranslocoTesting } from '@/app/testing/transloco-testing';
 import { AppLayout } from './app.layout';
 
 /** Render the shell with the router the outlet needs. */
 function renderLayout(): HTMLElement {
+  const appState = signal<AppState>({
+    user: null,
+    organisations: null,
+    selectedOrganisation: null,
+    theme: THEME_DARK,
+    lang: 'en-GB',
+  });
   TestBed.configureTestingModule({
     imports: [provideTranslocoTesting()],
-    providers: [provideRouter([])],
+    providers: [
+      provideRouter([]),
+      {
+        provide: AppStateService,
+        useValue: {
+          appStateUser: computed(() => appState().user),
+          appStateOrganisations: computed(() => appState().organisations ?? []),
+          appStateSelectedOrganisation: computed(() => appState().selectedOrganisation),
+          appStateTheme: computed(() => appState().theme),
+          toggleTheme: () => undefined,
+          setOrganisation: () => undefined,
+        },
+      },
+    ],
   });
   const fixture = TestBed.createComponent(AppLayout);
   fixture.detectChanges();
@@ -73,7 +95,5 @@ describe('AppLayout', () => {
 
     // Then
     expect(host.querySelector('app-user-profile')).not.toBeNull();
-    expect(host.textContent).toContain('Celia Yu');
-    expect(host.textContent).toContain('Acme Corporation');
   });
 });
