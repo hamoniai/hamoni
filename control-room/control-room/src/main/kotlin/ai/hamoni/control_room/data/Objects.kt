@@ -35,6 +35,12 @@ class AuthenticationProfile (
     @GeneratedValue(strategy = GenerationType.UUID)
     var id: UUID? = null,
 
+    @Column(name = "family_name", nullable = false, updatable = true, comment = "Family name")
+    var familyName: String,
+
+    @Column(name = "given_name", nullable = false, updatable = true, comment = "Given name")
+    var givenName: String,
+
     @Column(name = "name", nullable = false, updatable = true, comment = "Display name")
     var name: String,
 
@@ -63,6 +69,17 @@ class AuthenticationProfile (
     @ElementCollection
     @CollectionTable(name = "authnprofile_organisations", schema = GLOBAL_SCHEMA, joinColumns = [JoinColumn(name = "authnprofile_id")])
     var organisations: List<AuthenticationProfileOrganisation> = emptyList()
+
+    /**
+     * the initials. Not stored as it should update with the name.
+     * TODO: this needs fixing, but needs some serious thought. We do not know the origin of the name, i.e. CJK,
+     * Vietnamese/Thai etc. Each locale has a different way of abbreviating. Cannot use the locale settings because
+     * they are company wide, and do not dictate the user's name origin. Could do something like detecting CJK
+     * characters and having an assumption for those. Use standard roman as a fallback. East Asian names are still a
+     * problem.
+     */
+    @Transient
+    var initials: String = "XX"
 
     override fun hashCode(): Int = Objects.hash(issuer, issuerSubject)
     override fun equals(other: Any?): Boolean = other is AuthenticationProfile && issuer == other.issuer && issuerSubject == other.issuerSubject
