@@ -23,7 +23,7 @@
     "@jsverse/transloco": "^9.0.0-alpha.4",
     "@ngworker/lumberjack": "^22.0.0",
     "@primeuix/themes": "^3.1.0",
-    "chart.js": "4.5.1",
+    "chart.js": "4.6.1",
     "primeicons": "^8.0.2",
     "primeng": "^22.1.4",
     "rxjs": "~7.8.0",
