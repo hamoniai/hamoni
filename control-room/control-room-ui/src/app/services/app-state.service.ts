@@ -18,6 +18,7 @@ const STOREKEY_DEFAULT_ORGANISATION = 'app.default-organisation';
 const STOREKEY_LANG = 'app.lang';
 const STOREKEY_THEME = 'app.theme';
 const THEME_DARK = 'dark';
+const THEME_DARK_CLASS = 'app-dark';
 const THEME_LIGHT = 'light';
 
 /**
@@ -37,7 +38,7 @@ export class AppStateService {
     user: null,
     organisations: null,
     selectedOrganisation: localStorage.getItem(STOREKEY_DEFAULT_ORGANISATION),
-    theme: localStorage.getItem(STOREKEY_THEME) || THEME_DARK,
+    theme: localStorage.getItem(STOREKEY_THEME) || (document.documentElement.classList.contains(THEME_DARK_CLASS) ? THEME_DARK : THEME_LIGHT),
     lang: localStorage.getItem(STOREKEY_LANG) || this.#translocoService.getDefaultLang(),
   });
   readonly appState = this.#appState.asReadonly();
@@ -127,6 +128,8 @@ export class AppStateService {
     } else {
       this.setLang(this.#translocoService.getDefaultLang());
     }
+    // Set the theme on start (really only applies if light mode is selected)
+    this.transitionTheme(this.#appStateTheme());
   }
 
   /**
@@ -140,10 +143,40 @@ export class AppStateService {
    * Toggle the theme.
    */
   toggleTheme(): void {
+    const newTheme = this.#appStateTheme() == THEME_DARK ? THEME_LIGHT : THEME_DARK;
+
+    this.transitionTheme(newTheme);
     this.#appState.update((currentState) => ({
       ...currentState,
-      theme: currentState.theme === THEME_DARK ? THEME_LIGHT : THEME_DARK,
+      theme: currentState.theme = newTheme,
     }));
+  }
+
+  /**
+   * Transition the theme by updating the CSS.
+   * @param theme The theme to apply
+   */
+  private transitionTheme(theme: string) {
+    const currentTheme = document.documentElement.classList.contains(THEME_DARK_CLASS) ? THEME_DARK : THEME_LIGHT;
+    if (currentTheme == theme) {
+      return; // nothing to do.
+    }
+
+    if (!!document.startViewTransition) {
+      document.startViewTransition(() => {
+        if (theme == THEME_DARK) {
+          document.documentElement.classList.add(theme);
+        } else {
+          document.documentElement.classList.remove(theme);
+        }
+      });
+    } else {
+      if (theme == THEME_DARK) {
+        document.documentElement.classList.add(theme);
+      } else {
+        document.documentElement.classList.remove(theme);
+      }
+    }
   }
 
   /**
@@ -182,35 +215,4 @@ export class AppStateService {
     // }))
     // Needs to trigger a call to the backend
   }
-
-  // Dark mode on/off
-  // document.documentElement.classList.add('app-dark');
-  // document.documentElement.classList.remove('app-dark');
-  /*
-
-  private handleDarkModeTransition(config: LayoutConfig): void {
-          const supportsViewTransition = 'startViewTransition' in document;
-  
-          if (supportsViewTransition) {
-              this.startViewTransition(config);
-          } else {
-              this.toggleDarkMode(config);
-          }
-      }
-  
-      private startViewTransition(config: LayoutConfig): void {
-          document.startViewTransition(() => {
-              this.toggleDarkMode(config);
-          });
-      }
-  
-      toggleDarkMode(config?: LayoutConfig): void {
-          const _config = config || this.layoutConfig();
-          if (_config.darkTheme) {
-              document.documentElement.classList.add('app-dark');
-          } else {
-              document.documentElement.classList.remove('app-dark');
-          }
-      }
-          */
 }
