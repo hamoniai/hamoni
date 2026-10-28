@@ -24,6 +24,7 @@ project/
 ├── CODING-STANDARDS.md        Common · Backend · Frontend standards
 ├── ARCHITECTURE-DECISIONS.md  Architecture Decision Records, with reasoning
 ├── API-AND-DATABASE.md        frontend–backend interface + database rules
+├── specs/                     build specs and implementation approaches
 ├── control-room/AGENTS.md     holding directory: user-facing projects
 ├── process-runner/AGENTS.md   holding directory: execution-runtime projects
 ├── common/AGENTS.md           holding directory: shared projects
@@ -76,6 +77,9 @@ not copy build logic into a project.
   [`API-AND-DATABASE.md`](./API-AND-DATABASE.md): the frontend–backend contract
   and the rules that govern the database. Read it before adding an endpoint or a
   table.
+- **Feature specs and implementation approaches** — `specs/` (start with
+  [`specs/README.md`](./specs/README.md)); written by the plan team before the
+  Build team implements.
 - **A directory's local rules** — that directory's `AGENTS.md`.
 - **Long-form documentation** — `docs/` (Antora).
 
