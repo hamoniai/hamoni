@@ -27,18 +27,6 @@ describe('CardPageHeader', () => {
     TestBed.configureTestingModule({ imports: [provideTranslocoTesting()] });
   });
 
-  it('shows the Hamoni logo and wordmark', () => {
-    // Given / When
-    const fixture = TestBed.createComponent(CardPageHeaderTestHost);
-    fixture.detectChanges();
-
-    // Then
-    const host: HTMLElement = fixture.nativeElement;
-    const logo = host.querySelector<HTMLImageElement>('img');
-    expect(logo?.getAttribute('src')).toBe('/img/logo.svg');
-    expect(host.textContent).toContain('Hamoni');
-  });
-
   it('projects the title and the top right context', () => {
     // Given / When
     const fixture = TestBed.createComponent(CardPageHeaderTestHost);

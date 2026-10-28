@@ -1,13 +1,22 @@
-import { computed, signal } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { describe, expect, it } from 'vitest';
 import { AppState, AppStateService, THEME_DARK } from '@/app/services/app-state.service';
 import { provideTranslocoTesting } from '@/app/testing/transloco-testing';
 import { AppLayout } from './app.layout';
 
-/** Render the shell with the router the outlet needs. */
-function renderLayout(): HTMLElement {
+/** A routed page used to prove that the layout renders through its outlet. */
+@Component({
+  selector: 'app-test-routed-page',
+  standalone: true,
+  template: `<p data-testid="routed-page">Routed page</p>`,
+})
+class TestRoutedPage {}
+
+/** Provide the minimal app state the shell needs to render. */
+function provideAppState() {
   const appState = signal<AppState>({
     user: null,
     organisations: null,
@@ -15,85 +24,37 @@ function renderLayout(): HTMLElement {
     theme: THEME_DARK,
     lang: 'en-GB',
   });
-  TestBed.configureTestingModule({
-    imports: [provideTranslocoTesting()],
-    providers: [
-      provideRouter([]),
-      {
-        provide: AppStateService,
-        useValue: {
-          appStateUser: computed(() => appState().user),
-          appStateOrganisations: computed(() => appState().organisations ?? []),
-          appStateSelectedOrganisation: computed(() => appState().selectedOrganisation),
-          appStateTheme: computed(() => appState().theme),
-          toggleTheme: () => undefined,
-          setOrganisation: () => undefined,
-        },
-      },
-    ],
-  });
-  const fixture = TestBed.createComponent(AppLayout);
-  fixture.detectChanges();
-  return fixture.nativeElement as HTMLElement;
+
+  return {
+    provide: AppStateService,
+    useValue: {
+      appStateUser: computed(() => appState().user),
+      appStateOrganisations: computed(() => appState().organisations ?? []),
+      appStateSelectedOrganisation: computed(() => appState().selectedOrganisation),
+      appStateTheme: computed(() => appState().theme),
+      toggleTheme: () => undefined,
+      setOrganisation: () => undefined,
+    },
+  };
 }
 
 describe('AppLayout', () => {
-  it('renders the navigation rail, header and routed content area', () => {
-    // Given / When
-    const host = renderLayout();
+  it('renders the routed page inside the content area', async () => {
+    // Given
+    TestBed.configureTestingModule({
+      imports: [provideTranslocoTesting()],
+      providers: [
+        provideRouter([{ path: 'page', component: AppLayout, children: [{ path: '', component: TestRoutedPage }] }]),
+        provideAppState(),
+      ],
+    });
+    const harness = await RouterTestingHarness.create();
+
+    // When
+    await harness.navigateByUrl('/page');
 
     // Then
-    expect(host.querySelector('app-nav')).not.toBeNull();
-    expect(host.querySelector('app-header')).not.toBeNull();
-    expect(host.querySelector('router-outlet')).not.toBeNull();
-  });
-
-  it('renders the static navigation groups and items', () => {
-    // Given / When
-    const host = renderLayout();
-
-    // Then
-    for (const label of [
-      'Start work',
-      'Work',
-      'Inbox',
-      'Activity',
-      'Manage',
-      'Processes',
-      'Tasks',
-      'People',
-      'Documents',
-      'Design',
-      'Projects',
-      'Templates',
-      'Configure',
-      'Organisation',
-      'Teams',
-      'Security',
-    ]) {
-      expect(host.textContent).toContain(label);
-    }
-    expect(host.textContent).toContain('11');
-    expect(host.textContent).toContain('47');
-    expect(host.textContent).toContain('8');
-  });
-
-  it('renders the header breadcrumb and global search', () => {
-    // Given / When
-    const host = renderLayout();
-
-    // Then
-    expect(host.textContent).toContain('Home');
-    expect(host.querySelector<HTMLInputElement>('input[type="search"]')?.getAttribute('placeholder')).toBe(
-      'Search or jump to…',
-    );
-  });
-
-  it('renders the user profile chip in the rail footer', () => {
-    // Given / When
-    const host = renderLayout();
-
-    // Then
-    expect(host.querySelector('app-user-profile')).not.toBeNull();
+    const host = harness.fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('main [data-testid="routed-page"]')).not.toBeNull();
   });
 });

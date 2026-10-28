@@ -498,6 +498,10 @@ controls.
   interface shows is a message written for a person, not a code; the **backend
   localises it into the profile's locale** before returning it, and the client
   renders it as given.
+- **Data is not copy.** Identity data — names, emails, initials — and
+  organisation names, counts, identifiers and codes come from the backend and are
+  never translated. The design reference cannot always distinguish data from
+  copy; when it is unclear, stop and ask before adding a translation key.
 
 #### 18.3.1 The localisation resource structure
 
@@ -624,6 +628,16 @@ keys are organised by **ownership**, not by screen:
   backend's OpenAPI description. Do not hand-write a client type that duplicates
   a contract. Types are generated for all three API groups; only the publication
   of group C is suppressed (ADR-0049).
+- **A routed layout uses `<router-outlet>`, not `ng-content`.** `ng-content` is
+  for component composition inside a page — a header, footer or action slot. The
+  layout's fixed regions are components; its page body is the router outlet.
+- **When the design, UX flow, data ownership or state meaning is unclear, stop
+  and ask.** Do not invent a control, fallback, default or state transition.
+- **Optional types do not define the UX.** A field may be nullable for an
+  implementation reason, not because the product allows that state. Confirm
+  whether the empty/null state can occur and what the interface should do. If the
+  flow guarantees a value, guard against the invalid state; if it can occur,
+  design the empty state. Never silently choose a fallback.
 
 ## 20. Angular services
 
@@ -702,6 +716,15 @@ readonly jobs = this.#jobs.asReadonly();
 - Expose the public signal as **writable only when a caller genuinely must write
   to it**; otherwise update the private signal inside a method on the caller's
   behalf.
+- **Consume the owning service's state API; do not mirror it.** Use the exported
+  signals and constants. If a required state is private, ask for it to be
+  exported — private is the default implementation, not a prohibition on opening
+  it. Do not create local copies or duplicate state.
+- **Scalar/UI state is a signal; collections and streams are Observables.** A
+  list, search result or anything that can update is consumed as an Observable
+  with the async pipe, converting a source signal with `toObservable` where
+  necessary. Do not freeze an updating collection into a static iterator. The
+  front end is reactive end to end.
 
 ### 20.6 Map transport errors to the application error type
 
@@ -761,6 +784,16 @@ readonly jobs = this.#jobs.asReadonly();
   buttons (ADR-0045).
 - **Compose, do not fork.** A variant of an existing component is a prop or a
   slot on that component, not a copy of it.
+- **Use the native control shown in the design's component reference.** The
+  reference is `screens/controls.html`; the live board is
+  `src/app/pages/home/components.html`. Where a native PrimeNG control exists,
+  use it rather than a bespoke lookalike. A compound control composes native
+  controls. If the native control cannot express the design, stop and ask.
+- **Prefer in-page expansion over popovers.** In a list or table keep at most
+  one expanded row or panel visible: opening another closes the previous one.
+  Two expanded rows present two next actions — a choice, not a direction. A
+  popover dismisses on outside click; the profile selector is the only popover
+  in the application, and returning focus to the trigger is not required.
 
 ## 22. Frontend quality: linting, formatting and types
 
@@ -788,9 +821,21 @@ Two tools, two jobs. They are complementary and neither replaces the other.
 - **MSW does not replace `vitest`**, and `vitest` does not replace the browsing
   handlers — a unit's edge cases are proven by a `vitest` test, not by a
   happy-case handler.
-- Test components and services for **behaviour the user can observe**, not
-  implementation detail.
-- Cover the states each screen can be in: loading, empty, error and populated.
+- **Tests prove behaviour, not static implementation.** Simulate a user action
+  and assert the observable outcome: a service method called with the expected
+  value, a callback fired, a row added or removed, a popup shown or hidden, a
+  state transition completed. Do not assert exact static copy, exact markup or
+  snapshots; those enforcement tests only detect change and cost maintenance. A
+  test that merely proves a label renders is not a component test.
+- **Cover states as behaviour.** Loading, empty, error, populated, selection and
+  dismissal are tested by interacting and asserting the result. Examples: open
+  the profile popup → it appears; click outside → it disappears; provide two
+  organisations → two rows render; choose one → the selection callback receives
+  its id and the selected row changes.
+- **`app-state.service.spec.ts` is the model.** Assert events, callbacks and data
+  outcomes rather than rendering.
+- **Test-only helpers live in `src/app/testing/` and are excluded from
+  `tsconfig.app.json`.** They are reached only by specs and never shipped.
 - Do not test against a hand-rolled fake client; go through MSW so the component
   sees a real request.
 
@@ -812,6 +857,13 @@ Do not:
 - Leave console output, dead code or commented-out blocks in committed code
   (§22).
 - Fork an existing component instead of composing a variant of it (§21).
+- Hand-roll a lookalike where the design's component reference names a native
+  PrimeNG control (§21).
+- Use `ng-content` for a routed layout instead of `<router-outlet>`; duplicate
+  state already exposed by a service; or iterate an updating collection as a
+  static signal snapshot (§19, §20.5).
+- Write enforcement tests that assert exact static copy, markup or snapshots
+  instead of behaviour (§23).
 - Return a bare value or a promise from a service method; name a method without
   a leading verb; or use a non-standard name for an ordinary operation instead of
   `list`, `search`, `get`, `update`, `create` (§20.1, §20.2).

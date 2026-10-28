@@ -93,17 +93,4 @@ describe('CardPageLayout', () => {
     }
     expect(getColumn(host)?.style.maxWidth).toBe('560px');
   });
-
-  it('pins the shared footer below the main content', () => {
-    // Given / When
-    const fixture = renderLayout();
-
-    // Then
-    const host: HTMLElement = fixture.nativeElement;
-    const main = host.querySelector('main');
-    const footer = host.querySelector('card-page-footer');
-    expect(footer).not.toBeNull();
-    expect(main?.nextElementSibling).toBe(footer);
-    expect(getColumn(host)?.querySelector('card-page-footer')).toBeNull();
-  });
 });

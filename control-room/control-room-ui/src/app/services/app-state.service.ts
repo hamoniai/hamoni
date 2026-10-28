@@ -133,6 +133,7 @@ export class AppStateService {
       this.setLang(this.#translocoService.getDefaultLang());
     }
     // Set the theme on start (really only applies if light mode is selected)
+    // TODO: apply the persisted theme before the first paint to avoid the startup light/dark flash.
     this.transitionTheme(this.appStateTheme());
   }
 
