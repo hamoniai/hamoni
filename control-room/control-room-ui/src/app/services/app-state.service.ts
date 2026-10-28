@@ -21,7 +21,6 @@ export const THEME_DARK = 'dark';
 export const THEME_LIGHT = 'light';
 const THEME_DARK_CLASS = 'app-dark';
 
-
 /**
  * Manage the application state.
  */
@@ -39,7 +38,9 @@ export class AppStateService {
     user: null,
     organisations: null,
     selectedOrganisation: localStorage.getItem(STOREKEY_DEFAULT_ORGANISATION),
-    theme: localStorage.getItem(STOREKEY_THEME) || (document.documentElement.classList.contains(THEME_DARK_CLASS) ? THEME_DARK : THEME_LIGHT),
+    theme:
+      localStorage.getItem(STOREKEY_THEME) ||
+      (document.documentElement.classList.contains(THEME_DARK_CLASS) ? THEME_DARK : THEME_LIGHT),
     lang: localStorage.getItem(STOREKEY_LANG) || this.#translocoService.getDefaultLang(),
   });
   readonly appState = this.#appState.asReadonly();
@@ -151,7 +152,7 @@ export class AppStateService {
     this.transitionTheme(newTheme);
     this.#appState.update((currentState) => ({
       ...currentState,
-      theme: currentState.theme = newTheme,
+      theme: newTheme,
     }));
   }
 
@@ -161,23 +162,24 @@ export class AppStateService {
    */
   private transitionTheme(theme: string) {
     const currentTheme = document.documentElement.classList.contains(THEME_DARK_CLASS) ? THEME_DARK : THEME_LIGHT;
+
     if (currentTheme == theme) {
       return; // nothing to do.
     }
 
-    if (!!document.startViewTransition) {
+    if (document.startViewTransition) {
       document.startViewTransition(() => {
         if (theme == THEME_DARK) {
-          document.documentElement.classList.add(theme);
+          document.documentElement.classList.add(THEME_DARK_CLASS);
         } else {
-          document.documentElement.classList.remove(theme);
+          document.documentElement.classList.remove(THEME_DARK_CLASS);
         }
       });
     } else {
       if (theme == THEME_DARK) {
-        document.documentElement.classList.add(theme);
+        document.documentElement.classList.add(THEME_DARK_CLASS);
       } else {
-        document.documentElement.classList.remove(theme);
+        document.documentElement.classList.remove(THEME_DARK_CLASS);
       }
     }
   }
@@ -191,7 +193,7 @@ export class AppStateService {
       return false;
     }
 
-    if (!!document.startViewTransition) {
+    if (document.startViewTransition) {
       document.startViewTransition(() => {
         this.#translocoService.setActiveLang(lang);
       });
