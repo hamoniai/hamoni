@@ -1,4 +1,4 @@
-import { effect, inject, Component } from '@angular/core';
+import { inject, Component } from '@angular/core';
 import { AppStateService } from '@/app/services/app-state.service';
 import { RouterModule } from '@angular/router';
 
@@ -7,13 +7,14 @@ import { RouterModule } from '@angular/router';
  * Main home/landing page.
  */
 @Component({
-    selector: 'app-home',
-    standalone: true,
-    imports: [RouterModule],
-    template: `
+  selector: 'app-home',
+  standalone: true,
+  imports: [RouterModule],
+  template: `
+    <p>This is the home page</p>
     <router-outlet></router-outlet>
-    `
+  `
 })
 export class HomeComponent {
-    readonly #appState = inject(AppStateService);
+  readonly #appState = inject(AppStateService);
 }

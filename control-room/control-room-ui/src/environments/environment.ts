@@ -1,6 +1,7 @@
 export const environment = {
+    appName: 'HAMONI',
     production: true,
     apiBase: '/api',
     errorPage: '/error',
-    loginPage: '/login'
+    loginPage: '/auth/login'
 };
