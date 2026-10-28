@@ -16,7 +16,7 @@ describe('CardPageFooter', () => {
     );
 
     const links = Array.from(footer?.querySelectorAll('a') ?? []).map((link) => link.textContent?.trim());
-    expect(links).toEqual(['Hamoni Limited', 'Privacy policy', 'Terms of service']);
+    expect(links).toEqual([`© ${new Date().getFullYear()} Hamoni Limited`, 'Privacy policy', 'Terms of service']);
 
     const separators = Array.from(footer?.querySelectorAll('span[aria-hidden="true"]') ?? []).map((separator) =>
       separator.textContent?.trim(),
@@ -24,7 +24,7 @@ describe('CardPageFooter', () => {
     expect(separators).toEqual(['·', '·']);
   });
 
-  it('links Hamoni Limited to hamoni.ai', () => {
+  it('links the copyright to hamoni.ai', () => {
     // Given / When
     const fixture = TestBed.createComponent(CardPageFooter);
     fixture.detectChanges();
@@ -32,7 +32,7 @@ describe('CardPageFooter', () => {
     // Then
     const host: HTMLElement = fixture.nativeElement;
     const link = host.querySelector<HTMLAnchorElement>('[data-testid="copyright"] a');
-    expect(link?.textContent?.trim()).toBe('Hamoni Limited');
+    expect(link?.textContent?.replace(/\s+/g, ' ').trim()).toBe(`© ${new Date().getFullYear()} Hamoni Limited`);
     expect(link?.getAttribute('href')).toBe('https://hamoni.ai');
   });
 });

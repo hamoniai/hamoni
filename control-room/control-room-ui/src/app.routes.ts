@@ -19,17 +19,17 @@ export const routes: Routes = [
         ]
     },
 
-    // // Login component got next as it's also not authenticated. Will only trigger here is specifcally called
-    // // The implication is that even if logged in and making a request to the login page, it will send the user
-    // // down the login path. This is okay.
-    // {
-    //     path: 'login',
-    //     component: CardPageLayout,
-    //     data: { wide: false },
-    //     children: [
-    //         //{ path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/login/login').then(c => c.LoginComponent) },
-    //     ]
-    // },
+    // Login component got next as it's also not authenticated. Will only trigger here is specifcally called
+    // The implication is that even if logged in and making a request to the login page, it will send the user
+    // down the login path. This is okay.
+    {
+        path: 'login',
+        component: CardPageLayout,
+        data: { wide: false },
+        children: [
+            { path: '', pathMatch: 'full', loadComponent: () => import('./app/pages/auth/login').then(c => c.LoginComponent) },
+        ]
+    },
 
     // // TODO: authenticated guard only returns true or false, not redirects.
     // // a new notAuthenticatedGuard protects the login page
@@ -47,17 +47,17 @@ export const routes: Routes = [
     //     canActivate: [authenticatedGuard]
     // },
 
-    // Catch any request that is specifically not logged in, and redirect. If actually a 404, then this will skip
-    {
-        path: '**',
-        redirectTo: (routeData) => {
-            const router = inject(Router);
-            return router.createUrlTree(['/login'], {
-                queryParams: { returnUrl: routeData.url }
-            });
-        },
-        canActivate: [notAuthenticatedGuard]
-    },
+    // // Catch any request that is specifically not logged in, and redirect. If actually a 404, then this will skip
+    // {
+    //     path: '**',
+    //     redirectTo: (routeData) => {
+    //         const router = inject(Router);
+    //         return router.createUrlTree(['/login'], {
+    //             queryParams: { returnUrl: routeData.url }
+    //         });
+    //     },
+    //     canActivate: [notAuthenticatedGuard]
+    // },
 
     // Catch-all, would implicitly require being logged in.
     {

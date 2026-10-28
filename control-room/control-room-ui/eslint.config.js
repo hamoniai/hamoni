@@ -4,10 +4,14 @@ const { defineConfig } = require('eslint/config');
 const eslintConfigPrettier = require("eslint-config-prettier/flat");
 const tseslint = require('typescript-eslint');
 const angular = require('angular-eslint');
+const licenseHeader = require("eslint-plugin-license-header");
 
 module.exports = defineConfig([
   {
     files: ['**/*.ts'],
+    plugins: {
+      "license-header": licenseHeader,
+    },
     extends: [
       eslint.configs.recommended,
       tseslint.configs.recommended,
@@ -16,6 +20,7 @@ module.exports = defineConfig([
     ],
     processor: angular.processInlineTemplates,
     rules: {
+      'no-console': 'error',
       '@angular-eslint/directive-selector': [
         'error',
         {
@@ -32,6 +37,8 @@ module.exports = defineConfig([
           style: 'kebab-case',
         },
       ],
+      "@stylistic/indent": ['error', 2],
+      '@stylistic/quotes': ['error', 'single', { avoidEscape: true }],
     },
   },
   {
