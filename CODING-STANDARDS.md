@@ -499,6 +499,62 @@ controls.
   localises it into the profile's locale** before returning it, and the client
   renders it as given.
 
+#### 18.3.1 The localisation resource structure
+
+Static copy lives in the locale resource bundle and is addressed by key. The
+keys are organised by **ownership**, not by screen:
+
+```json
+{
+  "brand": {
+    "name": "…",
+    "logoAlt": "…",
+    "legalName": "…"
+  },
+  "layout": {
+    "app": {
+      "header": { "…": "…" },
+      "nav": { "…": "…" },
+      "footer": { "…": "…" }
+    },
+    "cardpage": {
+      "header": { "…": "…" },
+      "nav": { "…": "…" },
+      "footer": { "…": "…" }
+    }
+  },
+  "pages": {
+    "<page>": {
+      "title": "…",
+      "description": "…",
+      "<pageKey>": "…",
+      "components": {
+        "<component>": {
+          "<componentKey>": "…"
+        }
+      }
+    }
+  }
+}
+```
+
+- **`brand`** is site-global: the product name, the logo alternative text and
+  the legal name.
+- **`layout.<layout>`** holds copy owned by a layout, grouped by the region that
+  renders it (`header`, `nav`, `footer`). A layout carries only the regions it
+  renders; a region is added when the layout gains it.
+- **`pages.<page>`** holds copy owned by a page: its `title`, its `description`,
+  page-level keys, and `components.<component>` for page-local components.
+- A layout link to a page uses the page's title key — for example
+  `pages.inbox.title` — never a duplicate such as `layout.app.nav.inbox`. One
+  key serves one concept. A page that does not exist yet may still contribute its
+  `title` while the navigation references it.
+- Related keys use a suffix on the concept: `search` is the search box title,
+  `searchAriaLabel` its accessible name and `searchPlaceholder` its placeholder.
+- A page whose title and description are supplied by the server — the error page
+  — carries no static `title` or `description`; the backend's localised problem
+  details are rendered as given.
+
 ### 18.4 Design system and restraint
 
 - Bind the **Design System for Hamoni** tokens. **Never invent colours, fonts or
@@ -574,6 +630,10 @@ controls.
 A **service** is the only place that talks to the server; a component or a store
 calls a service and never performs a request itself. A feature owns its service
 beside its components and its state (§19).
+
+- **All application-wide services live in `src/app/services/`.** A feature's
+  service stays with its feature; a service used across the application — the
+  Transloco loader, for example — belongs in `src/app/services/`.
 
 ### 20.1 Every method returns an Observable
 
