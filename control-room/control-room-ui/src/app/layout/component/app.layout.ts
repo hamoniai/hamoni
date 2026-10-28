@@ -1,52 +1,33 @@
-import { Component, computed, effect, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-// import { AppTopbar } from './app.topbar';
-// import { AppSidebar } from './app.sidebar';
-// import { AppFooter } from './app.footer';
-import { LayoutService } from '@/app/layout/service/layout.service';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { AppHeader } from './app.header';
+import { AppNav } from './app.nav';
 
+/**
+ * The Control Room application shell.
+ *
+ * A fixed-width navigation rail on the left and the main column on the right:
+ * the top header, then the routed page inside the content area. The page
+ * scrolls as one document, so the header is not pinned.
+ */
 @Component({
-    selector: 'app-layout',
-    standalone: true,
-    imports: [CommonModule, RouterModule], //[CommonModule, AppTopbar, AppSidebar, RouterModule, AppFooter],
-    template: `<router-outlet></router-outlet>`
-    // template: `<div class="layout-wrapper" [ngClass]="containerClass()">
-    //     <app-topbar></app-topbar>
-    //     <app-sidebar></app-sidebar>
-    //     <div class="layout-main-container">
-    //         <div class="layout-main">
-    //             <router-outlet></router-outlet>
-    //         </div>
-    //         <app-footer></app-footer>
-    //     </div>
-    //     <div class="layout-mask"></div>
-    // </div> `
+  selector: 'app-layout',
+  standalone: true,
+  imports: [RouterOutlet, AppNav, AppHeader],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'block' },
+  template: `
+    <div class="grid min-h-screen grid-cols-[244px_minmax(0,1fr)] bg-bg">
+      <app-nav></app-nav>
+
+      <div class="flex min-w-0 flex-col">
+        <app-header></app-header>
+
+        <main class="flex min-w-0 flex-1 flex-col gap-10 px-7 pt-7 pb-16">
+          <router-outlet></router-outlet>
+        </main>
+      </div>
+    </div>
+  `,
 })
-export class AppLayout {
-    layoutService = inject(LayoutService);
-
-    /*
-    constructor() {
-        effect(() => {
-            const state = this.layoutService.layoutState();
-            if (state.mobileMenuActive) {
-                document.body.classList.add('blocked-scroll');
-            } else {
-                document.body.classList.remove('blocked-scroll');
-            }
-        });
-    }
-
-    containerClass = computed(() => {
-        const config = this.layoutService.layoutConfig();
-        const state = this.layoutService.layoutState();
-        return {
-            'layout-overlay': config.menuMode === 'overlay',
-            'layout-static': config.menuMode === 'static',
-            'layout-static-inactive': state.staticMenuDesktopInactive && config.menuMode === 'static',
-            'layout-overlay-active': state.overlayMenuActive,
-            'layout-mobile-active': state.mobileMenuActive
-        };
-    })*/
-}
+export class AppLayout {}

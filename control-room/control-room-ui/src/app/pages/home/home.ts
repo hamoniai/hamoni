@@ -16,5 +16,5 @@ import { RouterModule } from '@angular/router';
   `
 })
 export class HomeComponent {
-  readonly #appState = inject(AppStateService);
+  //readonly #appState = inject(AppStateService);
 }
