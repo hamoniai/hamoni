@@ -1,6 +1,7 @@
 import { HttpStatusCode } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { AuthService, User, UserOrganisation } from '@/app/services/auth.service';
+import { TranslocoService } from '@jsverse/transloco';
 
 /**
  * This component stores the whole application state of which client/subscription is being modified.
@@ -27,6 +28,7 @@ const THEME_LIGHT = 'light';
 })
 export class AppStateService {
   readonly #authService = inject(AuthService);
+  readonly #translocoService = inject(TranslocoService);
 
   // global state, with a public read only view. Initial state is loaded from local storage.
   // Operations on global state, such as accepting an invite should update/refresh the application state object by reloading.
@@ -36,7 +38,7 @@ export class AppStateService {
     organisations: null,
     selectedOrganisation: localStorage.getItem(STOREKEY_DEFAULT_ORGANISATION),
     theme: localStorage.getItem(STOREKEY_THEME) || THEME_DARK,
-    lang: localStorage.getItem(STOREKEY_LANG) || 'en-GB',
+    lang: localStorage.getItem(STOREKEY_LANG) || this.#translocoService.getDefaultLang(),
   });
   readonly appState = this.#appState.asReadonly();
   // Store the last updated timestamp (whether the result is llogged in or not)
@@ -44,6 +46,7 @@ export class AppStateService {
   readonly appStateLoaded = this.#appStateLoaded.asReadonly();
 
   // Private fields to track changes to the theme
+  readonly #appStateLang = computed(() => this.#appState().lang);
   readonly #appStateTheme = computed(() => this.#appState().theme);
   readonly #appStateSelectedOrganisation = computed(() => this.#appState().selectedOrganisation);
 
@@ -102,7 +105,7 @@ export class AppStateService {
 
     // Handlers to write back the theme and default organisation to local storage as an effect to make sure they stay in sync.
     effect(() => {
-      const newLang = this.#appStateTheme();
+      const newLang = this.#appStateLang();
       localStorage.setItem(STOREKEY_LANG, newLang);
     });
     effect(() => {
@@ -115,6 +118,15 @@ export class AppStateService {
         localStorage.setItem(STOREKEY_DEFAULT_ORGANISATION, newSelectedOrganisation);
       }
     });
+
+    // One time setup to sync the langauge between the user selected and the transloco service. It will also verify that
+    // the selected langauage exists. If there is no change, then the signals will not fire and the Transloco service will
+    // not perform and change.
+    if (this.#translocoService.isLang(this.#appStateLang())) {
+      this.setLang(this.#appStateLang());
+    } else {
+      this.setLang(this.#translocoService.getDefaultLang());
+    }
   }
 
   /**
@@ -136,13 +148,19 @@ export class AppStateService {
 
   /**
    * Set the language.
-   * This might need validation of the requested language against supported languages.
+   * @returns true if the language set was successful, i.e. the language is supported, false otherwise.
    */
-  setLang(lang: string): void {
+  setLang(lang: string): boolean {
+    if (!this.#translocoService.isLang(lang)) {
+      return false;
+    }
+
+    this.#translocoService.setActiveLang(lang);
     this.#appState.update((currentState) => ({
       ...currentState,
       lang: lang,
     }));
+    return true;
   }
 
   /**

@@ -23,7 +23,9 @@ export const appConfig: ApplicationConfig = {
     provideLumberjackConsoleDriver(),
     provideTransloco({
       config: {
-        availableLangs: ['en-GB'],
+        availableLangs: [
+          { id: 'en-GB', label: 'English (GB)' },
+        ],
         defaultLang: 'en-GB',
         fallbackLang: 'en-GB',
         reRenderOnLangChange: true,
