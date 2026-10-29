@@ -34,37 +34,37 @@ import jakarta.enterprise.context.ApplicationScoped
 /**
  * Resolve the OIDC tenant. This is used
  */
-@ApplicationScoped
-class DynamicOidcResolver : TenantConfigResolver {
-
-//    @Override
-//    public Uni<OidcTenantConfig> resolve(RoutingContext context) {
-//        String tenantId = context.request().getHeader("X-Tenant-Id");
+//@ApplicationScoped
+//class DynamicOidcResolver : TenantConfigResolver {
 //
-//        if (tenantId == null) {
-//            return Uni.createFrom().nullItem(); // Fallback to default configuration
-//        }
+////    @Override
+////    public Uni<OidcTenantConfig> resolve(RoutingContext context) {
+////        String tenantId = context.request().getHeader("X-Tenant-Id");
+////
+////        if (tenantId == null) {
+////            return Uni.createFrom().nullItem(); // Fallback to default configuration
+////        }
+////
+////        // Fetch OIDC credentials dynamically (e.g., from a DB or cache)
+////        return Uni.createFrom().item(() -> {
+////        OidcTenantConfig config = new OidcTenantConfig();
+////        config.setTenantId(tenantId);
+////        config.setAuthServerUrl("https://identity-provider.com" + tenantId);
+////        config.setClientId("dynamic-client-id");
+////
+////        OidcTenantConfig.Credentials credentials = new OidcTenantConfig.Credentials();
+////        credentials.setSecret("dynamic-client-secret");
+////        config.setCredentials(credentials);
+////
+////        return config;
+////    });
+////    }
 //
-//        // Fetch OIDC credentials dynamically (e.g., from a DB or cache)
-//        return Uni.createFrom().item(() -> {
-//        OidcTenantConfig config = new OidcTenantConfig();
-//        config.setTenantId(tenantId);
-//        config.setAuthServerUrl("https://identity-provider.com" + tenantId);
-//        config.setClientId("dynamic-client-id");
-//
-//        OidcTenantConfig.Credentials credentials = new OidcTenantConfig.Credentials();
-//        credentials.setSecret("dynamic-client-secret");
-//        config.setCredentials(credentials);
-//
-//        return config;
-//    });
+//    override fun resolve(
+//        routingContext: RoutingContext,
+//        requestContext: OidcRequestContext<OidcTenantConfig>
+//    ): Uni<OidcTenantConfig> {
+//        val tenantId = routingContext.request().getHeader(REQUEST_ORGANISATION_ID)
+//        TODO("Not yet implemented")
 //    }
-
-    override fun resolve(
-        routingContext: RoutingContext,
-        requestContext: OidcRequestContext<OidcTenantConfig>
-    ): Uni<OidcTenantConfig> {
-        val tenantId = routingContext.request().getHeader(REQUEST_ORGANISATION_ID)
-        TODO("Not yet implemented")
-    }
-}
+//}

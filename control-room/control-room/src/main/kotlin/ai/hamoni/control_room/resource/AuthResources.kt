@@ -10,7 +10,6 @@ import io.quarkus.security.identity.SecurityIdentity
 import io.smallrye.mutiny.Uni
 import jakarta.inject.Inject
 import jakarta.ws.rs.*
-import kotlinx.serialization.Contextual
 import org.jboss.resteasy.reactive.RestQuery
 import org.jboss.resteasy.reactive.RestResponse
 
@@ -29,7 +28,6 @@ class AuthenticationResource @Inject constructor(
      */
     @GET
     @Path("/profile")
-    @Consumes(APPLICATION_JSON_UTF8)
     @Produces(APPLICATION_JSON_UTF8)
     fun profile(@RestQuery hydrate: List<AuthenticationProfileServiceHydration>): Uni<RestResponse<AuthenticationProfile>> =
         authenticationProfileService.profile(hydrate)
@@ -44,7 +42,6 @@ class AuthenticationResource @Inject constructor(
      */
     @GET
     @Path("/profile/organisations")
-    @Consumes(APPLICATION_JSON_UTF8)
     @Produces(APPLICATION_JSON_UTF8)
     fun profileOrganisations(): Uni<RestResponse<List<AuthenticationProfileOrganisation>>> =
         authenticationProfileService.profile(listOf(AuthenticationProfileServiceHydration.ORGANISATIONS))
@@ -59,7 +56,6 @@ class AuthenticationResource @Inject constructor(
      */
     @GET
     @Path("/logout")
-    @Consumes(APPLICATION_JSON_UTF8)
     @Produces(APPLICATION_JSON_UTF8)
     fun logout(): Uni<RestResponse<Boolean>> =
         authenticationProfileService.logout()
