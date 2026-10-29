@@ -1,6 +1,6 @@
 [versions]
 kotlin-core = "2.4.21"
-kotlin-serialization = "1.12.0"
+kotlin-serialization = "1.11.0" # Needs to match the serialization-json dependency in the quarkus bom
 platform-quarkus = "3.40.1.1"
 platform-quarkus-ext-quinoa = "2.9.3"
 platform-quarkus-ext-aws = "3.23.0"
