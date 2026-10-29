@@ -18,10 +18,19 @@
 
 package ai.hamoni.control_room
 
+import ai.hamoni.control_room.service.OidcProviderConfigurationService
 import io.quarkus.arc.profile.IfBuildProfile
+import io.quarkus.oidc.OidcRequestContext
+import io.quarkus.oidc.OidcTenantConfig
+import io.quarkus.oidc.TenantConfigResolver
 import io.quarkus.runtime.StartupEvent
+import io.smallrye.mutiny.Uni
+import io.vertx.ext.web.RoutingContext
+import jakarta.annotation.Priority
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.event.Observes
+import jakarta.enterprise.inject.Alternative
+import jakarta.inject.Inject
 import org.h2.value.DataType
 import org.h2.value.TypeInfo
 import java.sql.Types
@@ -42,4 +51,21 @@ class AppInitializer {
         val dataType = DataType.getDataType(TypeInfo.TYPE_JSON.valueType)
         dataType.sqlType = Types.VARBINARY
     }
+}
+
+/**
+ * Use Keycloak for all requests in dev mode.
+ */
+@Alternative
+@Priority(Int.MAX_VALUE)
+@IfBuildProfile("dev")
+@ApplicationScoped
+class DevOidcTenantConfigResolver @Inject constructor(
+    private val providerConfigurationService: OidcProviderConfigurationService
+) : TenantConfigResolver {
+
+    override fun resolve(
+        routingContext: RoutingContext?,
+        requestContext: OidcRequestContext<OidcTenantConfig>
+    ): Uni<OidcTenantConfig> = Uni.createFrom().nullItem()
 }

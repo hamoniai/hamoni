@@ -56,6 +56,8 @@ class DataTenantResolver @Inject constructor(
 
     override fun resolveTenantId(): String? {
         TODO()
+        // This is left open because we need to decide what to do if the header is not available, redirecting the
+        // requests to the default organisation feels incorrect.
         val tenantId: String? = request.getHeader(REQUEST_ORGANISATION_ID)
         return if (tenantId != null) tenantId else this.defaultTenantId
     }
