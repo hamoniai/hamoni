@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package ai.hamoni.common.platform
+package ai.hamoni.common.core
 
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.MediaType.APPLICATION_JSON_TYPE
@@ -37,6 +37,7 @@ const val GLOBAL_SCHEMA = "platform"
  * Error handling constants
  */
 const val PROBLEM_TYPE_PREFIX = "https://hamoni.ai/problem/"
+
 /*
  * media types with character set.
  */

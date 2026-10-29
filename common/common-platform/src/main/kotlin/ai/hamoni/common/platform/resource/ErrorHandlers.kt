@@ -18,11 +18,11 @@
 
 package ai.hamoni.common.platform.resource
 
-import ai.hamoni.common.platform.APPLICATION_PROBLEM_JSON_UTF8
-import ai.hamoni.common.platform.APPLICATION_PROBLEM_JSON_UTF8_TYPE
-import ai.hamoni.common.platform.PROBLEM_TYPE_PREFIX
-import ai.hamoni.common.platform.PRODUCT_NAME
-import ai.hamoni.common.platform.REQUEST_PROPERTY_ID
+import ai.hamoni.common.core.APPLICATION_PROBLEM_JSON_UTF8
+import ai.hamoni.common.core.APPLICATION_PROBLEM_JSON_UTF8_TYPE
+import ai.hamoni.common.core.PROBLEM_TYPE_PREFIX
+import ai.hamoni.common.core.PRODUCT_ID
+import ai.hamoni.common.core.REQUEST_PROPERTY_ID
 import ai.hamoni.common.core.ResourceLogger
 import ai.hamoni.common.platform.data.Problem
 import ai.hamoni.common.platform.data.ValidationError
@@ -85,9 +85,9 @@ class ExceptionMappers {
 
     fun createErrorInstance(context: ContainerRequestContext, code: Int) =
         if (context.hasProperty(REQUEST_PROPERTY_ID)) {
-            "urn:${PRODUCT_NAME}:error?requestId=${context.getProperty(REQUEST_PROPERTY_ID)}&code=${code}"
+            "urn:${PRODUCT_ID}:error?requestId=${context.getProperty(REQUEST_PROPERTY_ID)}&code=${code}"
         } else {
-            "urn:${PRODUCT_NAME}:error?code=${code}"
+            "urn:${PRODUCT_ID}:error?code=${code}"
         }
 
     // Service exceptions
