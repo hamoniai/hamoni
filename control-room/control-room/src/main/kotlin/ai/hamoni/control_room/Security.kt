@@ -20,6 +20,7 @@ package ai.hamoni.control_room
 
 import ai.hamoni.common.core.exception.InvalidParameterException
 import ai.hamoni.common.core.util.cleanUrl
+import ai.hamoni.common.platform.REQUEST_ORGANISATION_ID
 import ai.hamoni.control_room.service.OidcProviderConfigurationService
 import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
 import io.quarkus.oidc.JavaScriptRequestChecker
@@ -55,7 +56,7 @@ class DataTenantResolver @Inject constructor(
 
     override fun resolveTenantId(): String? {
         TODO()
-        val tenantId: String? = request.getHeader("X-Tenant-ID")
+        val tenantId: String? = request.getHeader(REQUEST_ORGANISATION_ID)
         return if (tenantId != null) tenantId else this.defaultTenantId
     }
 }

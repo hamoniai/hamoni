@@ -26,7 +26,7 @@ import java.nio.charset.StandardCharsets
  * Product/platform names
  */
 const val PRODUCT_ID = "hamoni"
-const val PRODUCT_NAME = "hamoni"
+const val PRODUCT_NAME = "Hamoni"
 
 /*
  * Global database definitions
