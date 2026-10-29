@@ -1,6 +1,6 @@
 package ai.hamoni.control_room.resource
 
-import ai.hamoni.common.platform.APPLICATION_JSON_UTF8
+import ai.hamoni.common.core.APPLICATION_JSON_UTF8
 import ai.hamoni.control_room.data.AuthenticationProfile
 import ai.hamoni.control_room.data.AuthenticationProfileOrganisation
 import ai.hamoni.control_room.service.AuthenticationProfileService
