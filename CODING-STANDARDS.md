@@ -126,7 +126,7 @@ concern, covered under UI design and language (Part III).
   defect.
 - **The backend is stateless.** No session or request state is held server-side;
   the credential identifies the caller only, and the organisation travels in the
-  URL (ADR-0047, ADR-0048).
+  `X-Organisation-Id` header (ADR-0047, ADR-0064).
 - **There are no API keys.** Every actor — person, system account or agent — is
   an OIDC principal of its own (ADR-0050, ADR-0051).
 - **Identity attributes are owned by the OIDC claims.** Name and email are read,
@@ -261,9 +261,11 @@ Do not:
 - **Isolation is by schema, not by a discriminator column** (ADR-0052). Global
   tables are addressed with an explicit schema qualifier; every other table
   belongs to an organisation schema whose name is the organisation identifier.
-  The current tenant is resolved from the organisation path segment and set for
-  the request (Hibernate tenant resolution); this is the intended mechanism, to
-  be confirmed under reactive Panache.
+  The current tenant is resolved from the `X-Organisation-Id` header: a Quarkus
+  OIDC `TenantConfigResolver` loads the organisation's OIDC configuration from the
+  database and links it to the Hibernate tenant, which is set for the request;
+  this is the intended mechanism, to be confirmed under reactive Panache. Group A
+  requests are outside tenant resolution and address the global schema (ADR-0064).
 - **Migrations are split** into global and per-organisation sets, and applied to
   every organisation schema (ADR-0035, ADR-0052). Creating an organisation
   creates and migrates its schema. A rolling deployment may run two application
@@ -299,8 +301,9 @@ Do not:
 - Resources are **thin**: validate, delegate to a service, map to a response. No
   business logic in a resource.
 - The public entry point for starting a process is
-  `POST /api/{organisationId}/processes/{processId}/instances`, with the body
-  validated against the process's state schema (ADR-0029, ADR-0048).
+  `POST /api/processes/{processId}/instances`, with the body validated against
+  the process's state schema and the organisation in the `X-Organisation-Id`
+  header (ADR-0029, ADR-0064).
 - **Errors use the problem-details format (`application/problem+json`, RFC
   9457).** No stack traces on the wire, and no internal identifiers in error
   messages.
@@ -315,10 +318,13 @@ Do not:
   additive change is preferred. Record a breaking change in an ADR.
 - The interface is organised into **three annotated groups** (ADR-0049): **A**
   authentication and account under `/api/auth/`, and **B** business and **C**
-  screen flow under `/api/{organisationId}/`. Groups A and B are documented from
-  the code; group C is marked internal and kept out of the published description.
+  screen flow under `/api/`. Groups A and B are documented from the code; group C
+  is marked internal and kept out of the published description. The organisation
+  is the `X-Organisation-Id` header on B and C calls and is not required for A
+  (ADR-0064).
 - **Resources are stateless.** The credential carries the **principal** only; the
-  organisation is a path segment resolved per request (ADR-0047, ADR-0048).
+  organisation is the `X-Organisation-Id` header resolved per request
+  (ADR-0047, ADR-0064).
 - **OIDC validation is issuer-first**: read the issuer, resolve and cache the
   provider's keys, validate the signature locally, and never forward a token to a
   provider (ADR-0055).
@@ -326,15 +332,16 @@ Do not:
   time-to-live that never exceeds the session lifetime, with invalidation on a
   user-profile or organisation-provider change (ADR-0054).
 - **The interface shape is a resource with at most one sub-resource level**
-  (ADR-0060): `/api/{organisationId}/{component}/{id}/{sub-resource}`. A
+  (ADR-0060): `/api/{component}/{id}/{sub-resource}`, with the organisation in the
+  `X-Organisation-Id` header (ADR-0064). A
   sub-resource that is a **value** is read with `GET` and overwritten with `PUT`
   (`state`, `data`); one that is an **operation** is invoked with `POST`
   (`assign`). Do not nest deeper — address a sub-object by its own term, not by
-  another path level. A write is never a `GET` (ADR-0048).
+  another path level. A write is never a `GET` (ADR-0060).
 - **Documents are references, not payloads** (ADR-0061): business data holds a
-  document identifier, and the file itself is streamed from
-  `/api/{organisationId}/documents`; it is never held in memory or carried inside
-  a JSON body.
+  document identifier, and the file itself is streamed from `/api/documents`,
+  with the organisation in the `X-Organisation-Id` header; it is never held in
+  memory or carried inside a JSON body.
 
 ## 12. Concurrency and reactive programming
 
@@ -749,8 +756,8 @@ readonly jobs = this.#jobs.asReadonly();
 - An operation that **changes server state must never be reachable through an
   HTTP `GET`**. A `GET` retrieves; it never changes anything.
 - Example: **selecting an organisation is a frontend concern** — it changes the
-  organisation segment of the URL and redirects the application's calls, so it is
-  **not** a server request at all (ADR-0048). An operation that *does* change
+  `X-Organisation-Id` header the application sends on subsequent calls, so it is
+  **not** a server request at all (ADR-0064). An operation that *does* change
   server state — **completing a task**, for instance — is a **`POST`**, never a
   `GET`.
 

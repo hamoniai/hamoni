@@ -70,24 +70,39 @@ message types are not yet defined (see the scope note at the top).
 The interface is divided into three groups, marked in the codebase by an
 annotation that also drives documentation generation (ADR-0049).
 
-| Group | Scope | Documented | Purpose |
-| --- | --- | --- | --- |
-| **A — Authentication and account** | `/api/auth/*` | Public | Sign-in, the session credential, the caller's own account, organisation discovery. |
-| **B — Business** | `/api/{organisationId}/*` | Public | The domain: teams, projects, processes, instances, tasks, deployments. |
-| **C — Screen flow** | `/api/{organisationId}/*` | Internal | Reads the screens need to assemble a view; not in published documentation. |
+| Group | Scope | Organisation | Documented | Purpose |
+| --- | --- | --- | --- | --- |
+| **A — Authentication and account** | `/api/auth/*` | None; optional on the sign-in-methods call | Public | Sign-in, the session credential, the caller's own account, organisation discovery. |
+| **B — Business** | `/api/*` | `X-Organisation-Id` required | Public | The domain: teams, projects, processes, instances, tasks, deployments. |
+| **C — Screen flow** | `/api/*` | `X-Organisation-Id` required | Internal | Reads the screens need to assemble a view; not in published documentation. |
 
 A quality gate: every group A and group B resource carries the code annotation
 that generates its OpenAPI description. Group C carries the internal marker that
 keeps it out of the published document.
 
-### 3.2 Paths
+### 3.2 Paths and the organisation header
 
-- Group A: `/api/auth/…`, for example `/api/auth/me`.
-- Groups B and C: `/api/{organisationId}/…`, for example
-  `/api/{organisationId}/tasks/{taskId}/complete`.
+- Group A: `/api/auth/…`, for example `/api/auth/me`. A group A request is
+  **outside any organisation**: it addresses the global schema (ADR-0052) and
+  carries no organisation header.
+- Groups B and C: `/api/…`, for example `/api/tasks/{taskId}/complete`.
 
-The organisation is a **path segment on every business call** (ADR-0048). A
-request with no valid organisation segment is not a business call.
+The organisation travels in the **`X-Organisation-Id` header** (ADR-0064), whose
+value is the organisation identifier (a UUID presented as a string). A group B or
+C request with no valid header is **not a business call** and returns a
+problem-details `400`. The header is request input, never authorisation: the
+principal's access to the organisation is still checked per request (ADR-0043,
+ADR-0054).
+
+The one group A exception is **resolving the sign-in methods to show a person**:
+that request optionally accepts `X-Organisation-Id`. With the header it returns
+that organisation's authentication configuration; without it, it returns the
+**default organisation's** configuration. The default organisation is the sole
+organisation in single-organisation mode and, in multi-organisation mode,
+boot-time configuration (a random identifier is assigned if none is supplied on
+first boot). This lets the public and private sign-in pages render without
+exposing the identifier of any organisation (ADR-0045). The header here selects
+configuration only; it never grants access.
 
 ### 3.3 The backend is stateless
 
@@ -103,7 +118,7 @@ Consequences that are easy to forget:
   instance, or a token issued by one instance cannot be read by another. Key
   rotation invalidates every live session.
 - Machine access and browser access are **symmetric**: both present the same
-  principal, and both carry the organisation in the path.
+  principal, and both carry the organisation in the `X-Organisation-Id` header.
 
 The Angular application stores only **local preferences** — the default
 organisation, the display theme — in local state. It holds **no business state**.
@@ -123,9 +138,10 @@ the platform grants the agent a principal that identifies the agent *and* the
 person it works for. A principal identifies only *who is authenticated*; it
 carries no organisation and no authorisation.
 
-The organisation and the grant are resolved **per request** from the path
-segment and the cache (§3.7). This keeps browser and machine callers on one
-model and keeps the backend scalable (ADR-0047).
+The organisation and the grant are resolved **per request** from the
+`X-Organisation-Id` header and the cache (§3.7). A group A request is outside
+tenant resolution. This keeps browser and machine callers on one model and keeps
+the backend scalable (ADR-0047).
 
 ### 3.5 No API keys
 
@@ -158,6 +174,12 @@ proxy for an attack on a provider, so validation is **issuer-first** (ADR-0055):
 
 Careful configuration is required so a token issued for one provider is never
 validated against another and never cross-pollinated.
+
+The organisation whose provider configuration is used is selected by the
+`X-Organisation-Id` header; the sign-in-methods call falls back to the default
+organisation when it is absent (§3.2). A Quarkus OIDC `TenantConfigResolver` loads
+that configuration from the database, and the resolved tenant links to the
+organisation's Hibernate tenant (§4.2).
 
 ### 3.7 The authorisation cache
 
@@ -209,6 +231,9 @@ a resource with at most one sub-resource level.
 - The Angular client is **typed from that description** and kept in step with it
   (`CODING-STANDARDS.md` §19). Types for group C are still generated; only the
   *publication* of group C is suppressed (ADR-0049).
+- The OpenAPI description declares `X-Organisation-Id` as **required** on every
+  group B and C operation and **optional** on the sign-in-methods operation
+  (ADR-0064).
 
 ### 3.10 Versioning
 
@@ -219,9 +244,10 @@ applies to the whole interface is not yet settled (§6).
 
 ### 3.11 The resource and sub-resource shape
 
-Every endpoint is `/api/{organisationId}/{component}/{id}/{sub-resource}`, at most
-**one** sub-resource level deep (ADR-0060). A sub-resource that is a **value** is
-read with `GET` and overwritten with `PUT`; one that is an **operation** is
+Every endpoint is `/api/{component}/{id}/{sub-resource}`, at most **one**
+sub-resource level deep, with the organisation carried in the
+`X-Organisation-Id` header (ADR-0060, ADR-0064). A sub-resource that is a **value**
+is read with `GET` and overwritten with `PUT`; one that is an **operation** is
 invoked with `POST`. The **task component** is the reference shape, and the same
 shape extends to processes and the other components:
 
@@ -249,9 +275,10 @@ Two consequences worth stating plainly:
 A document is a **reference to a file blob** (ADR-0061). Business data carries the
 document **identifier**; the task's representation shows which documents it
 references, never their content. Document access is its own component,
-`/api/{organisationId}/documents`, and upload and download are **multipart or
-streamed** — the one part of the interface that is not JSON. The concrete
-storage, streaming and permission rules are open (§6).
+`/api/documents`, with the organisation in the `X-Organisation-Id` header, and
+upload and download are **multipart or streamed** — the one part of the interface
+that is not JSON. The concrete storage, streaming and permission rules are open
+(§6).
 
 ---
 
@@ -269,6 +296,10 @@ There are two kinds of schema (ADR-0052):
   organisation-scoped: **user profiles**, team and project configuration,
   process and deployment state, and the organisation's audit trail.
 
+Group A requests address the global schema explicitly and are outside tenant
+resolution; group B and C requests are resolved to the organisation's schema from
+the `X-Organisation-Id` header (ADR-0064).
+
 ### 4.2 Schema-per-organisation isolation
 
 Isolation is by **schema, not by a discriminator column** (ADR-0052). Global
@@ -277,12 +308,17 @@ belongs to an organisation schema whose name is the organisation identifier.
 There is no way for a query against one organisation to reach another, because
 the schema is part of the query's identity.
 
-- The organisation is **resolved from the path segment** (§3.2) and set as the
-  **current tenant** for the request.
+- The organisation is **resolved from the `X-Organisation-Id` header** (§3.2) and
+  set as the **current tenant** for the request. A Quarkus OIDC
+  `TenantConfigResolver` uses the header to load the organisation's OIDC
+  configuration from the database, and that configuration links to the
+  organisation's Hibernate tenant.
 - Hibernate's tenant resolution — `MultiTenantConnectionProvider` and
   `CurrentTenantIdentifierResolver` — is the intended mechanism; its exact
   behaviour under **reactive Panache** is to be confirmed before the first
   migration is written.
+- Group A requests are **outside tenant resolution**; they address the global
+  schema with an explicit qualifier (§4.1).
 - A missing or wrong tenant selection is a **defect**, exactly as a missing
   filter was under the earlier rule (ADR-0025).
 
@@ -380,9 +416,9 @@ holds no business rules (`control-room-ui` AGENTS.md). It follows
 
 Three points that are specific to this platform:
 
-- **Switching organisation is a frontend concern.** It changes the organisation
-  segment of the URL and redirects the application's calls; it is not a server
-  request, and the credential does not change (ADR-0048).
+- **Switching organisation is a frontend concern.** It updates the
+  `X-Organisation-Id` header the application sends on subsequent calls; it is not
+  a server request, and the credential does not change (ADR-0064).
 - **A stored default organisation never auto-enters.** If the person cannot
   enter it, they land on the **organisation selector** for their next action —
   select another, create one, or, in single-organisation mode, stop. The same
@@ -451,3 +487,9 @@ These are deliberately **not** decided. They are recorded here and in
     multipart/streaming rules (ADR-0061).
 15. **The Control Room ↔ Process Runner contract** — the queues, message types
     and events exchanged over Quarkus Reactive Messaging. Out of scope here, and not yet designed.
+16. **The default organisation across restarts in multi-organisation mode.**
+    On first boot the default organisation identifier is boot-time configuration
+    and, if absent, is assigned a random identifier. It is undecided whether a
+    subsequent boot must always supply it or may infer it from the database, and
+    whether supplying a different value means the default has deliberately
+    changed or is a misconfiguration.
