@@ -52,3 +52,4 @@ val APPLICATION_PROBLEM_JSON_UTF8_TYPE = MediaType(APPLICATION_JSON_TYPE.type, "
  * Request/response properties.
  */
 const val REQUEST_PROPERTY_ID = "Request-Id"
+const val REQUEST_ORGANISATION_ID = "X-Organisation-Id"
