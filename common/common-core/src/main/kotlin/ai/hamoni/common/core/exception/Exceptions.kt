@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package ai.hamoni.common.platform.exception
+package ai.hamoni.common.core.exception
 
 import kotlin.reflect.KFunction
 
@@ -73,5 +73,30 @@ open class SecurityException : ServiceException {
     constructor(serviceMethod: KFunction<Any?>, message: String) : super(serviceMethod, message)
     constructor(serviceMethod: KFunction<Any?>, message: String, cause: Throwable) : super(serviceMethod, message, cause)
     constructor(serviceMethod: KFunction<Any?>, cause: Throwable) : super(serviceMethod, cause)
+}
+
+/**
+ * An exception mapping an invalid or bad input. Should not be used often, this is only for when
+ * there is custom low level validation being done. All other times, the Hibernate validator should
+ * be used.
+ */
+open class InvalidParameterException : ApplicationException {
+    /**
+     * A pointer to the field in error
+     */
+    val field: String
+
+    constructor(field: String) : super() {
+        this.field = field
+    }
+    constructor(field: String, message: String) : super(message) {
+        this.field = field
+    }
+    constructor(field: String, message: String, cause: Throwable) : super(message, cause) {
+        this.field = field
+    }
+    constructor(field: String, cause: Throwable) : super(cause) {
+        this.field = field
+    }
 }
 

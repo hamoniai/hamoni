@@ -19,12 +19,15 @@
 package ai.hamoni.control_room.service
 
 import ai.hamoni.control_room.data.AuthenticationProfile
+import io.quarkus.oidc.OidcSession
+import io.quarkus.oidc.OidcTenantConfig
 import io.quarkus.runtime.annotations.RegisterForReflection
 import io.smallrye.mutiny.Uni
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.util.UUID
 
 /*
  * All frontend specific services go in here. Services that common to the frontend and backend should go into one of
@@ -39,7 +42,9 @@ import kotlinx.serialization.Serializable
  */
 @ApplicationScoped
 @RegisterForReflection
-class AuthenticationProfileService @Inject constructor() {
+class AuthenticationProfileService @Inject constructor(
+    private val oidcSession: OidcSession
+) {
 
     /**
      * Get the current logged-in authentication profile.
@@ -50,17 +55,38 @@ class AuthenticationProfileService @Inject constructor() {
     }
 
     /**
-     * Logout the current authentication profile.
+     * Logout the current authentication profile locally.
+     *
+     * This clears the Quarkus session cookie only; it deliberately leaves the
+     * provider's own session intact (for example, the person remains signed in to
+     * Keycloak). Provider-initiated logout is a separate decision.
      */
-    fun logout(): Uni<Void> {
-        // Destroy the principle and all authorisation cache objects for this authentication profile.
-        TODO()
-    }
+    fun logout(): Uni<Void> = oidcSession.logout()
 }
 
+/**
+ * hydration types for AuthenticationProfileService
+ */
 @Serializable
 enum class AuthenticationProfileServiceHydration {
     @SerialName("organisations")
     ORGANISATIONS
 }
 
+/**
+ * Service for OIDC provider lookups.
+ */
+@ApplicationScoped
+class OidcProviderConfigurationService {
+
+    /**
+     * Get a provider by identifier.
+     * This might need to get a value from the database of the know provider and then map it to the well known hosts.
+     * This is also called very frequently, so probably needs a cache.
+     *
+     * @param id The identifier of the provider
+     * @return the tenant configuration, or null to use the default tenant.
+     */
+    fun forProvider(id: UUID): Uni<OidcTenantConfig> =
+        Uni.createFrom().nullItem()
+}

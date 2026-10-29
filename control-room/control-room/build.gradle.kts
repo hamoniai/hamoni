@@ -27,6 +27,7 @@ dependencies {
     implementation(libs.platform.quarkus.ext.quinoa)
 
     // Projects
+    implementation(project(":common-core"))
     implementation(project(":common-platform"))
 
     // Main runtime (Quarkus components to include)
@@ -50,8 +51,7 @@ dependencies {
     quarkusDev(libs.platform.quarkus.ext.h2db)
 
     // Test dependencies
-    testImplementation("io.quarkus:quarkus-jdbc-h2")
-    testImplementation(libs.platform.quarkus.ext.h2db)
+    testImplementation(project(":common-test"))
     testImplementation("io.rest-assured:rest-assured")
     testImplementation("io.rest-assured:kotlin-extensions")
 }

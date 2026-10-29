@@ -23,11 +23,14 @@ plugins {
 description = "Provides test support for all other projects"
 
 dependencies {
+    // These dependencies need to be exposed due to annotations
+    api("io.quarkus:quarkus-test-security")
+
+    // These only need to be available
     implementation("io.quarkus:quarkus-flyway")
     implementation("io.quarkus:quarkus-jdbc-h2")
     implementation("io.quarkus:quarkus-junit")
     implementation("io.quarkus:quarkus-test-hibernate-reactive-panache")
-    implementation("io.quarkus:quarkus-test-security")
     implementation(libs.platform.quarkus.ext.mockk)
     implementation(libs.platform.quarkus.ext.h2db)
 }

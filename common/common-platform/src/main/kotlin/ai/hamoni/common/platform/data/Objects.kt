@@ -18,9 +18,12 @@
 
 package ai.hamoni.common.platform.data
 
+import kotlinx.serialization.Serializable
+
 /**
  * An object that maps to an error being sent to the frontend. Maps RFC9457
  */
+@Serializable
 sealed class Problem {
     /**
      * Reference RFC9457 type
@@ -47,6 +50,7 @@ sealed class Problem {
     /**
      * A subclass of problem specifically for general errors
      */
+    @Serializable
     data class GenericProblem(
         override val type: String,
         override val title: String,
@@ -57,6 +61,7 @@ sealed class Problem {
     /**
      * A subclass of problem specifically for validation errors.
      */
+    @Serializable
     data class ValidationProblem(
         override val type: String,
         override val title: String,
@@ -72,6 +77,7 @@ sealed class Problem {
 /**
  * A class representing a validation problem
  */
+@Serializable
 data class ValidationError (
     /**
      * The exact error message of the error

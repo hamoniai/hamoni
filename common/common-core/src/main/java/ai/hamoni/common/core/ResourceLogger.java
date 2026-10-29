@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package ai.hamoni.common.platform;
+package ai.hamoni.common.core;
 
 import org.jboss.logging.Logger;
 import org.jboss.logging.annotations.Cause;
@@ -55,4 +55,11 @@ public interface ResourceLogger {
     @LogMessage(level = Logger.Level.WARN)
     @Message(id = 103, format = Message.Format.MESSAGE_FORMAT, value = "Security error: (''{0}'') ''{1}'': {2}")
     void restSecurityError(String reference, String service, String message);
+
+    /*
+     * Data format/parsing exceptions
+     */
+    @LogMessage(level = Logger.Level.INFO)
+    @Message(id = 200, format = Message.Format.MESSAGE_FORMAT, value = "Invalid data format: (''{0}'') field ''{1}'': ''{2}''")
+    void formatError(String reference, String field, String message);
 }

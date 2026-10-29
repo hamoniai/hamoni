@@ -24,6 +24,28 @@ class AuthenticationResource @Inject constructor(
     ) {
 
     /**
+     * Start the OIDC authorization code flow, or continue to the next login stage
+     * when the person is already authenticated.
+     *
+     * The frontend must navigate the whole browser to this endpoint rather than
+     * calling it with a JavaScript request. The optional provider is consumed by
+     * the tenant resolver before authentication; the next path is the frontend
+     * route shown once the code exchange has completed.
+     *
+     * FIXME: Need to check teh return but do it safely because we might wan tto allow a non
+     * local redurect if in dev mode, but not in production. Basically we need to sanitise
+     * the returnUrl if provided, if not, then just return to /
+     */
+    @GET
+    @Path("/login")
+    fun login(@RestQuery returnUrl: String): Uni<RestResponse<Void>> =
+        Uni.createFrom().item {
+            RestResponse.ResponseBuilder.create<Void>(RestResponse.Status.SEE_OTHER)
+                //.header(LOCATION_HEADER, nextLoginStage(next).toString())
+                .build()
+        }
+
+    /**
      * Get the current authentication profile
      */
     @GET
@@ -52,7 +74,7 @@ class AuthenticationResource @Inject constructor(
             }
 
     /**
-     * Logout
+     * Logout locally, clearing the Quarkus session cookie.
      */
     @GET
     @Path("/logout")

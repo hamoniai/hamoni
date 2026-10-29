@@ -81,6 +81,7 @@ tasks.named { it == "kaptGenerateStubsTestKotlin" || it == "kaptTestKotlin" }.co
 allOpen {
     annotation("jakarta.ws.rs.Path")
     annotation("jakarta.enterprise.context.ApplicationScoped")
+    annotation("jakarta.enterprise.context.RequestScoped")
     annotation("jakarta.persistence.Entity")
     annotation("io.quarkus.test.junit.QuarkusTest")
     annotation("io.quarkus.runtime.annotations.Recorder")

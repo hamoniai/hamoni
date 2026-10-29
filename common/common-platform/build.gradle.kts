@@ -23,6 +23,7 @@ plugins {
 description = "Common platform functionality for Quarkus."
 
 dependencies {
+    implementation(project(":common-core"))
     implementation("jakarta.validation:jakarta.validation-api")
 
     // Test classes

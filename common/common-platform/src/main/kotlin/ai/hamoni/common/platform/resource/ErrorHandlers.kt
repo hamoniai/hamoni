@@ -23,11 +23,12 @@ import ai.hamoni.common.platform.APPLICATION_PROBLEM_JSON_UTF8_TYPE
 import ai.hamoni.common.platform.PROBLEM_TYPE_PREFIX
 import ai.hamoni.common.platform.PRODUCT_NAME
 import ai.hamoni.common.platform.REQUEST_PROPERTY_ID
-import ai.hamoni.common.platform.ResourceLogger
+import ai.hamoni.common.core.ResourceLogger
 import ai.hamoni.common.platform.data.Problem
 import ai.hamoni.common.platform.data.ValidationError
-import ai.hamoni.common.platform.exception.EntityNotFoundException
-import ai.hamoni.common.platform.exception.SecurityException
+import ai.hamoni.common.core.exception.EntityNotFoundException
+import ai.hamoni.common.core.exception.InvalidParameterException
+import ai.hamoni.common.core.exception.SecurityException
 import jakarta.validation.ConstraintViolationException
 import jakarta.validation.ValidationException
 import jakarta.ws.rs.NotFoundException
@@ -128,6 +129,25 @@ class ExceptionMappers {
         val errorStatus = RestResponse.Status.NOT_FOUND
         val errorObject: Problem = Problem.GenericProblem(
             "$PROBLEM_TYPE_PREFIX/not-found",
+            errorStatus.reasonPhrase,
+            errorStatus.statusCode,
+            exception.message ?: errorStatus.reasonPhrase,
+            createErrorInstance(context, errorStatus.statusCode)
+        )
+        return RestResponse.ResponseBuilder.create(errorStatus, errorObject)
+            .type(APPLICATION_PROBLEM_JSON_UTF8_TYPE)
+            .build()
+    }
+
+    @ServerExceptionMapper
+    @Produces(APPLICATION_PROBLEM_JSON_UTF8)
+    fun handleInvalidParameterExceptionMapper(exception: InvalidParameterException, context: ContainerRequestContext): RestResponse<Problem> {
+        val reference = getRequestId(context)
+        ResourceLogger.LOGGER.formatError(reference, exception.field, exception.message)
+
+        val errorStatus = RestResponse.Status.BAD_REQUEST
+        val errorObject: Problem = Problem.GenericProblem(
+            "$PROBLEM_TYPE_PREFIX/bad-request",
             errorStatus.reasonPhrase,
             errorStatus.statusCode,
             exception.message ?: errorStatus.reasonPhrase,
