@@ -131,7 +131,7 @@ class OidcTenantConfigResolver @Inject constructor(
                         }
                     }
                 }
-                .onItem().transformToUni { providerConfigurationService.forProvider(it) }
+                .onItem().transformToUni { providerConfigurationService.getById(it) }
         } else {
             Uni.createFrom().nullItem()
         }

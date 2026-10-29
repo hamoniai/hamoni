@@ -87,6 +87,6 @@ class OidcProviderConfigurationService {
      * @param id The identifier of the provider
      * @return the tenant configuration, or null to use the default tenant.
      */
-    fun forProvider(id: UUID): Uni<OidcTenantConfig> =
+    fun getById(id: UUID): Uni<OidcTenantConfig> =
         Uni.createFrom().nullItem()
 }
