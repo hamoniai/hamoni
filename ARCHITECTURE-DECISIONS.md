@@ -1410,11 +1410,56 @@ ADR-0060 and ADR-0061.
 
 ---
 
+### ADR-0065 — The Control Room signs in with OIDC code flow and an encrypted session cookie
+
+**Status:** Accepted
+
+**Decision.** The Control Room uses the Quarkus OIDC **authorization code flow**
+in **hybrid** mode. The frontend login page navigates the whole browser to
+`GET /api/auth/login?provider=<provider uuid>&returnUrl=<path>`. The login
+resource does not interpret the provider; the OIDC tenant resolver does. Quarkus
+handles the callback at `/api/auth/callback` and returns an encrypted, HttpOnly
+session cookie (`q_session`) that Quarkus uses as the security identity on later
+requests. Subsequent browser calls are authenticated from that cookie, never from
+a token held in JavaScript. Logout at `/api/auth/logout` is a local logout that
+clears the session cookie; provider-initiated logout remains a separate decision.
+
+**Reason.** The login page belongs to the frontend and must choose among providers
+whose configuration varies by organisation, so the backend cannot decide the
+provider from a single static configuration. Performing the code exchange in
+Quarkus keeps the OIDC tokens out of the browser, gives the backend a normal
+`SecurityIdentity`, and lets the same credential work for browser and machine
+callers. Hybrid mode keeps bearer-token authentication available for a machine
+caller without exposing the OIDC token to the browser.
+
+**Consequences.** The post-login redirect is same-origin in production and falls
+back to `/`; an off-site redirect is never allowed there. Development runs the
+Quinoa frontend and the Quarkus backend on different ports, so a dev-only
+mechanism is required; its form is not decided. An unauthenticated request under
+`/api/` other than the login entry point returns `401` rather than a provider
+redirect. Provider configuration resolution and the effect of the default
+organisation on schema isolation remain open questions (below). Refines ADR-0047
+and ADR-0055; relates to ADR-0052 and ADR-0064.
+
+---
+
 ## Open questions
 
 These are deliberately **not** decided. Do not invent an answer; raise an ADR
 when one is settled.
 
+- **The dev-mode login redirect.** Production keeps the post-login redirect
+  same-origin. Development serves the Quinoa frontend and the Quarkus backend on
+  different ports, so a dev-only mechanism is needed; whether it is CORS,
+  configuration or something else is not decided.
+- **OIDC provider configuration resolution.** The tenant resolver must load the
+  provider configuration from the organisation's configuration and then from the
+  default organisation's configuration. How that is expressed in the database is
+  not designed, and the resolution must neither silently forward to the default
+  organisation nor leak organisation identifiers.
+- **The default organisation and schema isolation.** Each organisation is intended
+  to have its own schema (ADR-0052), but the effect and implications of the default
+  organisation must be evaluated before that isolation is implemented.
 - Where environment **classification** lives precisely, and how far the delivery
   guard reaches.
 - The exact home of **process settings** and the **process definition screen**.

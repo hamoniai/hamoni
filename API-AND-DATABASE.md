@@ -104,6 +104,22 @@ first boot). This lets the public and private sign-in pages render without
 exposing the identifier of any organisation (ADR-0045). The header here selects
 configuration only; it never grants access.
 
+Group A carries the browser login journey (ADR-0065). The frontend navigates the
+whole browser to `GET /api/auth/login?provider=<provider uuid>&returnUrl=<path>`.
+The login resource does not interpret the provider; the OIDC tenant resolver does.
+Quarkus performs the authorization code flow at `/api/auth/callback` and returns
+the encrypted, HttpOnly `q_session` cookie, which is the security identity on
+later calls.
+
+The post-login redirect is same-origin in production and falls back to `/`; an
+off-site redirect is never allowed there. Development serves the Quinoa frontend
+and the Quarkus backend on different ports, so a dev-only mechanism is required;
+its form is not yet decided. `GET /api/auth/logout` is a local logout and clears
+the session cookie.
+
+An unauthenticated request under `/api/` other than the login entry point returns
+`401` rather than a provider redirect.
+
 ### 3.3 The backend is stateless
 
 The backend holds **no session state and no current-organisation state**
