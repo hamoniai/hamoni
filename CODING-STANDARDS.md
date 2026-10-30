@@ -45,9 +45,16 @@ concern, covered under UI design and language (Part III).
 - **Immutability first.** Prefer `val`; prefer immutable collections; prefer data
   classes for value objects. Mutability is a deliberate, local decision — a JPA
   entity is the one standing exception, where properties are `var` (§10).
-- **Null safety is not optional.** No `!!`, and no platform-type leakage across a
-  boundary. Model absence explicitly (a nullable type or a sealed type) — never a
-  sentinel value.
+- **Null safety is not optional.** No `!!` except in a projection constructor
+  that builds from a persisted entity whose source column is non-null; document
+  why the value cannot be absent. No platform-type leakage across a boundary.
+  Model absence explicitly (a nullable type or a sealed type) — never a sentinel
+  value.
+- **A nullable collection means "not loaded"; an empty collection means "loaded
+  and empty".** Do not default an optional hydrated collection to `emptyList()`.
+- **Enum names are upper case; the serialised name is separate.** Enum constants
+  use `UPPER_SNAKE_CASE`. Where the interface needs a different case, use
+  `@SerialName`.
 - **No wildcard imports.** No unused imports.
 - **Sealed hierarchies** for domain states and results. An exhaustive `when` over
   a sealed type is required; do not add an `else` branch that hides a new case.
@@ -89,6 +96,11 @@ concern, covered under UI design and language (Part III).
   may contain several related classes; grouping related classes together is the
   preferred default. Split a file only when it grows unwieldy or its classes stop
   belonging together.
+- A package belongs to the project that owns it. Do not create a package in one
+  project that the package-to-project mapping assigns to another.
+- Within a file containing several classes, order the classes alphabetically by
+  class name.
+- Tests mirror the package of the class under test; see §16.2.
 - **Dependency direction is one-way.** Projects under `control-room/` and
   `process-runner/` may depend on projects under `common/`; the two application
   areas never depend on each other; `common/` depends on neither.
@@ -164,12 +176,21 @@ concern, covered under UI design and language (Part III).
 - **Every architectural decision is recorded** as an ADR in
   [`ARCHITECTURE-DECISIONS.md`](./ARCHITECTURE-DECISIONS.md). A code change that
   makes a new decision writes the record in the same change.
+- **Stop and ask when the design is missing.** Do not invent a field, table,
+  default identifier, return value or placeholder value to make an undecided
+  model compile or boot.
+- **A deliberate unimplemented method is a `TODO()` stub.** It must be
+  documented as awaiting the missing design and tracked. Do not return fabricated
+  data in place of the missing implementation.
 - **Long-form documentation** is AsciiDoc under `docs/`, an Antora component
   (ADR-0040). Anything here that stabilises graduates into Antora.
 
 ## 6. Commits and reviews
 
 - One concern per commit; a clear message stating what and why.
+- Do not change unrelated code. If a requested change cannot be completed without
+  touching another concern, stop and explain why rather than expanding the scope
+  silently.
 - Changes are small and reviewable; the build, lint and tests pass before review.
 - **A pull request must be readable by a human.** Code may be authored with AI,
   but **a human reviews the code for quality on every pull request**, so the
@@ -192,13 +213,18 @@ Do not:
 - Copy convention logic from the shared Gradle scripts into a project (§3).
 - Let one application area depend on the other, or on `common/` in a way that
   drags a framework into a shared library (§2).
-- Use `!!`, a wildcard import, a sentinel value for absence, or an `else` branch
-  that hides a new sealed case (§1.2).
+- Use `!!` outside the projection exception, a wildcard import, a sentinel value
+  for absence, or an `else` branch that hides a new sealed case (§1.2).
 - Use an exception for an expected business outcome (§1.2).
 - Write to the console instead of the logging facade (§1.2).
 - Leave commented-out code, debug scaffolding, or an untracked TODO behind (§6).
 - Deviate from a coding standard or an architectural decision without documenting
   the deviation and its reason at the point of the code (§5).
+- Invent a placeholder field, column, default identifier or fake return value for
+  an undecided model (§5).
+- Write a custom validator for a rule Bean Validation can express (§11).
+- Duplicate a path, header or query-parameter literal instead of using its
+  constant (§16.6).
 
 ---
 
@@ -227,10 +253,15 @@ Do not:
   boundary — never a raw string and never a bespoke value class. The interface
   presents an identifier as a string, because OpenAPI and TypeScript have no UUID
   type; the backend holds the `UUID`, and the database holds its native UUID type.
+- **`java.util.UUID` requires a shared Kotlin serializer.** Do not replace it
+  with `kotlin.uuid.Uuid` to satisfy serialisation. The serializer lives in the
+  common project that owns its package.
 - **Equality uses the technical identifier.** A Hamoni object has **no user-facing
   business key** — a team is *named* for people, but names are not unique — so
   `equals` and `hashCode` compare the technical `UUID`, never a name, label or
   other display field.
+- **Equality is implemented from the technical identifier** using
+  `Objects.hash(id)` and the inline equality form.
 - **Money and other decimals are `BigDecimal`** — never a binary floating-point
   type — with **precision 15 and scale 5** (10 integer digits, 5 fractional).
   Where a value is money the **currency is explicit**. Because JSON has a single
@@ -246,6 +277,10 @@ Do not:
   remove fields rather than mapping to a duplicate object. For a list or a
   search, query and return a **lighter projection view**; a second call retrieves
   the full object (ADR-0059).
+- **Every top-level API construct has a header projection.** Sub-components do
+  not need one.
+- **Hydration options are named after the fields they hydrate.** A `config`
+  option is not acceptable for a `configuration` field.
 
 ## 10. Persistence
 
@@ -292,7 +327,19 @@ Do not:
 - **A JPA entity's properties are `var`**, never `val` — Hibernate must be able to
   set them (§1.2).
 - **A projection uses `val`** and exposes a constructor that builds it from the
-  main type (ADR-0059).
+  main type (ADR-0059). The projection constructor may use `!!` because the
+  persisted source column is non-null.
+- **Every data object carries its JPA annotations.** Projections do not.
+- **Use the correct transient annotation:**
+  - `jakarta.persistence.Transient` — not stored, still serialised;
+  - `kotlinx.serialization.Transient` — stored, not serialised.
+- **An `@ElementCollection` target must have at least one persistent field.** An
+  empty `@Embeddable` cannot be mapped; stop and ask rather than adding a
+  placeholder column.
+- **Prefer a unidirectional association** when the child never needs to navigate
+  to the parent. Do not add `mappedBy` or a back-reference without that need.
+- **Promote a sub-component to an entity** when it must be queried or managed
+  independently; otherwise keep it embeddable.
 
 ## 11. Interface
 
@@ -300,6 +347,24 @@ Do not:
   non-blocking end to end.
 - Resources are **thin**: validate, delegate to a service, map to a response. No
   business logic in a resource.
+- **Name resource methods `<verb><sub-component><specialisation>`**, for example
+  `get`, `getAuthConfiguration`, `getAuthConfigurationForDefault`,
+  `getConfiguration`.
+- **Name service methods after the object being retrieved**, for example
+  `getById`, `getConfigurationById`, `getAuthConfigurationById`.
+- **A resource calls the service method that returns what it serves.** Never call
+  a generic method and slice its result in the resource.
+- **Prefer framework validation.** Use Jakarta Bean Validation annotations such
+  as `@Pattern` on parameters rather than a hand-written validation method.
+- **Bind enums directly.** Do not accept a string and parse it when the framework
+  can bind the enum.
+- **Do not add response-construction wrappers** for simple success responses.
+- **Where one resource has both protected and public operations**, keep one
+  resource class and place `@PermitAll` on the public methods only.
+- **Validate every caller-supplied redirect target as a local path.** Never allow
+  an off-site redirect.
+- **Bootstrap endpoints are explicitly unauthenticated** and must not reveal an
+  organisation's identity or enable enumeration.
 - The public entry point for starting a process is
   `POST /api/processes/{processId}/instances`, with the body validated against
   the process's state schema and the organisation in the `X-Organisation-Id`
@@ -382,23 +447,69 @@ Do not:
 
 ## 16. Testing (backend)
 
-- **JUnit is the test framework**, and every test runs under **`@QuarkusTest`**.
-- **Mock collaborators with Mockk.** Mock only what is genuinely external; use
-  real backing services through **Testcontainers or development services** — the
-  database engine is never mocked.
-- **Assert through the Quarkus `UniAsserter`.** Because the project is reactive, a
-  subscription is asserted inside a `UniAsserter`; within it, use **AssertJ**
-  fluent assertions for the actual checks.
-- **Structure every test as Given-When-Then** — the setup, the action and the
-  assertion, in that order.
-- **Reactive tests run on the Vert.x event loop:** annotate with
-  **`@RunOnVertxContext`**. **Secured paths are tested with `@TestSecurity`.**
-- **ArchUnit** guards the boundaries (no dependency from one application area
-  to the other; `common/` depends on neither).
+### 16.1 Choose the test layer
+
+- Test a class at the layer it belongs to. Do not test a service through
+  RestAssured, or a repository through a service test.
+- Repositories and services are reactive: test them with `@QuarkusTest`, assert
+  through `UniAsserter`, and use AssertJ inside it.
+- Reactive tests run on the Vert.x event loop: annotate with
+  `@RunOnVertxContext`.
+- The API is tested with `@QuarkusTest` and RestAssured. RestAssured does not use
+  the reactive assertion pattern, so `UniAsserter` is not required.
+- Non-reactive code — utilities, platform integration and pure functions — uses
+  plain JUnit. It needs `@QuarkusTest` only when it depends on the Quarkus or CDI
+  runtime.
+
+### 16.2 Match the production structure
+
+- A test class lives in the same package as the class under test.
+- A test class is named after the class under test: `<Class>Test`.
+- Where one source file contains several classes, the test file is named after
+  the source file — `<SourceFile>Test.kt` — and contains one independent test
+  class per class under test.
+- Do not merge unrelated classes into one test class.
+
+### 16.3 Mock the layer's collaborators
+
+- Mock the collaborators of the class under test with Mockk.
+- In an integration test, mock only genuinely external collaborators and use real
+  backing services through Testcontainers or development services. The database
+  engine is never mocked.
+- A collaborator used by every test in a class may be a class-level mock, reset
+  between tests.
+- Do not test a class through another layer.
+
+### 16.4 Test behaviour, not assumed content
+
+- Assert the output produced by the input.
+- Do not write enforcement tests that assert incidental content, enumerate every
+  condition, or assume a display value, default identifier or placeholder value.
+- Delete a test that cannot fail for a meaningful behavioural reason.
+- Do not test placeholder data that is not part of the design.
+
+### 16.5 Security in tests
+
+- A service or repository test carries `@TestSecurity`, because authorisation is
+  enforced at the service boundary.
+- API security regressions may use RestAssured with or without `@TestSecurity`,
+  depending on what the endpoint requires.
+- Login and bootstrap endpoints are tested unauthenticated; do not add
+  `@TestSecurity` to a public login call.
+
+### 16.6 Structure and literals
+
+- Structure every test as Given-When-Then, with separate `// Given`, `// When`
+  and `// Then` sections. Leave the section and a blank line where there is no
+  activity.
+- Use existing constants for paths, header names and query-parameter names. Do
+  not duplicate them as literals in tests.
 - Name tests for behaviour: `` `a pended process suspends all parallel paths` ``.
 - **Every domain state transition has a test.** The state models (ADR-0012,
   ADR-0013) and the pend and exception semantics (ADR-0014, ADR-0015) are the
   highest-risk areas and must be covered.
+- **ArchUnit** guards the boundaries (no dependency from one application area
+  to the other; `common/` depends on neither).
 - Deterministic tests only: no reliance on the wall clock and no sleeps; inject a
   clock.
 
@@ -428,6 +539,17 @@ Do not:
   technical identifier (§9).
 - Name the technical identifier or a foreign key outside the convention — `id`,
   `<table>_id` / `<table>Id` (§10).
+- Parse an enum or query parameter by hand when the framework can bind it (§11).
+- Call a generic service method and slice its result in a resource (§11).
+- Use `emptyList()` to represent “not hydrated”, or a non-null collection where
+  absence is meaningful (§1.2, §9).
+- Use a bidirectional mapping when the child never navigates to the parent (§10).
+- Map an empty `@Embeddable` as an `@ElementCollection` (§10).
+- Assert assumed content, dummy placeholders or unrelated implementation detail
+  in a test (§16.4).
+- Test a service through RestAssured, or a repository through a service test
+  (§16.1).
+- Merge Given-When-Then into one section (§16.6).
 
 ---
 
