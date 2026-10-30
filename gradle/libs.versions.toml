@@ -1,4 +1,5 @@
 [versions]
+docs-antora = "1.0.0"
 kotlin-core = "2.4.21"
 kotlin-serialization = "1.11.0" # Needs to match the serialization-json dependency in the quarkus bom
 platform-quarkus = "3.40.1.1"
@@ -21,6 +22,7 @@ test-assertj-core = { group = "org.assertj", name = "assertj-core", version.ref 
 [bundles]
 
 [plugins]
+docs-antora = { id = "org.antora", version.ref = "docs-antora" }
 platform-quarkus-application = { id = "io.quarkus", version.ref = "platform-quarkus"}
 platform-quarkus-extension = { id = "io.quarkus.extension", version.ref = "platform-quarkus"}
 kotlin-core = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-core" }
