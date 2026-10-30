@@ -21,7 +21,9 @@ package ai.hamoni.control_room
 import ai.hamoni.common.core.exception.InvalidParameterException
 import ai.hamoni.common.core.util.cleanUrl
 import ai.hamoni.common.core.REQUEST_ORGANISATION_ID
+import ai.hamoni.control_room.service.ConfigurationService
 import ai.hamoni.control_room.service.OidcProviderConfigurationService
+import io.quarkus.hibernate.orm.PersistenceUnitExtension
 import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
 import io.quarkus.oidc.JavaScriptRequestChecker
 import io.quarkus.oidc.OidcRequestContext
@@ -29,7 +31,6 @@ import io.quarkus.oidc.OidcTenantConfig
 import io.quarkus.oidc.TenantConfigResolver
 import io.quarkus.vertx.http.runtime.security.ChallengeData
 import io.smallrye.mutiny.Uni
-import io.vertx.core.http.HttpServerRequest
 import io.vertx.ext.web.RoutingContext
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.context.RequestScoped
@@ -44,23 +45,32 @@ import java.util.UUID
 
 /**
  * This the organisation to tenant mapping which creates data isolation.
+ * Warning: this also gets called on non-HTTP requests, like messaging, timers etc. We will need to extend this
+ * to support those situations where the RoutingContext is null.
  */
+@PersistenceUnitExtension
 @RequestScoped
 class DataTenantResolver @Inject constructor(
-    private val request: HttpServerRequest
+    private val context: RoutingContext?,
+    private val configurationService: ConfigurationService
 ): TenantResolver {
 
-    override fun getDefaultTenantId(): String? {
-        TODO("Not yet implemented")
-    }
+    /**
+     * This is a nasty bridge, but it should be okay. The `getDefaultOrganisationId` should really resolve from
+     * properties and so should never block, and always be available.
+     */
+    override fun getDefaultTenantId(): String =
+        configurationService.getDefaultOrganisationId().await().indefinitely().toString()
 
-    override fun resolveTenantId(): String? {
-        TODO()
-        // This is left open because we need to decide what to do if the header is not available, redirecting the
-        // requests to the default organisation feels incorrect.
-        val tenantId: String? = request.getHeader(REQUEST_ORGANISATION_ID)
-        return if (tenantId != null) tenantId else this.defaultTenantId
-    }
+    /**
+     * See above notes about when called without a routingContext
+     */
+    override fun resolveTenantId(): String =
+        if (null != context) {
+            context.request()?.getHeader(REQUEST_ORGANISATION_ID) ?: defaultTenantId
+        } else {
+            TODO("Unhandled situation in hibernate configuration")
+        }
 }
 
 /**
