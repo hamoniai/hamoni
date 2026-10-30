@@ -43,6 +43,7 @@ repositories {
  */
 dependencies {
     // Set the versions of plugins used by the build
+    implementation(libs.plugins.docs.antora.toDependency())
     implementation(libs.plugins.kotlin.core.toDependency())
     implementation(libs.plugins.kotlin.allopen.toDependency())
     implementation(libs.plugins.kotlin.serialization.toDependency())
