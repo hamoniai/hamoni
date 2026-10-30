@@ -1,6 +1,7 @@
 package ai.hamoni.control_room.resource
 
 import ai.hamoni.common.core.APPLICATION_JSON_UTF8
+import ai.hamoni.control_room.LANDING_PATH
 import ai.hamoni.control_room.data.AuthenticationProfile
 import ai.hamoni.control_room.data.AuthenticationProfileOrganisation
 import ai.hamoni.control_room.service.AuthenticationProfileService
@@ -8,8 +9,11 @@ import ai.hamoni.control_room.service.AuthenticationProfileServiceHydration
 import io.quarkus.security.Authenticated
 import io.quarkus.security.identity.SecurityIdentity
 import io.smallrye.mutiny.Uni
+import jakarta.annotation.security.PermitAll
 import jakarta.inject.Inject
+import jakarta.validation.constraints.Pattern
 import jakarta.ws.rs.*
+import jakarta.ws.rs.core.HttpHeaders
 import org.jboss.resteasy.reactive.RestQuery
 import org.jboss.resteasy.reactive.RestResponse
 
@@ -32,16 +36,21 @@ class AuthenticationResource @Inject constructor(
      * the tenant resolver before authentication; the next path is the frontend
      * route shown once the code exchange has completed.
      *
-     * FIXME: Need to check teh return but do it safely because we might wan tto allow a non
-     * local redurect if in dev mode, but not in production. Basically we need to sanitise
-     * the returnUrl if provided, if not, then just return to /
+     * The login entry point is deliberately public: it starts the authorization
+     * code flow, so there is no authenticated caller yet. The optional
+     * `returnUrl` must be a local path; anything else is rejected.
      */
+    @PermitAll
     @GET
     @Path("/login")
-    fun login(@RestQuery returnUrl: String): Uni<RestResponse<Void>> =
+    fun login(
+        @RestQuery
+        @Pattern(regexp = "^/(?!/).*$", message = "must be a local path")
+        returnUrl: String?
+    ): Uni<RestResponse<Void>> =
         Uni.createFrom().item {
             RestResponse.ResponseBuilder.create<Void>(RestResponse.Status.SEE_OTHER)
-                //.header(LOCATION_HEADER, nextLoginStage(next).toString())
+                .header(HttpHeaders.LOCATION, returnUrl ?: LANDING_PATH)
                 .build()
         }
 

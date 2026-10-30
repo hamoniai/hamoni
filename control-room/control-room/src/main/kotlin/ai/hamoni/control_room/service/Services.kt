@@ -19,6 +19,9 @@
 package ai.hamoni.control_room.service
 
 import ai.hamoni.control_room.data.AuthenticationProfile
+import ai.hamoni.control_room.data.Organisation
+import ai.hamoni.control_room.data.OrganisationAuthConfiguration
+import ai.hamoni.control_room.data.OrganisationConfiguration
 import io.quarkus.oidc.OidcSession
 import io.quarkus.oidc.OidcTenantConfig
 import io.quarkus.runtime.annotations.RegisterForReflection
@@ -30,10 +33,8 @@ import kotlinx.serialization.Serializable
 import java.util.UUID
 
 /*
- * All frontend specific services go in here. Services that common to the frontend and backend should go into one of
- * the common projects.
- *
- * One service will cover all hydrate options. The caller can slice the pbject as required.
+ * All frontend specific services go in here. Services that are common to the frontend and backend should go into one
+ * of the common projects.
  */
 
 
@@ -74,9 +75,39 @@ enum class AuthenticationProfileServiceHydration {
 }
 
 /**
+ * Service for deployment configuration that is not scoped to an individual
+ * organisation.
+ */
+@ApplicationScoped
+@RegisterForReflection
+class ConfigurationService {
+
+    companion object {
+        /**
+         * The default organisation identifier.
+         *
+         * This is a temporary holding value: how the default organisation is
+         * identified at start-up has not been decided, so the all-zero UUID is
+         * returned until that decision is made.
+         */
+        private val DEFAULT_ORGANISATION_ID: UUID =
+            UUID.fromString("00000000-0000-0000-0000-000000000000")
+    }
+
+    /**
+     * Get the default organisation's identifier.
+     *
+     * @return the identifier of the deployment's default organisation
+     */
+    fun getDefaultOrganisationId(): Uni<UUID> =
+        Uni.createFrom().item(DEFAULT_ORGANISATION_ID)
+}
+
+/**
  * Service for OIDC provider lookups.
  */
 @ApplicationScoped
+@RegisterForReflection
 class OidcProviderConfigurationService {
 
     /**
@@ -88,5 +119,66 @@ class OidcProviderConfigurationService {
      * @return the tenant configuration, or null to use the default tenant.
      */
     fun getById(id: UUID): Uni<OidcTenantConfig> =
-        Uni.createFrom().nullItem()
+        TODO()
+}
+
+/**
+ * Service for organisation data.
+ */
+@ApplicationScoped
+@RegisterForReflection
+class OrganisationService {
+
+    /**
+     * Get an organisation and attach the related data the caller asked for.
+     *
+     * The organisation data layer has not been designed yet, so this method is
+     * deliberately left unimplemented. The hydration options describe the data
+     * the caller wants once the model settles.
+     *
+     * @param id the organisation identifier
+     * @param hydrate the related data to attach to the organisation
+     * @return the organisation with the requested data attached
+     */
+    fun getById(id: UUID, hydrate: List<OrganisationServiceHydration> = emptyList()): Uni<Organisation> {
+        TODO()
+    }
+
+    /**
+     * Get an organisation's configuration.
+     *
+     * The configuration data layer has not been designed yet, so this method is
+     * deliberately left unimplemented.
+     *
+     * @param id the organisation identifier
+     * @return the organisation configuration
+     */
+    fun getConfigurationById(id: UUID): Uni<OrganisationConfiguration> {
+        TODO()
+    }
+
+    /**
+     * Get an organisation's authentication configuration.
+     *
+     * The authentication configuration data layer has not been designed yet, so
+     * this method is deliberately left unimplemented.
+     *
+     * @param id the organisation identifier
+     * @return the organisation authentication configuration
+     */
+    fun getAuthConfigurationById(id: UUID): Uni<OrganisationAuthConfiguration> {
+        TODO()
+    }
+}
+
+/**
+ * The related data [OrganisationService] can attach to an organisation.
+ */
+@Serializable
+enum class OrganisationServiceHydration {
+    @SerialName("configuration")
+    CONFIGURATION,
+
+    @SerialName("authConfiguration")
+    AUTH_CONFIGURATION
 }

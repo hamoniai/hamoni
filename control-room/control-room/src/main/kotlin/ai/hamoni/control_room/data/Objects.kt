@@ -1,7 +1,9 @@
 package ai.hamoni.control_room.data
 
-import ai.hamoni.common.platform.GLOBAL_SCHEMA
+import ai.hamoni.common.core.GLOBAL_SCHEMA
+import ai.hamoni.common.platform.serialization.UUIDSerializer
 import jakarta.persistence.*
+import kotlinx.serialization.Serializable
 import org.hibernate.annotations.CreationTimestamp
 import java.time.Instant
 import java.util.*
@@ -24,15 +26,17 @@ import java.util.*
  *
  * scope: global
  */
+@Serializable
+@Entity
 @Table(name = "authnprofile", comment = "Authentication profiles", schema = GLOBAL_SCHEMA, indexes = [
     Index(name = "idx_authnprofile_id_issuer_issuersubject", columnList = "id, issuer, issuerSubject", unique = false),
     Index(name = "idx_authnprofile_issuer_issuersubject", columnList = "issuer, issuerSubject", unique = false),
 ])
-@Entity
 @NamedQueries()
 class AuthenticationProfile (
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Serializable(with = UUIDSerializer::class)
     var id: UUID? = null,
 
     @Column(name = "family_name", nullable = false, updatable = true, comment = "Family name")
@@ -54,7 +58,7 @@ class AuthenticationProfile (
     var issuerSubject: String,
 
     @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status")
-    var enabled: String,
+    var enabled: Boolean,
 
     @kotlinx.serialization.Transient
     @Column(name = "created", nullable = false, updatable = false, comment = "Date the account was created (UTC)")
@@ -68,7 +72,7 @@ class AuthenticationProfile (
 
     @ElementCollection
     @CollectionTable(name = "authnprofile_organisations", schema = GLOBAL_SCHEMA, joinColumns = [JoinColumn(name = "authnprofile_id")])
-    var organisations: List<AuthenticationProfileOrganisation> = emptyList()
+    var organisations: List<AuthenticationProfileOrganisation>? = null
 
     /**
      * the initials. Not stored as it should update with the name.
@@ -89,8 +93,13 @@ class AuthenticationProfile (
  * Projection of authentication profile.
  *
  */
+@Serializable
 @JvmRecord
-data class AuthenticationProfileHeader(val id: UUID, val name: String, val email: String) {
+data class AuthenticationProfileHeader(
+    @Serializable(with = UUIDSerializer::class) val id: UUID,
+    val name: String,
+    val email: String
+) {
     constructor(c: AuthenticationProfile) : this(c.id!!, c.name, c.email)
 }
 
@@ -106,9 +115,11 @@ data class AuthenticationProfileHeader(val id: UUID, val name: String, val email
  * scope: global
  *
  */
+@Serializable
 @Embeddable
 class AuthenticationProfileOrganisation (
     @Column(name = "id", nullable = false, updatable = false, comment = "The organisation identifier")
+    @Serializable(with = UUIDSerializer::class)
     var id: UUID,
 
     @Transient
@@ -119,9 +130,136 @@ class AuthenticationProfileOrganisation (
 }
 
 /**
- * Projection of AuthenticationProfileOrganisation (not used, but kept for consistency).
+ * An organisation.
+ *
+ * The configuration is held as element collections and is populated by the
+ * organisation service's hydration options.
+ *
+ * scope: schema
+ *
  */
-@JvmRecord
-data class AuthenticationProfileOrganisationHeader(val id: UUID, val name: String) {
-    constructor(p: AuthenticationProfileOrganisation) : this(p.id, p.name)
+@Serializable
+@Entity
+@Table(name = "organisation", comment = "Organisations")
+class Organisation(
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Serializable(with = UUIDSerializer::class)
+    var id: UUID? = null,
+
+    @Column(name = "name", nullable = false, updatable = true, comment = "Organisation name")
+    var name: String,
+) {
+
+    /**
+     * The organisation's configuration, populated when the `configuration`
+     * hydration option is requested.
+     */
+    @ElementCollection
+    @CollectionTable(
+        name = "organisation_configuration",
+        joinColumns = [JoinColumn(name = "organisation_id")]
+    )
+    var configuration: List<OrganisationConfiguration>? = null
+
+    /**
+     * The organisation's authentication configuration, populated when the
+     * `authConfiguration` hydration option is requested.
+     */
+    @OneToMany(cascade = [CascadeType.REMOVE], orphanRemoval = true)
+    @JoinColumn(name = "organisation_id")
+    var authConfiguration: List<OrganisationAuthConfiguration> = emptyList()
+
+    /**
+     * Compare organisations by their technical identifier, never by the display
+     * name (CODING-STANDARDS §9).
+     */
+    override fun equals(other: Any?): Boolean = other is Organisation && id == other.id
+
+    /**
+     * Hash the technical identifier (CODING-STANDARDS §9).
+     */
+    override fun hashCode(): Int = Objects.hash(id)
 }
+
+/**
+ * A projection of [Organisation] for a list.
+ *
+ * The header is the identity of an organisation only; it grows into a genuine
+ * projection as the organisation gains fields a list does not need.
+ */
+@Serializable
+@JvmRecord
+data class OrganisationHeader(
+    @Serializable(with = UUIDSerializer::class)
+    val id: UUID,
+
+    val name: String
+) {
+    constructor(organisation: Organisation) : this(organisation.id!!, organisation.name)
+}
+
+/**
+ * The identity providers an organisation has enabled for sign-in.
+ *
+ * This is an empty placeholder until the authentication configuration is
+ * modelled.
+ *
+ * scope: schema
+ *
+ */
+@Serializable
+@Entity
+@Table(name = "organisation_authconfiguration", comment = "Organisation Authentication Configuration (OIDC)")
+class OrganisationAuthConfiguration(
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Serializable(with = UUIDSerializer::class)
+    var id: UUID? = null,
+
+    @Column(name = "name", nullable = false, updatable = true, unique = true, comment = "The display name for the OIDC provider")
+    var name: String,
+
+    @Column(name = "url", nullable = false, updatable = true, unique = true, comment = "URL for the OIDC provider")
+    var url: String,
+
+    @Column(name = "client_id", nullable = false, updatable = true, unique = true, comment = "The client id")
+    var clientId: String,
+
+    @Column(name = "client_secret_ref", nullable = false, updatable = true, unique = true, comment = "The client secret reference, the actual value is in the credential vault. Null means public client.")
+    var clientSecretReference: String,
+
+    @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status")
+    var enabled: Boolean,
+
+    @kotlinx.serialization.Transient
+    @Column(name = "created", nullable = false, updatable = false, comment = "Date the account was created (UTC)")
+    @CreationTimestamp
+    var created: Instant? = null,
+
+    @kotlinx.serialization.Transient
+    @Column(name = "updated", nullable = false, updatable = false, comment = "Date the account was last updated (UTC)")
+    var updated: Instant? = null
+) {
+    override fun hashCode(): Int = Objects.hash(id)
+    override fun equals(other: Any?): Boolean = other is OrganisationAuthConfiguration && id == other.id
+
+}
+
+/**
+ * The settings that configure how an organisation works.
+ *
+ * This is an empty placeholder until the settings are modelled.
+ *
+ * scope: schema
+ *
+ */
+@Serializable
+@Embeddable
+class OrganisationConfiguration(
+    /**
+     * A temporary placeholder to allow Hibernate tests to pass while we do not know the structure for this.
+     */
+    @Column(name = "removeMe", nullable = false, updatable = true, unique = true, comment = "REMOVE ME")
+    var removeMe: String
+)
