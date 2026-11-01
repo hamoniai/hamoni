@@ -1,0 +1,41 @@
+= Maintenance
+:navtitle: Maintenance
+
+This page describes the operational activities for a Hamoni deployment.
+
+== Upgrades
+
+An upgrade deploys the latest Control Room and Process Runner images. Flyway
+applies schema migrations automatically.
+
+A rolling upgrade remains compatible with the previous application version while
+the rollout completes.
+
+== Backup and restore
+
+The deployer defines database and blob storage backup and restore procedures for
+each platform.
+
+== Blob storage retention
+
+Blob storage retention removes documents when no process references them.
+
+== Monitoring and alerting
+
+The deployer defines monitoring, logging and alerting for each platform.
+
+== Credential and key rotation
+
+The platform supplies the credential-manager key source and its renewal. Key
+rotation follows the key source.
+
+== Audit retention
+
+The audit trail is stored in the organisation schema. Audit records are retained
+with the organisation's data.
+
+== Capacity and scaling
+
+Capacity and scaling follow the deployment platform. Kubernetes scales the
+Control Room and Process Runner instances. Virtual machines scale by adding
+instances. Database, cache and messaging capacity follow the platform services.

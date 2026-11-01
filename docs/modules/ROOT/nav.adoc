@@ -5,6 +5,12 @@
 ** xref:overview/architecture.adoc[Architecture]
 ** xref:overview/contributing.adoc[Contributing]
 ** xref:overview/security.adoc[Security]
+* Installation
+** xref:installation/requirements.adoc[Requirements]
+** xref:installation/kubernetes.adoc[Kubernetes deployments]
+** xref:installation/virtual-machines.adoc[Virtual machine deployments]
+** xref:installation/docker.adoc[Docker deployments]
+** xref:installation/maintenance.adoc[Maintenance]
 * Architecture and design
 ** xref:architecture-and-design/design.adoc[Design]
 ** xref:architecture-and-design/architecture.adoc[Architecture]
@@ -13,9 +19,3 @@
 ** xref:technical/apis.adoc[APIs]
 ** xref:technical/database.adoc[Database design and principles]
 ** xref:technical/json-process.adoc[JSON Process]
-* Deployment and running
-** xref:deployment/requirements.adoc[Requirements]
-** xref:deployment/kubernetes.adoc[Kubernetes deployment approach]
-** xref:deployment/virtual-machines.adoc[Basic virtual machine deployment approach]
-** xref:deployment/docker-compose.adoc[Local Docker Compose platform]
-** xref:deployment/operations.adoc[Operational activities]

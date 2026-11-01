@@ -1,0 +1,44 @@
+= Kubernetes deployment approach
+:navtitle: Kubernetes deployment approach
+
+[IMPORTANT]
+====
+This page has not been reviewed or approved. It records working notes only.
+====
+
+[NOTE]
+====
+Configuring and securing the platform services is outside the scope of Hamoni.
+This page describes the deployment approach only.
+====
+
+== Current position
+
+AWS EKS is the only available Kubernetes platform. Deployment detail for EKS is
+not yet written.
+
+== Reference bundle
+
+The AWS EKS platform bundle uses:
+
+* EKS for the Kubernetes cluster.
+* Application Load Balancer for ingress.
+* ECR for images.
+* RDS for the relational database.
+* ElastiCache for Redis for the object cache.
+* S3 for blob storage.
+* SQS for messaging between the Control Room and the Process Runner.
+* KMS for the credential-manager key source.
+* An organisation-provided OIDC provider, with optional SCIM.
+* An organisation-provided email server.
+
+== To be completed
+
+* Cluster prerequisites and version.
+* Namespaces and workload layout.
+* Ingress and certificate configuration.
+* Autoscaling and failover expectations.
+* Health probes and rolling upgrades.
+* Database migration execution.
+* Backup and restore.
+* Monitoring and logging.

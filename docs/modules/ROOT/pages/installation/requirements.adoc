@@ -1,0 +1,205 @@
+= Requirements
+:navtitle: Requirements
+
+This page describes the platform capabilities required to run Hamoni.
+
+== Platform approach
+
+Hamoni is delivered as a platform bundle: a supported set of services that are
+known to work together. A deployment uses one bundle; services are not selected
+individually from different platforms.
+
+Only AWS EKS is available today. The AWS EC2, Azure AKS, Azure VM and Docker
+Compose columns define planned platform bundles. They are not approved for
+production use.
+
+== Deployment patterns
+
+Hamoni runs on Kubernetes or on basic virtual machines. Kubernetes provides
+automatic scaling, failover and rolling upgrades. On virtual machines, managing
+the instances, scaling and failover is the deployer's responsibility.
+
+Both patterns require the same capabilities. Single-organisation and
+multi-organisation deployments also use the same dependency set;
+multi-organisation adds organisation schemas, not additional platform services.
+
+== Single-organisation and multi-organisation
+
+A deployment-level flag selects single-organisation or multi-organisation mode.
+The default is single-organisation.
+
+In single-organisation mode, the platform serves one organisation and creating
+new organisations is disabled.
+
+In multi-organisation mode, the platform serves multiple organisations from one
+deployment. Each organisation has its own schema. This mode supports group
+companies with shared technology support and isolated business units, and
+organisations formed through mergers and acquisitions.
+
+== Capability mapping
+
+The table groups capabilities into required and optional. Every required
+capability is present in a supported platform.
+
+[cols="3,2,2,2,2,2",options="header"]
+|===
+| Capability
+| AWS EKS
+| AWS EC2 (planned)
+| Azure AKS (planned)
+| Azure VM (planned)
+| Docker
+
+6+| *Required*
+
+| Blob storage
+2+| S3
+2+| Azure Blob Storage
+| Local filesystem
+
+| Credential manager
+2+| KMS
+2+| Azure Key Vault
+| Static key provider
+
+| Image registry
+2+| ECR
+2+| Azure Container Registry
+| Docker
+
+| Messaging
+2+| SQS
+2+| Azure Service Bus
+| RabbitMQ
+
+| Network ingress
+2+| Application Load Balancer
+2+| Azure Application Gateway
+| NGINX
+
+| OIDC provider
+5+| Any OIDC-compliant service (e.g. Microsoft Entra ID, Google Workforce Identity Federation, Okta)
+
+| Relational database footnote:[See <<database-support,Database support>>.]
+2+| RDS
+2+| Azure Database
+| MariaDB
+
+6+| *Optional*
+
+| Email server
+5+| Microsoft Exchange (online/on-premises) or Google Workspace
+
+| Object cache
+2+| ElastiCache
+2+| Azure Managed Redis
+|
+
+| SCIM
+5+| Microsoft Entra ID, Google Workforce Identity Federation, or another SCIM-compliant provider
+|===
+
+The merged cells mean that both platform variants use the same service.
+
+== What each capability is for
+
+Blob storage::
+Documents, templates, data exports and temporary files are held in blob storage.
+Documents are cleaned up when no process references them. The Docker Compose
+platform maps this capability to a local filesystem volume.
+
+Credential manager::
+Hamoni uses an internal encrypted credential manager. The platform supplies the
+encryption key source and its renewal. AWS uses KMS, Azure uses Key Vault, and
+the Docker Compose platform uses a static key provider for local testing.
+
+Email server::
+Hamoni connects to the organisation's own email server to send and receive email.
+The server supports Outlook/Exchange or Google Workspace. Email is optional;
+without it, email-based invitations and notifications are unavailable.
+
+Image registry::
+The platform provides an image registry from which the Hamoni images are pulled.
+
+Messaging::
+The Control Room and the Process Runner communicate through a messaging provider
+that supports Quarkus Reactive Messaging. AWS uses SQS; the Azure platform uses
+Azure Service Bus over AMQP 1.0; the Docker Compose platform uses RabbitMQ.
+
+Network ingress::
+Ingress protects the Hamoni frontend, balances requests across instances and
+terminates TLS.
+
+Object cache::
+The authorisation cache uses a Redis-compatible object cache. The cache is
+optional; without it, Hamoni is limited to a single Control Room instance.
+
+OIDC provider::
+An organisation provides at least one OIDC-compliant authentication service.
+More providers may be added as required. Hamoni's hosted service uses its own
+OIDC connections; a private deployment supplies its own.
+
+Relational database::
+Hamoni needs a relational database with a Quarkus Hibernate Panache reactive
+driver and a non-reactive driver. Schema upgrades are automatic and transparent
+through Flyway. At least two schemas are required: the global schema and the
+default organisation schema. Each additional organisation has its own schema.
+See <<database-support>> for the supported database families.
+
+SCIM::
+SCIM provides automated directory provisioning and deprovisioning. It is
+optional. Without it, Hamoni uses local provisioning.
+
+[[database-support]]
+== Database support
+
+Hamoni uses the Quarkus Hibernate Panache persistence layer. Any relational
+database for which Quarkus provides both a reactive driver and a non-reactive
+driver is supported.
+
+The supported database families are:
+
+* MariaDB
+* MySQL
+* PostgreSQL
+* Azure SQL Database
+
+The default database type is MariaDB.
+
+== Optional dependency behaviour
+
+Hamoni runs when an optional dependency is absent, with reduced capability.
+
+[cols="1,3"]
+|===
+| Missing dependency | Effect
+
+| Email server
+| Hamoni cannot send or receive email. Email-based invitations and notifications
+are unavailable.
+
+| Object cache
+| In-memory authorisation cache only. The deployment is limited to one Control
+Room instance.
+
+| SCIM
+| Local provisioning only. No automated directory provisioning or deprovisioning.
+|===
+
+== Network and security
+
+The platform provides:
+
+* TLS-terminating ingress with load balancing for the Hamoni frontend.
+* Network isolation so that the database, cache, blob storage and messaging
+  service are not publicly reachable.
+* TLS on connections to the database, cache, blob storage and messaging service
+  where the service supports it.
+* Outbound access to the OIDC provider, the optional SCIM service and the
+  organisation's email server.
+* DNS and certificate management for the ingress.
+
+== Sizing
+
+Minimum sizing is not defined. The upper limit depends on the scale the
+deployment requires.

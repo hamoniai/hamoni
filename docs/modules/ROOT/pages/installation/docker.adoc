@@ -1,0 +1,59 @@
+= Docker deployments
+:navtitle: Docker deployments
+
+This page describes the Docker Compose deployment of Hamoni.
+
+== Purpose
+
+The Docker Compose deployment provides a fully capable local runtime for
+integration testing and proof of running. It is not an enterprise deployment and
+does not provide the scaling or availability of a supported platform.
+
+== Local stack
+
+The local stack uses:
+
+* MariaDB for the relational database.
+* A local filesystem volume for blob storage.
+* NGINX for ingress.
+* An organisation-provided OpenID Connect service; no local Keycloak is included.
+* A static key provider for the credential manager.
+* RabbitMQ for messaging.
+* The local Docker image store; no image registry is required.
+* An installer-provided email server; no email service is included.
+* No object cache: the in-memory cache is used.
+* Local provisioning instead of SCIM.
+
+== Configuration
+
+The Compose deployment supplies the local platform settings:
+
+* the database endpoint and credentials;
+* the local filesystem path for blob storage;
+* the OpenID Connect issuer and client configuration;
+* the static credential-manager key;
+* the RabbitMQ endpoint;
+* the email server endpoint and credentials;
+* the default organisation;
+* the organisation mode, single or multi.
+
+The settings are provided to the Control Room and the Process Runner through the
+Compose environment.
+
+== Running the platform
+
+Docker Compose starts the local stack, the Control Room and the Process Runner.
+The Control Room is reached through NGINX. The Process Runner is internal and is
+reached through RabbitMQ.
+
+== Limitations
+
+The Docker Compose deployment has these limitations:
+
+* It runs a single Control Room instance.
+* It has no object cache.
+* It provides no enterprise scaling or availability.
+* It uses local provisioning instead of SCIM.
+* It requires an organisation-provided OpenID Connect service.
+* It sends email only when an email server is configured.
+* It is not a production deployment.

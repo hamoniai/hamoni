@@ -1,0 +1,26 @@
+<header class="header">
+  <nav class="navbar" aria-label="Primary">
+    <a class="navbar-brand" href="{{{or site.url siteRootPath}}}">
+      <img class="brand-logo" src="{{{uiRootPath}}}/img/hamoni-logo.svg" alt="" width="280" height="288">
+      <span class="brand-name">{{site.title}}</span>
+    </a>
+    {{#if env.SITE_SEARCH_PROVIDER}}
+    <div class="navbar-item search hide-for-print">
+      <div id="search-field" class="field">
+        <input id="search-input" type="text" placeholder="Search the documentation"{{#if page.home}} autofocus{{/if}}>
+      </div>
+    </div>
+    {{/if}}
+    <div class="navbar-actions">
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark theme" title="Switch to dark theme" aria-pressed="false">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.5 8.5 0 1 0 10.2 10.2Z"></path>
+        </svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+        </svg>
+      </button>
+    </div>
+  </nav>
+</header>

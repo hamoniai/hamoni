@@ -1,0 +1,114 @@
+= Virtual machine deployments
+:navtitle: Virtual machine deployments
+
+This page describes the virtual machine deployment of Hamoni on AWS EC2.
+
+== Platform bundle
+
+The AWS EC2 platform bundle uses:
+
+[cols="1,2",options="header"]
+|===
+| Service | Purpose
+
+| EC2
+| Virtual machines for the Control Room and the Process Runner.
+
+| Application Load Balancer
+| Ingress, TLS termination and load balancing for the Control Room.
+
+| ECR
+| Image registry for the Hamoni images.
+
+| RDS
+| Relational database for the global schema and the organisation schemas.
+
+| ElastiCache for Redis
+| Authorisation cache.
+
+| S3
+| Blob storage for documents, templates and temporary files.
+
+| SQS
+| Messaging between the Control Room and the Process Runner.
+
+| KMS
+| Key source for the credential manager.
+
+| OpenID Connect provider
+| Authentication for people, system accounts and agents.
+
+| Email server
+| Notifications and invitations.
+|===
+
+== Infrastructure requirements
+
+The EC2 platform provides:
+
+* EC2 instances for the Control Room and the Process Runner.
+* An Application Load Balancer with a TLS certificate and DNS name.
+* An ECR repository that contains the Hamoni images.
+* An RDS instance for the relational database.
+* An ElastiCache for Redis cluster.
+* An S3 bucket for blob storage.
+* An SQS queue for messaging.
+* A KMS key for the credential manager.
+* An OpenID Connect provider.
+* An email server.
+
+The instances run the Hamoni container images. The deployer provides the
+operating system and the container runtime.
+
+Network access is required:
+
+* Inbound HTTPS from users to the Application Load Balancer.
+* Control Room and Process Runner access to RDS, ElastiCache, S3, SQS, KMS, the
+  OpenID Connect provider and the email server.
+* No public access to RDS, ElastiCache, S3 or SQS.
+
+The deployer manages the instances, scaling, failover, patching and process
+supervision.
+
+== Configuration
+
+Hamoni reads its platform settings from its configuration and secret store. The
+deployment supplies:
+
+* the database endpoint and credentials;
+* the cache endpoint;
+* the S3 bucket;
+* the SQS queue;
+* the OpenID Connect issuer and client configuration;
+* the email server;
+* the KMS key source;
+* the default organisation;
+* the organisation mode, single or multi.
+
+Secrets are supplied by the platform secret store. They are not stored in the
+images or on the instances.
+
+== Deployment
+
+The deployment runs two workloads:
+
+* the **Control Room**, exposed through the Application Load Balancer;
+* the **Process Runner**, reachable only from the Control Room through the
+  messaging provider.
+
+The images are pulled from ECR. The Control Room and the Process Runner start
+after the platform services and configuration are available.
+
+== First start
+
+On first start, Hamoni creates and migrates the global schema and the default
+organisation schema. Flyway applies the migrations.
+
+The default organisation is part of the platform configuration. The behaviour
+when the configured default organisation changes across restarts is not defined.
+
+== Out of scope
+
+Deploying, configuring and securing the EC2 instances and the platform services
+is outside the scope of Hamoni. The deployer provides the instances and the
+services; Hamoni provides the images and the configuration surface.

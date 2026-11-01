@@ -1,0 +1,192 @@
+= Architecture
+:navtitle: Architecture
+
+This page describes the solution architecture of Hamoni: the runtime
+components, their responsibilities and how they communicate. It does not
+describe the API contract, the database design or the JSON Process; those are
+covered by xref:technical/apis.adoc[APIs],
+xref:technical/database.adoc[Database design and principles] and
+xref:technical/json-process.adoc[JSON Process].
+
+== Solution overview
+
+[#runtime-overview]
+.Runtime overview
+[svgbob]
+----
+                 +----------------+
+                 |    Browser     |
+                 +-------+--------+
+                         |
+                         | HTTPS
+                         v
+                 +----------------+
+                 |    Ingress     |
+                 | TLS, balancing |
+                 +-------+--------+
+                         |
+                         | HTTP
+                         v
+                 +----------------+
+                 |  Control Room  |
+                 | API and Angular|
+                 +---+--------+---+
+                     |        |
+          commands   |        |
+                     v        v
+              +------------+ +------------+
+              | Messaging  | |  Database  |
+              +-----+------+ +-----+------+
+                    |              ^
+                    v              |
+              +----------------+   |
+              | Process Runner |---+
+              +----------------+
+----
+
+Hamoni has two deployable applications and one shared library:
+
+* **Control Room** — the user-facing application.
+* **Process Runner** — the execution runtime.
+* **Common** — shared libraries with no runtime of their own.
+
+A browser reaches the Control Room through web ingress. The Control Room and the
+Process Runner communicate through a messaging provider. Both applications use
+the relational database. The platform also depends on blob storage, an object
+cache, an OIDC provider, an email server, an image registry and a
+credential-manager key source; the xref:deployment/requirements.adoc[deployment
+requirements] describe those platform services.
+
+== Components
+
+=== Control Room
+
+The Control Room is the user-facing half of the platform. It owns the
+design-time model, management of teams, projects, versions, deployments and
+security, the read models the screens consume, and the interface used by the
+Angular application.
+
+It serves the Angular application through Quarkus Quinoa, so the interface and
+its backend are one runtime and one deployment. It never executes a process; it
+issues commands and renders the results.
+
+The Control Room authenticates people through OpenID Connect. It resolves the
+organisation for each request and enforces the organisation boundary. The
+server holds no session state: the credential identifies the authenticated
+principal, and the organisation travels with the request.
+
+=== Process Runner
+
+The Process Runner is the execution half of the platform. It interprets a
+published process definition, starts and resumes instances, advances activities,
+handles pend and exception, enforces timers and the service-level agreement
+clock, and records the audit trail.
+
+It has no REST interface. It consumes lifecycle commands from the Control Room
+over Quarkus Reactive Messaging and persists the durable state of an instance.
+Execution is resumable: a restart must not lose work, and no in-memory-only state
+may be relied upon.
+
+=== Common
+
+Common holds the model and contracts both applications share: the JSON Process
+model and schema, the process and activity state models, shared contracts and
+utilities. It has no runtime of its own and depends on neither application area.
+
+== Communication
+
+=== Web ingress
+
+Web ingress is the only public entry point. It terminates TLS, balances requests
+across Control Room instances and forwards requests to the Control Room. The
+Process Runner is internal and is never exposed through ingress.
+
+=== Control Room to Process Runner
+
+The Control Room publishes lifecycle commands to the platform's messaging
+provider. The Process Runner consumes them and executes the work. The provider is
+platform-specific: SQS on the AWS platform, Azure Service Bus over AMQP 1.0 on
+the Azure platform, and RabbitMQ on the Docker Compose platform.
+
+Messaging is not a replacement for the database. It carries commands and events;
+the Process Runner persists the durable state of an instance. The exact queues,
+message types, event contract and delivery semantics are not yet designed.
+
+=== Shared data
+
+Both applications use the relational database. Isolation is by schema:
+
+* the **global schema** holds authentication profiles;
+* each **organisation schema** holds the organisation's user profiles, team and
+  project configuration, process and deployment state, and audit trail.
+
+The database design, migration rules and naming conventions are covered by
+xref:technical/database.adoc[Database design and principles].
+
+=== Runtime flow
+
+. A browser requests the application through web ingress.
+. The Control Room authenticates the person through OIDC and resolves the
+  organisation for the request.
+. The Control Room serves the Angular application and the interface used by the
+  screens.
+. A person starts a process from the Control Room.
+. The Control Room validates the request against the process's state schema and
+  publishes a lifecycle command to the messaging provider.
+. The Process Runner consumes the command, advances the instance, and persists
+  the instance state, state data and audit record.
+. The Control Room reads the organisation schema to build the lists and details
+  the screens show. The reporting path from the Process Runner back to the
+  Control Room is part of the messaging contract still to be designed.
+
+== Architecture principles
+
+* **Two deployable applications, one shared library.** The user-facing and
+  execution halves scale and deploy independently, while sharing one model.
+* **One-way dependencies.** The application areas depend on common; they never
+  depend on each other.
+* **Reactive end to end.** The backend uses Quarkus in reactive mode. Nothing
+  blocks an input/output thread.
+* **Stateless backend.** The server holds no session or request state. The
+  credential identifies the principal only.
+* **Organisation isolation by schema.** A query cannot cross organisations
+  because the schema is part of the query's identity.
+* **Durable, resumable execution.** A running process survives a restart; no
+  in-memory-only state loses work.
+* **No REST on the Process Runner.** The execution runtime is reached through
+  messaging, not through a public interface.
+* **Audit is mandatory.** Every auditable action goes through the Hamoni audit
+  framework; there is no ad-hoc audit path.
+* **Platform services are bundled.** A supported platform is a known set of
+  services that work together, not an individually assembled menu.
+
+== Open architecture questions
+
+The following areas are deliberately open and must be settled before the related
+implementation is built:
+
+* the Control Room to Process Runner messaging contract — queues, message types,
+  events and delivery semantics;
+* where per-step execution history lives, and how database contention and scale
+  are managed;
+* how much of the JSON Process is normalised into tables and how much is stored
+  as a document;
+* document storage, streaming and permission rules;
+* the system and agent grant model;
+* the session-credential lifetime and the matching authorisation-cache lifetime;
+* the schema-change compatibility window for rolling upgrades.
+
+== Related documents
+
+* xref:architecture-and-design/design.adoc[Design] — the design principles and
+  the team as the primary concept.
+* xref:architecture-and-design/project-layout.adoc[Project layout] — the
+  repository and build-project structure.
+* xref:technical/apis.adoc[APIs] — the interface contract.
+* xref:technical/database.adoc[Database design and principles] — schemas,
+  migrations and data conventions.
+* xref:technical/json-process.adoc[JSON Process] — the executable process model.
+* link:{project-base-url}/blob/main/ARCHITECTURE-DECISIONS.md[Architecture decisions] — the
+  authoritative decision records.
+* link:{project-base-url}/blob/main/API-AND-DATABASE.md[API and database contract] — the detailed
+  interface and database requirements.

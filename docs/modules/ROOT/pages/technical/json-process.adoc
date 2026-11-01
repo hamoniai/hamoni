@@ -1,0 +1,124 @@
+= JSON Process
+:navtitle: JSON Process
+
+JSON Process is Hamoni's executable process model. A designer draws a simple
+flowchart; it compiles transparently to a JSON Process specification that the
+Process Runner executes. There is one modelling style, and it is always
+executable.
+
+The authoritative decisions are recorded in
+link:{project-base-url}/blob/main/ARCHITECTURE-DECISIONS.md[Architecture decisions], ADR-0016 to
+ADR-0021.
+
+A **process definition** is the design: the JSON Process specification. A
+**process instance** is a running case. Tasks and documents belong to an
+instance; versions and deployments belong to a project.
+
+== The executable model
+
+JSON Process is BPMN-inspired but not BPMN. It is defined as a JSON Schema, and
+state data uses standard JSON Schema typing (draft 2020-12). Every field carries
+a required description; nothing is inferred.
+
+The whole process definition file is versioned. How the definition is stored,
+diffed and rolled is an implementation concern; Hamoni versions the whole file.
+
+== Components
+
+A process has up to three isolated components:
+
+* `main` — the normal flow;
+* an optional **pend handler**;
+* an optional **exception handler**.
+
+The handlers are peer canvases, not drawn on the main flow. They share no flow
+line with the main process, so a handler cannot re-enter the main flow and leave
+the old path hung.
+
+State data is declared once at process level and shared by all three
+components. A process completes when no executable token remains in any
+component and it is not suspended. A pend handler finishing does not resume the
+main process; only the resume method does.
+
+== Junctions
+
+A junction is a pure synchronous predicate over data it already holds. It has no
+input, output, waiting or side effect. Its logic may be arbitrarily complex, but
+it must be synchronous.
+
+Any external value must first be materialised by an activity. The condition
+lives inside the junction; a branch references an edge identifier.
+
+== Signals
+
+Intermediate events are sync nodes. A signal's target is one of:
+
+* **broadcast** — all listeners;
+* **any** — one of the listeners;
+* **specific** — a named process.
+
+Correlation has three parts: the **channel** (the signal name), the **selector**
+(a pure predicate over the payload) and the **payload mapping** into state.
+
+An inbound signal never creates an instance. It is correlated to an existing
+instance; starting a process from a signal is a separate, deferred integration
+concern.
+
+== Process and activity states
+
+[cols="1,3",options="header"]
+|===
+| Model | States
+
+| Process
+| Active · Pend · Exception · Paused · Completed · Cancelled. Completed and
+Cancelled are terminal.
+
+| Activity
+| Available (Waiting or open) · Assigned · Active · Completed, plus Cancelled
+when the enclosing process is cancelled or terminated.
+|===
+
+The activity state is orthogonal to the process state. A pended process still
+shows its task as Assigned, and a running activity still finishes. Re-opening an
+activity creates a new activity; it never resurrects the old one.
+
+== Pend and exception
+
+A **pend** stops normal execution because something outside the organisation's
+control must move. It is configured at design time with a clock rule and a
+mutually exclusive resume method: manual, a time value, or after the processes it
+started. While pended, all parallel paths are suspended without interrupting
+running activities; only the resume method resumes the process.
+
+An **exception** is an internal technical fault — an invalid state or a failed
+integration. It requires external input but never stops the clock: the
+service-level agreement keeps running. Pend and exception are distinct
+first-class states with opposite clock behaviour.
+
+The service-level agreement is expressed as a percentage in a time window — for
+example, *90% in 5 business days* — not as a fixed per-case deadline. Overrun is
+acceptable; the measure is a distribution.
+
+== Open questions
+
+The following parts of the model are deliberately open:
+
+* how much of the JSON Process is normalised into tables and how much is stored
+  as a document;
+* the process-loop construct and the embedded-subprocess utility;
+* the script language and its signature;
+* the agent specification;
+* the process-to-task data mapping in both directions.
+
+== Related documents
+
+* link:{project-base-url}/blob/main/ARCHITECTURE-DECISIONS.md[Architecture decisions] — the
+  records for JSON Process, its schema, components, junctions, signals and
+  versioning.
+* link:{project-base-url}/blob/main/API-AND-DATABASE.md[API and database contract] — the open
+  questions about normalisation and data mapping.
+* xref:technical/apis.adoc[APIs] — the interface contract.
+* xref:technical/database.adoc[Database design and principles] — the data layer.
+* xref:architecture-and-design/architecture.adoc[Architecture] — the runtime
+  solution architecture.

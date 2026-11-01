@@ -1,0 +1,115 @@
+= APIs
+:navtitle: APIs
+
+This page describes the principles of the Hamoni interface. The generated
+OpenAPI description is the authoritative reference for individual operations;
+the contract and database requirements are recorded in
+link:{project-base-url}/blob/main/API-AND-DATABASE.md[API and database contract].
+
+== Stateless interface
+
+The interface is stateless. The server holds no session state and no
+current-organisation state. It issues one credential — an encrypted session
+cookie for a browser, a bearer token for a machine caller — that identifies the
+authenticated principal only.
+
+The organisation is not part of the credential. Business calls carry it in the
+`X-Organisation-Id` header, and it is resolved per request. A call without a
+valid organisation header is not a business call.
+
+== Authentication and authorisation
+
+Authentication is OpenID Connect only. The browser starts the authorization code
+flow from the login page; Quarkus performs the code exchange and returns the
+HttpOnly session cookie. OIDC tokens are not held in JavaScript.
+
+Authorisation is separate from authentication. A signed-in person who holds no
+access to an organisation is not an error; the organisation chooser is the
+surface for that outcome. The server enforces the access boundary on every
+request. A client-side check is a courtesy to the person, not a security
+control.
+
+== Resource shape
+
+A resource follows `/api/\{component}/\{id}/\{sub-resource}`, with at most one
+sub-resource level. A sub-resource that is a value is read with `GET` and
+overwritten with `PUT`; an operation is invoked with `POST`.
+
+The task component is the reference shape:
+
+[cols="2,1,3",options="header"]
+|===
+| Endpoint | Method | Purpose
+
+| `/tasks`
+| `GET`
+| List or search; returns the light task view.
+
+| `/tasks/\{taskId}`
+| `GET`
+| Task detail. Query parameters set the depth.
+
+| `/tasks/\{taskId}/state`
+| `GET`
+| The current state.
+
+| `/tasks/\{taskId}/state`
+| `PUT`
+| A validated state transition.
+
+| `/tasks/\{taskId}/data`
+| `GET`
+| The task's data.
+
+| `/tasks/\{taskId}/data`
+| `PUT`
+| Overwrite the data.
+
+| `/tasks/\{taskId}/history`
+| `GET`
+| The audit-style history.
+
+| `/tasks/\{taskId}/assign`
+| `POST`
+| Assignment, take or refer.
+|===
+
+There is no `create` and no `update` on the task itself: a task is created by
+execution, and its mutable parts are its state and its data.
+
+== Errors
+
+Errors use the problem-details format (`application/problem+json`, RFC 9457).
+No stack trace and no internal identifier appear on the wire. The message is
+written for a person and is localised by the backend into the profile's locale
+before it is returned.
+
+== Documents
+
+A document is a reference to a file blob, never a payload inside a JSON body.
+Business data holds the document identifier; the representation shows which
+documents it references. Upload and download are multipart or streamed, and are
+the only part of the interface that is not JSON.
+
+== Client conventions
+
+The Angular application follows the service rules in the
+link:{project-base-url}/blob/main/CODING-STANDARDS.md[Coding standards], §20:
+
+* every service method returns an `Observable`;
+* the ordinary operations use `list`, `search`, `get`, `update` and `create`;
+* a list is delivered once as `Observable<T[]>`;
+* the identifier comes from the URL, never from the body;
+* HTTP failures are mapped to the application error type at the call site.
+
+== Related documents
+
+* link:{project-base-url}/blob/main/API-AND-DATABASE.md[API and database contract] — the detailed
+  interface and database requirements.
+* link:{project-base-url}/blob/main/ARCHITECTURE-DECISIONS.md[Architecture decisions] — the
+  records for the stateless interface, organisation header, resource shape and
+  documents.
+* xref:technical/database.adoc[Database design and principles] — the data layer
+  behind the interface.
+* xref:architecture-and-design/architecture.adoc[Architecture] — the runtime
+  solution architecture.

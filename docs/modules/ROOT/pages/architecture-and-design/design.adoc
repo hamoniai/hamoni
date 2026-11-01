@@ -1,0 +1,144 @@
+= Design
+:navtitle: Design
+
+Hamoni is designed for the people who do the work. The product is an
+Operations-first platform, and most of the people who use it are business
+people, not technologists. The design therefore starts with the work, the
+decisions and the hand-offs that already happen in an organisation, and then
+adds technology where it helps.
+
+== Human-centred design
+
+Hamoni follows a human-centred approach to design:
+
+* **Start with the work, not the software.** The first question is what a
+  person is trying to achieve and what is getting in the way, not which screen
+  or feature to build.
+* **Design for the common path.** Eighty percent of things should be easy. The
+  common path is configured by the team itself, without specialist help.
+* **Expose complexity only when it is wanted.** The remaining twenty percent is
+  advanced mode: one application-wide setting that reveals the technical
+  surface wherever it applies. There is no per-screen advanced switch.
+* **Keep people in control.** A change proposed by AI or by a prompt is
+  reviewable before it is applied. Natural language is input, never execution.
+* **Make the next action clear.** Copy is guiding and forward-looking. It names
+  the step that resolves something or returns the person to normal work.
+* **Design for everyone.** Controls are keyboard operable, focus is visible,
+  contrast is maintained, images carry meaningful alternative text, and all copy
+  is localisable.
+
+The result is a product that brings people and AI together as one workforce,
+built to scale, without asking every person to become a workflow specialist.
+
+=== Design process
+
+The design work follows a human-centred cycle:
+
+. **Discover.** Understand the people, the work, the decisions and the
+  hand-offs that already exist.
+. **Frame.** Describe the problem and the next action in the person's language,
+  not in the language of the implementation.
+. **Prototype.** Draw the flow and the surface early, with real content and real
+  states rather than placeholders.
+. **Validate.** Test the prototype with the people who do the work, and change
+  the design when the evidence says it is wrong.
+
+The design language and the component reference are the shared artefacts that
+keep that work consistent from screen to screen.
+
+== One design language
+
+Hamoni binds one design system across the product. Colours, type, spacing,
+radii, focus states, status treatment and component behaviour come from the
+*Design System for Hamoni*, not from individual screens. PrimeNG is driven by
+the generated Hamoni preset and Tailwind is the layout layer, so the component
+library and the application shell cannot drift apart.
+
+The design language is maintained separately:
+
+* link:https://github.com/hamoniai/hamoni-design-system[Design System for Hamoni]
+
+The implementation rules are recorded in
+link:{project-base-url}/blob/main/CODING-STANDARDS.md[Coding standards], Part III — Frontend. The visual principles include one accent used sparingly, status
+carried through fill, border and label rather than hue, and RAG status reserved
+for status against a target.
+
+== The team is the primary concept
+
+The **team** is the primary concept in Hamoni. It is where accountability,
+membership and the work itself meet.
+
+A team answers *who is accountable for this work and who does it*. A person
+belongs to one or more teams. A team owns processes, and the people in it carry
+the work through. Teams are deliberately shallow: a team owns a process, and
+there is no nesting beyond one level.
+
+The team shapes the product in several ways:
+
+* **Work is organised around teams.** Inbox and Activity show a person's work
+  and the work available to their teams.
+* **Ownership is a team responsibility.** The owning team is an accountability
+  label, not a permission. Permission is resolved separately from the security
+  model.
+* **Membership is the normal route to sight.** A person who belongs to the team
+  that owns a process can see it. Starting the process is a separate grant.
+* **Roles are derived, not assigned.** Team manager, process owner and member
+  are derived at sign-in and are additive. A person holds the union of the roles
+  they qualify for.
+* **Projects do not contain teams.** A project packages processes for
+  deployment. It may package work owned by several teams, and a team may own
+  processes in several projects. Teams and projects are peers, not a hierarchy.
+
+This is why the product treats the team as the first-class working unit while
+the organisation remains the security and isolation boundary.
+
+== How work ships
+
+A **project** is the deployment unit. It packages at least one process, the
+business rules those processes share, an environment and a version. A project may
+package processes owned by several teams, and a team may own processes in more
+than one project.
+
+Publishing creates an immutable version and increments the number. Versions are
+linear: there is no branching and no reversion. Going back is a redeploy —
+moving an environment's pointer to an older version — not a new version that
+copies an old one.
+
+An environment is a label on a project, and there is one by default. An
+environment points at a version, so promoting a build moves a pointer rather than
+copying anything.
+
+Assignment and delivery are separate. Assignment — whose work this is — is set on
+the task per environment, shared by default. Delivery — whether it reaches a real
+queue — is gated by whether the deployment is classified as production. This
+keeps a test environment from routing test work to the production team.
+
+== Design principles
+
+The design principles that follow from this are:
+
+* **People-powered and people-led.** The product is built around people and the
+  work they do, with AI as a contributing participant.
+* **Easy by default, advanced on request.** The common path is simple; the
+  technical surface is available when the person asks for it.
+* **One language, one system.** Copy, controls and visual treatment are
+  consistent across every surface.
+* **Guiding, not scolding.** The interface points to the next action and
+  supports the person, even when something has gone wrong.
+* **Trust through visibility.** Changes are reviewable, auditable and
+  attributable to the person who authorised them.
+* **Accessible and localisable by construction.** Accessibility and translation
+  are part of the design, not a later retrofit.
+
+== Related documents
+
+* link:{project-base-url}/blob/main/ARCHITECTURE-DECISIONS.md[Architecture decisions] — the
+  records for teams, ownership, access, advanced mode and the prompt.
+* link:{project-base-url}/blob/main/CODING-STANDARDS.md[Coding standards] — the front-end
+  standards, including UI design and language.
+* link:{project-base-url}/blob/main/AGENTS.md[Repository rules] — the working rules for the
+  project.
+* xref:architecture-and-design/architecture.adoc[Architecture] — the solution
+  architecture.
+* xref:architecture-and-design/project-layout.adoc[Project layout] — the
+  repository and project structure.
