@@ -1,9 +1,21 @@
 name: Documentation publish
 
 on:
-  schedule:
-    # Run every Monday at midnight UTC
-    - cron: '0 0 * * 1'
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+        type: choice
+        options:
+          - info
+          - warning
+          - debug
+      tags:
+        description: 'Test run tags'
+        required: false
+        type: string
 
 permissions:
   contents: read
