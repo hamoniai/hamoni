@@ -31,5 +31,33 @@ PrimeIcons
     Licence:     MIT
     Copyright:   PrimeTek (https://primeng.org)
 
+Components used by Hamoni documentation
+=======================================
+
+Antora default UI
+    Path:        /docs/ui/
+    Licence:     Mozilla Public License 2.0
+    Copyright:   Antora Project (https://gitlab.com/antora/antora-ui-default)
+
+Inter
+    Path:        /docs/ui/font/inter-latin-{400,700}-normal.woff2
+    Licence:     SIL Open Font License 1.1
+    Copyright:   The Inter Project Authors (https://github.com/rsms/inter)
+
+JetBrains Mono
+    Path:        /docs/ui/font/jetbrains-mono-latin-{400,700}-normal.woff2
+    Licence:     SIL Open Font License 1.1
+    Copyright:   The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+
+highlight.js
+    Path:        /docs/ui/js/vendor/highlight.js
+    Licence:     BSD 3-Clause License
+    Copyright:   Josh Goebel and highlight.js contributors (https://github.com/highlightjs/highlight.js)
+
+GitHub Octicons
+    Path:        /docs/ui/img/octicons-16.svg
+    Licence:     MIT
+    Copyright:   GitHub, Inc. (https://github.com/primer/octicons)
+
 Components used by Hamoni backend
 =================================
