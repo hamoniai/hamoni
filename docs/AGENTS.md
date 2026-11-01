@@ -101,8 +101,8 @@ link:{project-base-url}/blob/main/README.md[README]
 ```
 
 Do not import project `.md` files as Antora attachments. Do not copy project
-documents or source code into the documentation. The only collector import is
-the Hamoni logo.
+documents or source code into the documentation. The Hamoni logo is imported at
+build time from `control-room/control-room-ui/public/img/logo.svg`.
 
 Cross-page links use `xref:`. External links use `link:`.
 
@@ -136,10 +136,15 @@ resource shape and error format. It links to the generated site with
 - Do not check in pre-rendered SVG files for diagrams.
 - Style generated SVG through `docs/ui/css/site.css`, using the Hamoni design
   tokens.
-- The Hamoni logo is the only collected image. It is imported from
-  `screens/assets/logo/hamoni-logo.svg` into `modules/ROOT/images`.
+- The Hamoni logo is imported at build time from
+  `control-room/control-room-ui/public/img/logo.svg` into `modules/ROOT/images/logo.svg`.
 - Use descriptive alternative text and a block title for every diagram.
 - Do not use a diagram to repeat a table or a paragraph.
+
+## Fonts
+
+The documentation UI loads Inter and JetBrains Mono from Google Fonts. Do not add
+local font files to `docs/ui/font` or publish them with the documentation site.
 
 ## Navigation
 

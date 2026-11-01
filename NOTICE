@@ -39,16 +39,6 @@ Antora default UI
     Licence:     Mozilla Public License 2.0
     Copyright:   Antora Project (https://gitlab.com/antora/antora-ui-default)
 
-Inter
-    Path:        /docs/ui/font/inter-latin-{400,700}-normal.woff2
-    Licence:     SIL Open Font License 1.1
-    Copyright:   The Inter Project Authors (https://github.com/rsms/inter)
-
-JetBrains Mono
-    Path:        /docs/ui/font/jetbrains-mono-latin-{400,700}-normal.woff2
-    Licence:     SIL Open Font License 1.1
-    Copyright:   The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
-
 highlight.js
     Path:        /docs/ui/js/vendor/highlight.js
     Licence:     BSD 3-Clause License

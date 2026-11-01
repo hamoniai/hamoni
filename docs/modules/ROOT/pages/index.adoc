@@ -3,7 +3,7 @@
 
 [.brand-intro]
 --
-image::hamoni-logo.svg[alt=Hamoni,width=96]
+image::logo.svg[alt=Hamoni,width=96]
 
 *Hamoni Platform*
 

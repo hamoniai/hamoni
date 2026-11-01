@@ -3,10 +3,11 @@ title: Hamoni Platform
 version: ~
 nav:
   - modules/ROOT/nav.adoc
-# Import the Hamoni logo so the introduction can display the brand asset.
+
+# Import the tracked frontend logo at build time.
 ext:
   collector:
     scan:
-      - dir: ./../screens/assets/logo
+      - dir: ./../control-room/control-room-ui/public/img
         into: modules/ROOT/images
-        files: hamoni-logo.svg
+        files: logo.svg
