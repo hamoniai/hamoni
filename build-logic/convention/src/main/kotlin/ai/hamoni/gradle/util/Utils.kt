@@ -18,9 +18,32 @@
 
 package ai.hamoni.gradle.util
 
+import ai.hamoni.gradle.GITHUB_GIT_PREFIX
+import ai.hamoni.gradle.GITHUB_HTTPS_PREFIX
 import org.gradle.api.Project
+import org.gradle.api.provider.Provider
 
+/**
+ * Create an overridable property which prefers: environment -> Gradle property -> project property
+ */
 fun Project.getOverridableProperty(key: String): String? {
     val envKey = key.uppercase().replace(".", "_")
     return System.getenv(envKey) ?: providers.systemProperty(key).orNull ?: project.findProperty(key) as String?
+}
+
+/**
+ * Get the git repository for a project. Cannot access 'Project' without breaking the configuration cache.
+ */
+fun Project.getGitRepository(mapToHttps: Boolean = true): Provider<String> {
+    return this.providers.exec {
+        commandLine("git", "config", "--get", "remote.origin.url")
+    }.standardOutput.asText.map { url ->
+        url.trim().let {
+            if (mapToHttps && it.startsWith(GITHUB_GIT_PREFIX)) {
+                it.replaceFirst(GITHUB_GIT_PREFIX, GITHUB_HTTPS_PREFIX)
+            } else {
+                it
+            }
+        }
+    }
 }

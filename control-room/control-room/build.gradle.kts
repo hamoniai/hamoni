@@ -56,17 +56,17 @@ dependencies {
     testImplementation("io.rest-assured:kotlin-extensions")
 }
 
-///**
-// * Additional clean tasks
-// */
-//val cleanNodeTask = project.tasks.register<Delete>("cleanNode") {
-//    val base = project.layout.projectDirectory.dir("src/main/webui")
-//    delete(
-//        base.dir("node_modules"),
-//        base.dir("dist"),
-//        base.dir(".angular"),
-//    )
-//}
-//project.tasks.named("clean").configure {
-//    dependsOn(cleanNodeTask)
-//}
+/**
+ * Additional clean tasks
+ */
+val cleanNodeTask = project.tasks.register<Delete>("cleanNode") {
+    val base = project.layout.projectDirectory.dir("../control-room-ui")
+    delete(
+        base.dir("node_modules"),
+        base.dir("dist"),
+        base.dir(".angular"),
+    )
+}
+project.tasks.named("clean").configure {
+    dependsOn(cleanNodeTask)
+}

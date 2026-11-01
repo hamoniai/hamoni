@@ -1,3 +1,6 @@
+import ai.hamoni.gradle.util.getGitRepository
+import org.antora.gradle.AntoraTask
+
 /*
  * Hamoni: Cloud workflow platform
  * Copyright (C) 2026  Hamoni Limited
@@ -17,6 +20,7 @@
  */
 
 plugins {
+    id("base")
     id("base-conventions")
     alias(libs.plugins.docs.antora)
 }
@@ -24,13 +28,47 @@ plugins {
 /**
  * Connect the Antora task into the build.
  */
-/*tasks.named("assemble") {
+tasks.named("assemble") {
     dependsOn("antora")
-}*/
+}
 
 /**
  * Configure the Antora build
  */
 antora {
     playbook = file("antora-playbook.yml")
+    packages = mapOf(
+        "@antora/collector-extension" to "latest",
+        "asciidoctor-kroki" to "latest-0"
+    )
+
+    // References in need to be static.
+    setOptions(
+        mapOf(
+            "attributes" to mapOf(
+                "project-version" to project.version.toString(),
+                "hamoni-org-url" to "https://github.com/hamoniai",
+                "design-system-url" to "https://github.com/hamoniai/hamoni-design-system",
+                "openapi-url" to "#",
+            )
+        )
+    )
+}
+
+/**
+ * Need to configure each of the Antora tasks with options individually because the Git URL comes from a provider
+ * so we need to supply at task configuration.
+ */
+tasks.withType<AntoraTask>().configureEach {
+    val gitUrlProvider = project.getGitRepository()
+    args.addAll(
+        gitUrlProvider.map { gitUrl ->
+            listOf(
+                "--attribute",
+                "project-clone-url=${gitUrl}",
+                "--attribute",
+                "project-base-url=${gitUrl.replace(".git$".toRegex(), "")}",
+            )
+        }
+    )
 }
