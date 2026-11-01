@@ -1,0 +1,22 @@
+= Agent connectors
+:navtitle: Agent connectors
+
+This page describes connections to external agents.
+
+== Platform AI agent
+
+An instance requires at least one agent: the platform AI agent. Staff interact
+with the platform AI agent and use it to build processes.
+
+== Business-specific AI agents
+
+An organisation defines business-specific AI agents for agent tasks. These agents
+connect to external agent APIs.
+
+== Supported agent APIs
+
+The supported agent APIs are not defined. OpenAI and AWS Converse are examples.
+
+== Connection configuration
+
+The agent connection configuration is not defined.

@@ -1,0 +1,73 @@
+= JSON Process
+:navtitle: JSON Process
+
+JSON Process is the executable process model. It is defined as a JSON Schema;
+this page describes the model and does not repeat the schema.
+
+== JSON Process model
+
+JSON Process is BPMN-inspired but not BPMN. It is one executable model with no
+design-time layers.
+
+State data uses standard JSON Schema typing (draft 2020-12). Every field carries a
+required description. The JSON Schema is the authoritative specification.
+
+== Components
+
+A process has up to three isolated components:
+
+* `main` — the normal flow;
+* an optional pend handler;
+* an optional exception handler.
+
+The handlers are peer canvases, not drawn on the main flow. State data is declared
+once at process level and shared by all three.
+
+A process completes when no executable token remains in any component and it is
+not suspended. A pend handler finishing does not resume the main process; only
+the resume method does.
+
+== Process and activity states
+
+[cols="1,3",options="header"]
+|===
+| Model | States
+
+| Process
+| Active · Pend · Exception · Paused · Completed · Cancelled. Completed and
+Cancelled are terminal.
+
+| Activity
+| Available (Waiting or open) · Assigned · Active · Completed, plus Cancelled
+when the enclosing process is cancelled or terminated.
+|===
+
+The activity state is orthogonal to the process state. A pended process still
+shows its task as Assigned, and a running activity still finishes.
+
+== Pend and exception
+
+A **pend** stops normal execution because something outside the organisation's
+control must move. It is configured with a clock rule and a mutually exclusive
+resume method: manual, a time value, or after the processes it started. While
+pended, all parallel paths are suspended without interrupting running activities.
+
+An **exception** is an internal technical fault. It requires external input but
+never stops the clock.
+
+The service-level agreement is expressed as a percentage in a time window — for
+example, *90% in 5 business days* — not as a fixed per-case deadline.
+
+== Signals and junctions
+
+A junction is a pure synchronous predicate over data it already holds. It has no
+input, output, waiting or side effect.
+
+A signal's target is broadcast, any or specific. Correlation uses a channel, a
+selector over the payload and a payload mapping into state. An inbound signal
+never creates an instance.
+
+== Versioning
+
+The whole process definition file is versioned. How the definition is stored,
+diffed and rolled is an implementation concern.

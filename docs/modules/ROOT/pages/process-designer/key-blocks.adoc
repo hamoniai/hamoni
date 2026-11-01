@@ -1,0 +1,7 @@
+= Key blocks
+:navtitle: Key blocks
+
+The process designer uses key blocks to build a process. The block catalogue
+includes tasks, gateways and other nodes.
+
+The detailed configuration of each block is not defined.

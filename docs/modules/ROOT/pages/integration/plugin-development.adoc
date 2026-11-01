@@ -1,0 +1,7 @@
+= Plugin development
+:navtitle: Plugin development
+
+A plugin creates a new task type that calls an external system. Plugins provide
+outbound connectivity for systems that Hamoni does not integrate with directly.
+
+The plugin API is not defined.

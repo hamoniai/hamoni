@@ -1,0 +1,81 @@
+= APIs
+:navtitle: APIs
+
+This page describes the shape of the Hamoni API and how a calling system
+authenticates.
+
+== API documentation
+
+The API is documented on the generated OpenAPI/Swagger site:
+
+* link:{openapi-url}[OpenAPI documentation]
+
+The generated site is the authoritative reference for operations, request bodies
+and response schemas.
+
+== Authentication
+
+A calling system obtains a token from its organisation's OpenID Connect
+provider. It exchanges that token for a Hamoni session token.
+
+The Hamoni session token identifies the principal. It does not contain the
+organisation. The caller supplies the organisation on each business call.
+
+== Organisation context
+
+Business calls carry the organisation identifier in the `X-Organisation-Id`
+header. The value is the organisation identifier as a UUID string.
+
+A business call without a valid organisation header is rejected with a
+problem-details response.
+
+== Resource shape
+
+A resource follows `/api/\{component}/\{id}/\{sub-resource}`, with at most one
+sub-resource level. A value sub-resource is read with `GET` and overwritten with
+`PUT`. An operation is invoked with `POST`.
+
+The task component is the reference shape:
+
+[cols="2,1,3",options="header"]
+|===
+| Endpoint | Method | Purpose
+
+| `/tasks`
+| `GET`
+| List or search; returns the light task view.
+
+| `/tasks/\{taskId}`
+| `GET`
+| Task detail.
+
+| `/tasks/\{taskId}/state`
+| `GET`
+| The current state.
+
+| `/tasks/\{taskId}/state`
+| `PUT`
+| A validated state transition.
+
+| `/tasks/\{taskId}/data`
+| `GET`
+| The task's data.
+
+| `/tasks/\{taskId}/data`
+| `PUT`
+| Overwrite the data.
+
+| `/tasks/\{taskId}/history`
+| `GET`
+| The audit-style history.
+
+| `/tasks/\{taskId}/assign`
+| `POST`
+| Assignment, take or refer.
+|===
+
+== Errors
+
+All error responses are RFC 9457 problem details with the media type
+`application/problem+json`. The response carries a human-readable message. It
+does not carry a stack trace or an internal identifier.

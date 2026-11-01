@@ -11,11 +11,10 @@
 ** xref:installation/virtual-machines.adoc[Virtual machine deployments]
 ** xref:installation/docker.adoc[Docker deployments]
 ** xref:installation/maintenance.adoc[Maintenance]
-* Architecture and design
-** xref:architecture-and-design/design.adoc[Design]
-** xref:architecture-and-design/architecture.adoc[Architecture]
-** xref:architecture-and-design/project-layout.adoc[Project layout]
-* Technical
-** xref:technical/apis.adoc[APIs]
-** xref:technical/database.adoc[Database design and principles]
-** xref:technical/json-process.adoc[JSON Process]
+* Integration
+** xref:integration/apis.adoc[APIs]
+** xref:integration/plugin-development.adoc[Plugin development]
+** xref:integration/agent-connectors.adoc[Agent connectors]
+* Process designer
+** xref:process-designer/key-blocks.adoc[Key blocks]
+** xref:process-designer/json-process.adoc[JSON Process]
