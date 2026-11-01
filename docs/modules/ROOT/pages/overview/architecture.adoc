@@ -1,0 +1,226 @@
+= Architecture
+:navtitle: Architecture
+
+This page describes the solution architecture of Hamoni for technical staff who
+deploy or support the platform. It covers the runtime components, how they
+communicate and how organisations are separated. It does not describe the
+software layout of the repository.
+
+== Solution overview
+
+[#solution-overview]
+.Solution overview
+[svgbob]
+----
+                 +----------------+
+                 |    Browser     |
+                 +-------+--------+
+                         |
+                         | HTTPS
+                         v
+                 +----------------+
+                 |    Ingress     |
+                 +-------+--------+
+                         |
+                         | HTTP
+                         v
+                 +----------------+
+                 |  Control Room  |
+                 +---+--------+---+
+                     |        |
+          commands   |        | data
+                     v        v
+              +------------+ +------------+
+              | Messaging  | |  Database  |
+              +-----+------+ +-----+------+
+                    |              ^
+                    v              |
+              +----------------+   |
+              | Process Runner |---+
+              +----------------+
+----
+
+Hamoni has two deployable applications:
+
+* **Control Room** — the user-facing application. It serves the Angular
+  frontend, exposes the interface used by the frontend, and owns the design-time
+  model and the read models the screens use.
+* **Process Runner** — the execution runtime. It executes published process
+  definitions, manages process and activity state, handles pend and exception,
+  enforces timers and the service-level agreement clock, and records the audit
+  trail.
+
+A browser reaches the Control Room through web ingress. The Control Room and the
+Process Runner communicate through a messaging provider. Both applications use
+the relational database.
+
+== Control Room
+
+The Control Room is the user-facing half of the platform. It owns the design-time
+model, management of teams, projects, versions, deployments and security, the
+read models the screens consume, and the interface used by the Angular frontend.
+
+The Control Room authenticates actors through OpenID Connect. It resolves the
+organisation for each request and enforces the organisation boundary. The server
+holds no session state: the credential identifies the authenticated principal,
+and the organisation travels with the request.
+
+=== Angular frontend
+
+The frontend is an Angular application. It provides the screens for the process
+designer, lists, teams, projects, security and the operational work surfaces.
+
+The frontend does not execute a process and does not hold business rules. It
+calls the Quarkus backend through the interface.
+
+=== Quarkus backend
+
+The backend is a Quarkus application in reactive mode. It serves the frontend
+through Quinoa, exposes the interface used by the frontend, and implements the
+Control Room services.
+
+The backend resolves the organisation, enforces authorisation, reads and writes
+the organisation schema, and publishes lifecycle commands to the messaging
+provider.
+
+=== Frontend-to-backend structure
+
+[#control-room-structure]
+.Control Room structure
+[svgbob]
+----
++----------------------+   HTTPS  +----------------------+
+|  Angular frontend    |<-------->|   Quarkus backend    |
+|  served by Quinoa    |          |   REST and services  |
++----------------------+          +----------+-----------+
+                                             |
+                          +------------------+------------------+
+                          |                  |                  |
+                          v                  v                  v
+                   +------------+     +------------+     +------------+
+                   |  Database  |     |  Messaging |     |  OIDC      |
+                   +------------+     +------------+     +------------+
+----
+
+Quinoa serves the Angular application from the Quarkus deployment. In
+production, the frontend and the backend share one origin.
+
+== Process Runner
+
+The Process Runner is the execution half of the platform. It interprets a
+published process definition, starts and resumes instances, advances activities,
+handles pend and exception, enforces timers and the service-level agreement
+clock, and records the audit trail.
+
+The Process Runner has no REST interface. It consumes lifecycle commands from the
+Control Room over Quarkus Reactive Messaging and persists the durable state of an
+instance. Execution is resumable: a restart does not lose work.
+
+== Communication
+
+=== Inbound
+
+Inbound communication is browser traffic to the Control Room. It uses HTTPS and
+passes through web ingress. Ingress terminates TLS, balances requests across
+Control Room instances and forwards requests to the Control Room.
+
+The Process Runner is internal and is not reachable through ingress.
+
+=== Outbound
+
+The Control Room and the Process Runner communicate outbound to the platform
+services:
+
+* the relational database, which holds the global schema and the organisation
+  schemas;
+* the messaging provider, which carries lifecycle commands and events;
+* blob storage, which holds documents;
+* the Redis-compatible cache, which holds the authorisation cache;
+* the OpenID Connect provider, which authenticates people and systems;
+* the email server, which sends notifications and invitations;
+* the credential manager key source, which supplies encryption keys.
+
+The platform bundle defines which service provides each dependency.
+
+=== Between components
+
+The Control Room publishes lifecycle commands to the messaging provider. The
+Process Runner consumes the commands and executes the work. The messaging
+connection is encrypted.
+
+Messaging is not a replacement for the database. It carries commands and events;
+the Process Runner persists the durable state of an instance. Both applications
+use the relational database.
+
+== Platform dependencies
+
+The platform depends on the following services:
+
+[cols="1,3",options="header"]
+|===
+| Dependency | Purpose
+
+| Relational database
+| Global schema for authentication profiles and one schema per organisation.
+
+| Messaging provider
+| Lifecycle commands and events between the Control Room and the Process Runner.
+
+| Blob storage
+| Documents, templates and temporary files.
+
+| Redis-compatible cache
+| Authorisation cache.
+
+| OpenID Connect provider
+| Authentication for people, system accounts and agents.
+
+| Email server
+| Notifications and invitations.
+
+| Credential manager key source
+| Encryption keys for the platform credential manager.
+|===
+
+== Single-organisation and multi-organisation
+
+A deployment-level flag selects single-organisation or multi-organisation mode.
+The default is single-organisation.
+
+In single-organisation mode, the platform serves one organisation and creating
+new organisations is disabled. In multi-organisation mode, the platform serves
+multiple organisations from one deployment.
+
+=== Organisation separation
+
+[#organisation-modes]
+.Organisation modes
+[svgbob]
+----
++---------------------------+   +---------------------------+
+| Single organisation       |   | Multi-organisation        |
+| +-----------------------+ |   | +---------+  +---------+  |
+| | Organisation schema   | |   | | Org A   |  | Org B   |  |
+| +-----------------------+ |   | | schema  |  | schema  |  |
+|                           |   | +---------+  +---------+  |
++---------------------------+   +---------------------------+
+----
+
+In multi-organisation mode, each organisation has its own schema. Isolation is
+by schema: a query cannot cross organisations. The global schema holds the
+authentication profiles and the pointers to the organisations a person may
+enter.
+
+== Runtime flow
+
+. A browser requests the application through web ingress.
+. The Control Room authenticates the person through OpenID Connect and resolves
+  the organisation for the request.
+. The Control Room serves the Angular frontend and the backend interface.
+. A person starts a process from the Control Room.
+. The Control Room validates the request against the process's state schema and
+  publishes a lifecycle command to the messaging provider.
+. The Process Runner consumes the command, advances the instance, and persists
+  the instance state, state data and audit record.
+. The Control Room reads the organisation schema to build the lists and details
+  the screens show.

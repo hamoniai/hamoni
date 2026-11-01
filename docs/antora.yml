@@ -3,3 +3,10 @@ title: Hamoni Platform
 version: ~
 nav:
   - modules/ROOT/nav.adoc
+# Import the Hamoni logo so the introduction can display the brand asset.
+ext:
+  collector:
+    scan:
+      - dir: ./../screens/assets/logo
+        into: modules/ROOT/images
+        files: hamoni-logo.svg

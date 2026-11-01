@@ -1,0 +1,99 @@
+= Security
+:navtitle: Security
+
+This page describes the security aspects of Hamoni for IT security and risk
+staff.
+
+== Network security
+
+=== Inbound
+
+Inbound connectivity is HTTPS through web ingress. Ingress terminates TLS,
+balances requests across Control Room instances and forwards requests to the
+Control Room. The Process Runner is internal and is not reachable through
+ingress.
+
+=== Outbound
+
+Outbound connectivity to external services uses HTTPS. Connections to platform
+services use the service's encrypted endpoint.
+
+The Control Room and the Process Runner connect to the OpenID Connect provider,
+the email server, blob storage, the cache, the relational database and the
+messaging provider.
+
+=== Internal communication
+
+Communication between the Control Room and the Process Runner uses the messaging
+provider. The messaging connection is encrypted. The database connection uses
+TLS.
+
+== Authentication
+
+Hamoni does not store passwords. Authentication uses the organisation's OpenID
+Connect provider. An organisation configures one or more providers.
+
+Validation is issuer-first. The issuer is read from the token, the provider's
+keys are resolved and cached, and the signature is validated locally. A token is
+never forwarded to the provider.
+
+The browser uses the authorization code flow. Quarkus performs the code exchange
+and returns an encrypted, HttpOnly session cookie. OpenID Connect tokens are not
+held in JavaScript. Machine callers use a bearer token.
+
+== Account provisioning
+
+Accounts are provisioned and deprovisioned through SCIM. Where SCIM is not used,
+Hamoni supports local provisioning.
+
+== Roles
+
+Roles are derived at sign-in and are additive. A person holds the union of the
+roles they qualify for.
+
+* **Organisation owner** — the owner of the organisation.
+* **Process owner** — derived from ownership of a process.
+* **Team manager** — derived from management of a team.
+* **Member** — derived from team membership.
+* **Platform manager** — manages the grouping and tagging of process runners to
+  environments.
+
+Authorisation is enforced at the service boundary. A client-side check is a
+convenience, not a security control.
+
+== Actors and API tokens
+
+Hamoni has no API tokens. Every activity is attributable to an identifiable
+actor.
+
+An actor is a person, a system account or an AI agent. A system or agent has its
+own OpenID Connect account. The account is managed like any other actor: it can
+be assigned to teams and its actions are attributed to it. A system or agent does
+not act through a person's account.
+
+== Organisation isolation
+
+In multi-organisation mode, each organisation has its own schema. Isolation is by
+schema: a query cannot cross organisations. There is no cross-schema foreign key.
+
+The global schema holds authentication profiles. The organisation schema holds
+organisation-scoped data and the audit trail.
+
+In single-organisation mode, the deployment serves one organisation.
+
+== Audit
+
+Every auditable action goes through the Hamoni audit framework. Audit writes are
+not optional and are not best-effort.
+
+The audit trail is stored in the organisation schema and records the actor that
+performed the action.
+
+== Code quality and security scanning
+
+The build runs linting and security scanning for each module. Kotlin and frontend
+linting run as part of the build, and module security scanning runs with the
+build.
+
+The repository contains no credentials, keys or tokens. Secrets come from the
+platform's secret store and are not written to the repository or logs.

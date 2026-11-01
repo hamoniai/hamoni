@@ -1,0 +1,75 @@
+= Concepts
+:navtitle: Concepts
+
+This page describes the main concepts used throughout Hamoni.
+
+== Organisation
+
+An organisation is the security and data boundary. Teams, projects,
+processes, tasks and documents belong to one organisation. A person can belong
+to more than one organisation.
+
+An organisation provides its own OpenID Connect identity and email services. In
+a multi-organisation deployment, each organisation has its own schema. In a
+single-organisation deployment, the platform serves one organisation.
+
+== Team
+
+A team is the primary working unit. It owns processes and the people who do the
+work. A team is shallow: it contains people and owns processes, but it does not
+contain other teams.
+
+Ownership is an accountability label, not a permission. Membership of the owning
+team gives sight of a process; starting the process is a separate grant.
+
+== Project
+
+A project is the deployment unit. It packages at least one process, the business
+rules those processes share, an environment and a version.
+
+Teams and projects are peers. A project may package processes owned by several
+teams, and a team may own processes in several projects.
+
+== Process definition and process instance
+
+A process definition is the design of a process. It is an executable JSON
+Process specification. A process instance is one running case of a published
+process definition.
+
+A process definition is versioned and published. An instance runs a specific
+version. A process instance has a runtime state: Active, Pend, Exception,
+Paused, Completed or Cancelled. Completed and Cancelled are terminal.
+
+Tasks and documents belong to an instance, not to the definition.
+
+== Task (activity)
+
+A task is a unit of work in a process instance. It is performed by a person or
+an agent. The interface calls it a task; the domain model calls it an activity.
+
+A task moves through Available, Assigned, Active and Completed. It is Cancelled
+when the enclosing process is cancelled or terminated.
+
+== Document
+
+A document is a file attached to a process instance. The process data holds a
+reference to the document, not the file itself.
+
+A template is content used to generate a document. A template is reused across
+processes.
+
+== Deployment and environment
+
+An environment is a label on a project. There is one environment by default.
+
+A deployment pairs a version with an environment. A deployment classified as
+production delivers work to real queues; a non-production deployment does not.
+
+== Actor
+
+An actor is the identity that performs an action. An actor is a person, a
+system account or an AI agent.
+
+Every action in Hamoni is attributed to an actor. A system or agent has its own
+account; it does not act through a person's account. An actor acts for itself
+or, where granted, on behalf of another identity.

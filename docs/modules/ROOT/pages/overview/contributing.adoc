@@ -1,0 +1,115 @@
+= Contributing
+:navtitle: Contributing
+
+This page describes how to contribute to Hamoni from outside the project.
+
+== Project layout
+
+[#contributing-structure]
+.Project structure
+[svgbob]
+----
++----------------+                  +------------------+
+|  control room  |                  |  process runner  |
+| design and API |                  |    execution     |
++--------+-------+                  +--------+---------+
+         |                                   |
+         |                                   |
+         +---------------+-------------------+
+                         |
+                         v
+                 +-------------------+
+                 |      common       |
+                 | model and schema  |
+                 | state and API     |
+                 +-------------------+
+----
+
+The repository has three holding directories plus the documentation set:
+
+* `control-room/` — the user-facing application. `control-room/control-room`
+  is the Quarkus assembly and `control-room/control-room-ui` is the Angular
+  frontend.
+* `process-runner/` — the execution runtime.
+* `common/` — the model, schema, state models and contracts shared by both
+  application areas.
+* `docs/` — the Antora documentation component.
+
+Dependencies are one-way. The application areas depend on `common/`; they never
+depend on each other.
+
+The build uses Gradle with the Kotlin DSL, Kotlin, Java 25 and Quarkus in
+reactive mode. The repository rules are in
+link:{project-base-url}/blob/main/AGENTS.md[Repository rules], the coding standards are in
+link:{project-base-url}/blob/main/CODING-STANDARDS.md[Coding standards], and the build commands
+are in link:{project-base-url}/blob/main/README.md[README].
+
+== OpenCode agents
+
+Hamoni uses OpenCode and a set of predefined agents under
+link:{project-base-url}/tree/main/.opencode/agents[.opencode/agents]. The agents
+work within the repository rules, the coding standards and the architecture
+decisions.
+
+The two entry points are:
+
+* **`build-lead`** — for simple updates and changes.
+* **`plan-lead`** — for full feature work.
+
+== Simple changes with build-lead
+
+Simple updates and changes use the `build-lead` agent directly. The agent is
+configured to understand the code standards and the project layout, and it works
+within the existing structure.
+
+== Feature work with plan-lead
+
+Full features start with the `plan-lead` agent. The workflow starts with the
+prompt:
+
+[quote]
+I want to create a feature that …
+
+The plan lead coordinates the technical business analyst, the solution architect
+and the technical planner. It is read-only on code and writes only under
+`specs/`.
+
+The plan team produces a build spec at
+`specs/NNNN-<Title>-spec.md` and an implementation approach at
+`specs/NNNN-<Title>-impl.md`. The spec states what to build; the implementation
+approach states how. The approved pair is the hand-off to the build team. The
+spec lifecycle and templates are in
+link:{project-base-url}/blob/main/specs/README.md[specs/README.md].
+
+== Build and test
+
+The repository builds with `./gradlew build` and tests with `./gradlew test`.
+Development mode runs the applications with `./gradlew :control-room:quarkusDev`
+and `./gradlew :process-runner:quarkusDev`.
+
+The Angular frontend uses `npm run build`, `npm run lint` and `npm test` from
+`control-room/control-room-ui`.
+
+Java 25 is required. Docker is required for local development services and
+integration tests.
+
+== Git workflow
+
+Contributors use the standard Git workflow:
+
+. Fork the project.
+. Create a new branch for the change.
+. Create the feature or update on that branch.
+. Submit a Git pull request.
+
+== Contributor Licence Agreement
+
+Contributors are required to sign the Contributor Licence Agreement before a pull request is
+merged.
+
+== Contribution rules
+
+Contributions follow the repository rules in link:{project-base-url}/blob/main/AGENTS.md[Repository rules]
+and the coding standards in
+link:{project-base-url}/blob/main/CODING-STANDARDS.md[Coding standards]. The coding standards
+are the source of truth for code style, structure and testing.

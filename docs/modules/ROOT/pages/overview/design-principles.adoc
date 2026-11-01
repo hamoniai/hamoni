@@ -1,0 +1,72 @@
+= Design principles
+:navtitle: Design principles
+
+This page describes the design principles used across Hamoni.
+
+== Human-centred design at Hamoni
+
+Hamoni applies human-centred design by starting with the work people do, not
+with the software that supports it. The design process begins with the people,
+the decisions and the hand-offs that already exist in an organisation.
+
+The product is designed for business people, not technologists. The common path
+is configured by the team itself, without specialist help. Prototypes use real
+content and real states, and they are validated with the people who do the work.
+Accessibility and localisation are part of the design rather than a later
+addition.
+
+People remain in control of the work. AI participates in the process, and a
+change proposed by AI or by a prompt is reviewable before it is applied.
+
+== Key design principles
+
+=== The 80/20 rule
+
+Eighty percent of things are easy. The common path is configured by the team
+itself and does not require specialist help.
+
+The remaining twenty percent is advanced mode. Advanced mode is one
+application-wide setting that reveals the technical surface wherever it applies.
+There is no per-screen advanced switch.
+
+=== Every action has an actor
+
+Every action in Hamoni is performed by an actor. An actor is a person, a system
+account or an AI agent.
+
+A system or agent has its own account. It does not act through a person's
+account. The account is managed like any other actor: it can be assigned to
+teams and its actions are attributed to it.
+
+The remaining principles apply across the product:
+
+* **Easy by default, advanced on request.** The common path is simple; the
+  technical surface is available when the person asks for it.
+* **Guiding.** The interface states the next action and the outcome.
+* **One design language.** Controls, copy and visual treatment are consistent
+  across every surface.
+* **Trust through visibility.** Changes are reviewable, auditable and
+  attributable to the actor who authorised them.
+* **Accessible and localisable.** Every control is operable, every state is
+  visible, and every user-facing string is localisable.
+
+== Tone of voice
+
+Copy is plain, direct and written for business people. It states what is
+happening and what to do next. It is professional, guiding and supportive, and
+it does not scold the person.
+
+User-facing copy does not use acronyms or abbreviations. Every user-facing
+string is localisable, and the interface does not build a sentence from
+fragments.
+
+== Design language
+
+The design language defines the palette, type, spacing, shape, components and
+interaction states used across Hamoni. It is maintained separately as the
+Design System for Hamoni:
+
+* link:{design-system-url}[Design System for Hamoni]
+
+The application uses PrimeNG components driven by the Hamoni preset, with
+Tailwind as the layout layer.
