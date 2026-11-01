@@ -18,7 +18,7 @@
 
 package ai.hamoni.gradle.util
 
-import ai.hamoni.gradle.GITHUB_GIT_PREFIX
+import ai.hamoni.gradle.GITHUB_GIT_PREFIX_PATTERN
 import ai.hamoni.gradle.GITHUB_HTTPS_PREFIX
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
@@ -39,8 +39,8 @@ fun Project.getGitRepository(mapToHttps: Boolean = true): Provider<String> {
         commandLine("git", "config", "--get", "remote.origin.url")
     }.standardOutput.asText.map { url ->
         url.trim().let {
-            if (mapToHttps && it.startsWith(GITHUB_GIT_PREFIX)) {
-                it.replaceFirst(GITHUB_GIT_PREFIX, GITHUB_HTTPS_PREFIX)
+            if (mapToHttps) {
+                GITHUB_GIT_PREFIX_PATTERN.toRegex().replace(it, GITHUB_HTTPS_PREFIX)
             } else {
                 it
             }

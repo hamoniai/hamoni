@@ -21,5 +21,5 @@ package ai.hamoni.gradle
 /*
  * Git constants
  */
-const val GITHUB_GIT_PREFIX = "git@github.com:"
+const val GITHUB_GIT_PREFIX_PATTERN = "^git@[a-zA-Z0-9-]+:"
 const val GITHUB_HTTPS_PREFIX = "https://github.com/"
