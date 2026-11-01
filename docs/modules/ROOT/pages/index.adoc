@@ -12,7 +12,7 @@ Version {project-version}
 
 == What Hamoni is
 
-Hamoni is an Operations-first cloud workflow platform and AI agent harness for people-led services.
+Hamoni is an Operations-first cloud workflow platform and AI agent harness for people-led organisations.
 It brings AI into business processes as an active participant, so people and AI
 work as one workforce. Organisations use Hamoni to design, deploy and run
 processes in which people and AI agents perform work, and every action is
@@ -21,18 +21,18 @@ recorded.
 == Who Hamoni is for
 
 Hamoni is for people-led organisations that perform services or create products and want to
-integrate AI into their business. It is also for organisation whose existing
+integrate AI into their business. It is also for organisations whose existing
 processes and systems are complex, distributed or difficult to change. The
-primary users are business people, process owners, operations teams and the AI
+primary users are leadership, process owners, operations teams and the AI
 agents that work with them.
 
 == Licensing
 
 Unless you have received this program directly from Hamoni Limited pursuant to
-the terms of a commercial licence agreement with Hamoni Limited, this program is
-licensed under version 3 of the GNU Affero General Public License. The licence
+the terms of a commercial license agreement with Hamoni Limited, this program is
+licensed under version 3 of the GNU Affero General Public License. The license
 text is in link:{project-base-url}/blob/main/COPYING[COPYING]. Third-party
-components and their licences are recorded in
+components and their licenses are recorded in
 link:{project-base-url}/blob/main/NOTICE[NOTICE].
 
 == Source and version
