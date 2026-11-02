@@ -21,12 +21,14 @@ package ai.hamoni.control_room.initialisers
 import ai.hamoni.common.platform.PlatformConfig
 import ai.hamoni.control_room.ResourceLogger
 import io.quarkus.runtime.StartupEvent
+import io.smallrye.mutiny.Uni
 import io.vertx.mutiny.core.Vertx
 import jakarta.annotation.Priority
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.event.Observes
 import jakarta.inject.Inject
 import jakarta.interceptor.Interceptor
+import java.io.FileNotFoundException
 
 /*
  * Default initialisers for the organisation
@@ -50,10 +52,21 @@ class OrganisationInitialiser @Inject constructor (
         val defaultOrganisationId = platformConfig.defaultOrganisation().id()
         ResourceLogger.LOGGER.showDefaultOrganisationId(defaultOrganisationId)
 
-        // Check and see if the organisation has been configured. We do this by checking the initialised flag.
-        // TODO: if we have been told to initialise and the organisation has already been initialised, skip and warn.
         // If a config file specified, but cannot be found, it's a fatal error.
-        // Need to verify the schema after loading the JSON, if it doesn't validate, then it is a fatal error.
-        //vertx.fileSystem().readFile("")
+        platformConfig.defaultOrganisation().config().orElse(null).takeIf { !it.isNullOrBlank() }?.let { path ->
+            val content = vertx.fileSystem().exists(path)
+                .onItem().transformToUni {
+                    if (it == true) {
+                        vertx.fileSystem().readFile(path)
+                    } else {
+                        Uni.createFrom().failure { FileNotFoundException("Organisation defaults '${path}' not found") }
+                    }
+                }
+                .await().indefinitely()
+
+            // TODO: if we have been told to initialise and the organisation has already been initialised, skip and warn.
+            // Check and see if the organisation has been configured. We do this by checking the initialised flag.
+            // Need to verify the schema after loading the JSON, if it doesn't validate, then it is a fatal error.
+        }
     }
 }
