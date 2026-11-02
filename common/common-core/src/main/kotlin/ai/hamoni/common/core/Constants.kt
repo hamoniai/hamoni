@@ -31,7 +31,8 @@ const val PRODUCT_NAME = "Hamoni"
 /*
  * Global database definitions
  */
-const val GLOBAL_SCHEMA = "platform"
+const val PLATFORM_SCHEMA = "platform"
+const val ORGANISATION_SCHEMA = "organisation" // dummy for config matching, the real organisation schema is the UUID.
 
 /*
  * Error handling constants

@@ -54,6 +54,11 @@ dependencies {
     testImplementation(project(":common-test"))
     testImplementation("io.rest-assured:rest-assured")
     testImplementation("io.rest-assured:kotlin-extensions")
+
+    // JSON schema, will likely need jackson:
+    // implementation("io.quarkus:quarkus-jackson")
+    //implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    // but make sure quarkus-rest-jackson **does not** get included.
 }
 
 /**

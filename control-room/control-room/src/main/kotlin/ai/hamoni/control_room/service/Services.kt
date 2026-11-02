@@ -18,6 +18,7 @@
 
 package ai.hamoni.control_room.service
 
+import ai.hamoni.common.platform.PlatformConfig
 import ai.hamoni.control_room.data.AuthenticationProfile
 import ai.hamoni.control_room.data.Organisation
 import ai.hamoni.control_room.data.OrganisationAuthConfiguration
@@ -80,27 +81,17 @@ enum class AuthenticationProfileServiceHydration {
  */
 @ApplicationScoped
 @RegisterForReflection
-class ConfigurationService {
-
-    companion object {
-        /**
-         * The default organisation identifier.
-         *
-         * This is a temporary holding value: how the default organisation is
-         * identified at start-up has not been decided, so the all-zero UUID is
-         * returned until that decision is made.
-         */
-        private val DEFAULT_ORGANISATION_ID: UUID =
-            UUID.fromString("00000000-0000-0000-0000-000000000000")
-    }
-
+class ConfigurationService @Inject constructor(
+    private val platformConfig: PlatformConfig
+) {
     /**
-     * Get the default organisation's identifier.
+     * Get the default organisation's identifier. This is a wrapper around the configuration so that services
+     * have a common entry point. The startup will ensure this is never null.
      *
      * @return the identifier of the deployment's default organisation
      */
     fun getDefaultOrganisationId(): Uni<UUID> =
-        Uni.createFrom().item(DEFAULT_ORGANISATION_ID)
+        Uni.createFrom().item(platformConfig.defaultOrganisation().id())
 }
 
 /**

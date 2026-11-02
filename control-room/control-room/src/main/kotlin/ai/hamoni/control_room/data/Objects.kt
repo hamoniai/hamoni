@@ -1,6 +1,6 @@
 package ai.hamoni.control_room.data
 
-import ai.hamoni.common.core.GLOBAL_SCHEMA
+import ai.hamoni.common.core.PLATFORM_SCHEMA
 import ai.hamoni.common.platform.serialization.UUIDSerializer
 import jakarta.persistence.*
 import kotlinx.serialization.Serializable
@@ -28,7 +28,7 @@ import java.util.*
  */
 @Serializable
 @Entity
-@Table(name = "authnprofile", comment = "Authentication profiles", schema = GLOBAL_SCHEMA, indexes = [
+@Table(name = "authnprofile", comment = "Authentication profiles", schema = PLATFORM_SCHEMA, indexes = [
     Index(name = "idx_authnprofile_id_issuer_issuersubject", columnList = "id, issuer, issuerSubject", unique = false),
     Index(name = "idx_authnprofile_issuer_issuersubject", columnList = "issuer, issuerSubject", unique = false),
 ])
@@ -57,7 +57,7 @@ class AuthenticationProfile (
     @Column(name = "issuerSubject", nullable = false, updatable = false, unique = false, comment = "OIDC issuer subject")
     var issuerSubject: String,
 
-    @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status")
+    @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status (for banning users)")
     var enabled: Boolean,
 
     @kotlinx.serialization.Transient
@@ -71,7 +71,12 @@ class AuthenticationProfile (
 ) {
 
     @ElementCollection
-    @CollectionTable(name = "authnprofile_organisations", schema = GLOBAL_SCHEMA, joinColumns = [JoinColumn(name = "authnprofile_id")])
+    @CollectionTable(
+        name = "authnprofile_organisations",
+        schema = PLATFORM_SCHEMA,
+        joinColumns = [JoinColumn(name = "authnprofile_id")],
+        foreignKey = ForeignKey(name = "fk_authnprofile_organisations")
+    )
     var organisations: List<AuthenticationProfileOrganisation>? = null
 
     /**
@@ -149,6 +154,9 @@ class Organisation(
 
     @Column(name = "name", nullable = false, updatable = true, comment = "Organisation name")
     var name: String,
+
+    @Column(name = "initialised", nullable = false, updatable = true, comment = "Initialised status")
+    var initialised: Boolean,
 ) {
 
     /**
@@ -158,7 +166,8 @@ class Organisation(
     @ElementCollection
     @CollectionTable(
         name = "organisation_configuration",
-        joinColumns = [JoinColumn(name = "organisation_id")]
+        joinColumns = [JoinColumn(name = "organisation_id")],
+        foreignKey = ForeignKey(name = "fk_organisation_configuration")
     )
     var configuration: List<OrganisationConfiguration>? = null
 
@@ -167,7 +176,7 @@ class Organisation(
      * `authConfiguration` hydration option is requested.
      */
     @OneToMany(cascade = [CascadeType.REMOVE], orphanRemoval = true)
-    @JoinColumn(name = "organisation_id")
+    @JoinColumn(name = "organisation_id", foreignKey = ForeignKey(name = "fk_organisation_authconfiguration"))
     var authConfiguration: List<OrganisationAuthConfiguration> = emptyList()
 
     /**
