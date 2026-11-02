@@ -32,7 +32,9 @@ defect, not a style preference.
 2. **Stateless backend.** The server holds no session or request state; the
    credential identifies the caller only (ADR-0047).
 3. **Organisation-isolated at the data layer.** Isolation is by schema, and a
-   query cannot cross organisations (ADR-0025, ADR-0052).
+   query cannot cross from one organisation to another (ADR-0025, ADR-0052). The
+   one cross-schema read is to the platform schema for a person's display
+   identity; it is access-checked (§4.2, ADR-0066).
 4. **Audited.** Every auditable action goes through the Hamoni audit framework;
    there is no ad-hoc audit path (ADR-0026).
 
@@ -306,11 +308,17 @@ There are two kinds of schema (ADR-0052):
 
 - **The global schema.** Application-managed and self-cleaning. It holds the
   **authentication profiles** — the link from an inbound OIDC context to an
-  identity and its organisation pointers. **No user, admin or otherwise,
+  identity and its organisation pointers — and the cached identity projection,
+  the person's name and email (ADR-0056). **No user, admin or otherwise,
   transacts in the global schema**; only the application touches it.
 - **The organisation schema.** One per organisation. It holds everything
   organisation-scoped: **user profiles**, team and project configuration,
   process and deployment state, and the organisation's audit trail.
+
+Both tiers live on the same database server — in MariaDB a schema is a database —
+and are reached through **one** Hibernate Reactive Panache persistence unit, not
+two (ADR-0066). Platform tables are addressed with an explicit schema qualifier;
+the organisation is the Hibernate tenant.
 
 Group A requests address the global schema explicitly and are outside tenant
 resolution; group B and C requests are resolved to the organisation's schema from
@@ -338,8 +346,23 @@ the schema is part of the query's identity.
 - A missing or wrong tenant selection is a **defect**, exactly as a missing
   filter was under the earlier rule (ADR-0025).
 
-This is the enforcement mechanism that makes organisation safety structural
-rather than a discipline a developer must remember.
+For organisation-to-organisation access this makes isolation structural rather
+than a discipline a developer must remember. The platform identity read below is
+the single permitted cross-schema reach.
+
+**The platform identity read.** Because one persistence unit spans both tiers
+(ADR-0066), an organisation-scoped query can reach the platform schema. That is
+deliberate: task assignment and audit history need a person's real name and
+email (ADR-0056), and fetching them from a second persistence unit would put an
+extra round trip on the most common screens. The reach is bounded by an **access
+check**: before a name or email is returned, the read must establish that the
+identity has access to the current organisation — an enabled user profile
+(ADR-0043) — by joining the platform identity to the organisation's user profile,
+in a repository query or in a view. A platform identity selected by UUID alone,
+with no organisation binding, must never be returned. Organisation-to-organisation
+isolation is unchanged: the tenant still selects the organisation schema, and no
+organisation can read another's tables. This read is the only permitted
+cross-schema path, so it must be the single way display identity is read.
 
 ### 4.3 The single-organisation flag
 
@@ -373,7 +396,9 @@ Name and email are **owned by the OIDC claims** and are **never editable in
 Hamoni** (ADR-0056). When a person changes their name or email, the change is
 made at the provider; Hamoni picks it up on the next sign-in or token
 validation. Hamoni stores them as a cached projection, refreshed from the claims,
-not as a source of truth.
+not as a source of truth. The projection lives in the platform schema, but it is
+read through the access-checked identity read in §4.2 (ADR-0066): a name is shown
+only where the person belongs to the current organisation.
 
 ### 4.6 Global-schema hygiene
 
@@ -395,7 +420,8 @@ These apply unless a decision says otherwise, and refine `CODING-STANDARDS.md`
   TypeScript have no UUID type). A **business key** is rare and is never the
   system identifier; object equality uses the technical identifier.
 - **Foreign keys** express structural relationships within a schema; there is no
-  cross-schema foreign key.
+  cross-schema foreign key — including from an organisation's user profile to the
+  platform identity. The join is by identity UUID (ADR-0066).
 - **Naming** is `snake_case` for tables and columns; the Kotlin and TypeScript
   identifiers are the corresponding `camelCase` (a `given_name` column is
   `givenName`). The technical identifier is the column `id`, property `id`; a
@@ -509,3 +535,7 @@ These are deliberately **not** decided. They are recorded here and in
     subsequent boot must always supply it or may infer it from the database, and
     whether supplying a different value means the default has deliberately
     changed or is a misconfiguration.
+17. **The access-checked identity read.** Whether the check described in ADR-0066
+    is a repository query or a database view is an implementation decision; how
+    that read treats a person who has left the organisation but still appears in
+    historical audit records is not decided.

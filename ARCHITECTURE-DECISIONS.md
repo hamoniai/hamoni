@@ -648,6 +648,9 @@ consistent with the rest of the stack (ADR-0032).
 **Consequences.** Persistence operations are reactive; a blocking database driver
 is not used.
 
+**Refined by** ADR-0066 — one persistence unit spans the platform and organisation
+schemas.
+
 #### ADR-0034 — HTTP interface: Quarkus REST (RESTEasy Reactive)
 
 **Status:** Accepted
@@ -1047,6 +1050,10 @@ creates and migrates its schema. There is no cross-schema foreign key.
 Migrations must be safe under a rolling deployment (ADR-0058, Proposed).
 Refines ADR-0025: the isolation intent stands, the mechanism changes.
 
+**Refined by** ADR-0066 — the platform and organisation schemas are reached
+through one persistence unit, and platform identity is read under an access
+check.
+
 ### ADR-0053 — A deployment-level single-organisation flag, defaulting to single
 
 **Status:** Accepted
@@ -1443,6 +1450,51 @@ and ADR-0055; relates to ADR-0052 and ADR-0064.
 
 ---
 
+### ADR-0066 — One Hibernate Reactive Panache persistence unit spans the platform and organisation schemas
+
+**Status:** Accepted
+
+**Decision.** The Control Room uses **one** Hibernate Reactive Panache
+persistence unit for both the **global (platform) schema** and the
+**organisation schemas** (ADR-0033, ADR-0052). In MariaDB a schema is a database,
+so the platform database and the organisation databases are reached through the
+same persistence unit; platform tables are addressed with an explicit schema
+qualifier. The current organisation is still the Hibernate tenant, and
+organisation-to-organisation isolation still comes from the tenant selecting the
+organisation's schema. The one additional schema a query may reach is the
+platform schema, so a person's cached identity record — the name and email owned
+by the OIDC claims (ADR-0056) — can be joined in the same query as the
+organisation data that references it.
+
+**Reason.** A person's display identity is needed wherever work is shown — task
+assignment and audit history above all. With two persistence units, each read
+would have to fetch the identity from the second unit and fill it in afterwards,
+which turns one query into a round trip across two units and produces an N+1
+lookup across a list. A single persistence unit lets the identity be joined in
+the same query, which is the difference between a list that renders in one round
+trip and one that performs a second read for every row. The performance cost of
+two units is significant and would be paid on the most common screens.
+
+**Consequences.** Organisation-to-organisation isolation remains structural: the
+tenant still selects the organisation schema, and no organisation can read
+another's tables. The platform schema, however, is now reachable from an
+organisation-scoped query, so reading a person's display identity is
+**access-checked in the persistence or service layer**. Before a name or email is
+returned, the read must establish that the identity has **access to the current
+organisation** — an enabled user profile (ADR-0043) — rather than selecting the
+platform row by identity UUID alone. The natural form is a query, or a view, that
+joins the platform identity to the organisation's user profile and returns only
+rows belonging to the current organisation. Because it is the only permitted
+cross-schema path, it must be the single way display identity is read, and a bare
+platform lookup outside it is a defect. No cross-schema foreign key is created
+(ADR-0052); the join is by the identity UUID the user profile holds. This refines
+ADR-0033 and ADR-0052: the schema-per-organisation isolation intent stands, but
+the enforcement point for platform identity moves into the read itself. Whether
+the access check is expressed as a repository query or a database view is an
+implementation decision.
+
+---
+
 ## Open questions
 
 These are deliberately **not** decided. Do not invent an answer; raise an ADR
@@ -1514,3 +1566,7 @@ deliberately not decided. See [`API-AND-DATABASE.md`](./API-AND-DATABASE.md) §6
 - The **versioning scheme** — per API group, or across the whole interface.
 - **Global-schema retention** — remove an unused authentication profile after a
   window, or keep it in perpetuity.
+- **The access-checked identity read.** Whether the check described in ADR-0066
+  is a repository query or a database view is an implementation decision; how it
+  treats a person who has left the organisation but still appears in historical
+  audit records is not decided.
