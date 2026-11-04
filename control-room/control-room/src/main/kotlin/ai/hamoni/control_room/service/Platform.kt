@@ -22,6 +22,7 @@ import ai.hamoni.common.core.exception.EntityNotFoundException
 import ai.hamoni.common.platform.PlatformConfig
 import ai.hamoni.control_room.data.AuthenticationProfile
 import ai.hamoni.control_room.data.OrganisationIdentityProvider
+import ai.hamoni.control_room.data.OrganisationIdentityProviderHeader
 import ai.hamoni.control_room.data.OrganisationIdentityProviderHeaderWithSource
 import ai.hamoni.control_room.repository.IdentityProviderIndexRepository
 import ai.hamoni.control_room.repository.OrganisationIdentityProviderRepository
@@ -101,8 +102,11 @@ class AuthenticationService @Inject constructor(
         //sessionFactory.withSession(organisationId.toString()) {
         Panache.withSession {
             organisationIdentityProviderRepository.findEnabled()
-                .project(OrganisationIdentityProviderHeaderWithSource::class.java)
+                .project(OrganisationIdentityProviderHeader::class.java)
                 .list()
+                .onItem().ifNotNull().transform { data ->
+                    data.map { OrganisationIdentityProviderHeaderWithSource(it.id, it.name, false) }
+                }
         }
         //} // TODO: add in the default ones. Might need to query the full organisation. Or we create a special access
     // pattern in the organisation repository to get a specific setting, which might be more useful, because it can
