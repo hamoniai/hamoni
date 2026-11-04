@@ -18,6 +18,7 @@
 
 package ai.hamoni.common.core.exception
 
+import java.lang.RuntimeException
 import kotlin.reflect.KFunction
 
 /*
@@ -74,6 +75,19 @@ open class SecurityException : ServiceException {
     constructor(serviceMethod: KFunction<Any?>, message: String, cause: Throwable) : super(serviceMethod, message, cause)
     constructor(serviceMethod: KFunction<Any?>, cause: Throwable) : super(serviceMethod, cause)
 }
+
+/**
+ * Service exception for when the organisation identifier is not specified. No need the function reference, it gets
+ * invoked way too early. This could be classed as a security exception, however, we want to handle it differently,
+ * and do not need the service method reference.
+ */
+open class OrganisationNotSpecifiedException : ApplicationException {
+    constructor() : super()
+    constructor(message: String) : super(message)
+    constructor(message: String, cause: Throwable) : super(message, cause)
+    constructor(cause: Throwable) : super(cause)
+}
+
 
 /**
  * An exception mapping an invalid or bad input. Should not be used often, this is only for when

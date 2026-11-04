@@ -33,6 +33,9 @@ plugins {
  * Dependencies for Quarkus
  */
 dependencies {
+    // Extensions common to all Quarkus applications
+    implementation("io.quarkus:quarkus-smallrye-context-propagation")
+
     // Sync and async client for AWS services
     //implementation("software.amazon.awssdk:apache-client")
     //implementation("software.amazon.awssdk:netty-nio-client")

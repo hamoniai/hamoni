@@ -18,7 +18,6 @@
 
 package ai.hamoni.control_room
 
-import ai.hamoni.control_room.service.OidcProviderConfigurationService
 import io.quarkus.arc.profile.IfBuildProfile
 import io.quarkus.oidc.OidcRequestContext
 import io.quarkus.oidc.OidcTenantConfig
@@ -30,7 +29,6 @@ import jakarta.annotation.Priority
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.event.Observes
 import jakarta.enterprise.inject.Alternative
-import jakarta.inject.Inject
 import org.h2.value.DataType
 import org.h2.value.TypeInfo
 import java.sql.Types
@@ -60,9 +58,7 @@ class AppInitializer {
 @Priority(Int.MAX_VALUE)
 @IfBuildProfile("dev")
 @ApplicationScoped
-class DevOidcTenantConfigResolver @Inject constructor(
-    private val providerConfigurationService: OidcProviderConfigurationService
-) : TenantConfigResolver {
+class DevOidcTenantConfigResolver : TenantConfigResolver {
 
     override fun resolve(
         routingContext: RoutingContext?,

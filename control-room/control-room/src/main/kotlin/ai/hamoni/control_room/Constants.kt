@@ -22,5 +22,6 @@ package ai.hamoni.control_room
  * Control room specific constants
  */
 const val API_PATH = "/api/"
-const val LOGIN_PATH = "${API_PATH}auth/login"
+const val AUTH_PATH = "${API_PATH}auth/"
+const val LOGIN_PATH = "${AUTH_PATH}login"
 const val LANDING_PATH = "/"

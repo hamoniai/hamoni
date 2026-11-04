@@ -41,6 +41,11 @@ dependencies {
     implementation("io.quarkus:quarkus-reactive-transactions")
     implementation("io.quarkus:quarkus-scheduler")
     implementation("io.quarkus:quarkus-smallrye-context-propagation")
+    implementation(libs.platform.quarkus.ext.multitenant.http)
+    implementation(libs.platform.quarkus.ext.multitenant.orm)
+
+    // Support libraries
+    implementation("org.apache.commons:commons-lang3")
 
     // Dependencies for build
     implementation("io.quarkus:quarkus-container-image-docker")
@@ -68,6 +73,7 @@ val cleanNodeTask = project.tasks.register<Delete>("cleanNode") {
     val base = project.layout.projectDirectory.dir("../control-room-ui")
     delete(
         base.dir("node_modules"),
+        base.dir("build"),
         base.dir("dist"),
         base.dir(".angular"),
     )

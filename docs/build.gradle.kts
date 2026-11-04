@@ -72,3 +72,16 @@ tasks.withType<AntoraTask>().configureEach {
         }
     )
 }
+
+/**
+ * Additional clean tasks
+ */
+val cleanNodeTask = project.tasks.register<Delete>("cleanNode") {
+    val base = project.layout.projectDirectory
+    delete(
+        base.dir(".gradle"),
+    )
+}
+project.tasks.named("clean").configure {
+    dependsOn(cleanNodeTask)
+}

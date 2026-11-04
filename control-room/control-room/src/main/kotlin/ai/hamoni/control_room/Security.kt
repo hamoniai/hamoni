@@ -18,24 +18,29 @@
 
 package ai.hamoni.control_room
 
+//import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
+import ai.hamoni.common.core.REQUEST_ORGANISATION_ID
 import ai.hamoni.common.core.exception.InvalidParameterException
 import ai.hamoni.common.core.util.cleanUrl
-import ai.hamoni.common.core.REQUEST_ORGANISATION_ID
-import ai.hamoni.control_room.service.ConfigurationService
-import ai.hamoni.control_room.service.OidcProviderConfigurationService
-import io.quarkus.hibernate.orm.PersistenceUnitExtension
-import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
+import ai.hamoni.control_room.service.AuthenticationService
+import io.quarkiverse.multitenancy.core.runtime.api.TenantResolution
+import io.quarkiverse.multitenancy.core.runtime.api.TenantResolutionContext
+import io.quarkiverse.multitenancy.core.runtime.api.TenantResolver
 import io.quarkus.oidc.JavaScriptRequestChecker
 import io.quarkus.oidc.OidcRequestContext
 import io.quarkus.oidc.OidcTenantConfig
 import io.quarkus.oidc.TenantConfigResolver
 import io.quarkus.vertx.http.runtime.security.ChallengeData
 import io.smallrye.mutiny.Uni
+import io.smallrye.mutiny.infrastructure.Infrastructure
 import io.vertx.ext.web.RoutingContext
+import jakarta.annotation.Priority
 import jakarta.enterprise.context.ApplicationScoped
-import jakarta.enterprise.context.RequestScoped
 import jakarta.inject.Inject
-import java.util.UUID
+import jakarta.interceptor.Interceptor
+import jakarta.ws.rs.container.ContainerRequestContext
+import java.util.*
+import kotlin.uuid.Uuid
 
 
 /*
@@ -47,31 +52,85 @@ import java.util.UUID
  * This the organisation to tenant mapping which creates data isolation.
  * Warning: this also gets called on non-HTTP requests, like messaging, timers etc. We will need to extend this
  * to support those situations where the RoutingContext is null.
+ *
+ * The tenant must be the hyphen separated form, else the schema check will fail To ensure this, we parse, then convert back to a string.
  */
-@PersistenceUnitExtension
-@RequestScoped
-class DataTenantResolver @Inject constructor(
-    private val context: RoutingContext?,
-    private val configurationService: ConfigurationService
-): TenantResolver {
+@ApplicationScoped
+@Priority(Interceptor.Priority.PLATFORM_BEFORE)
+class PlatformTenantResolver : TenantResolver {
+    companion object {
+        // ContainerRequestContext contains a relative path from the configured root, so need to strip the /api.
+        val AUTH_PATH_WITHOUT_PREFIX = AUTH_PATH.substring(API_PATH.length - 1)
 
-    /**
-     * This is a nasty bridge, but it should be okay. The `getDefaultOrganisationId` should really resolve from
-     * properties and so should never block, and always be available.
-     */
-    override fun getDefaultTenantId(): String =
-        configurationService.getDefaultOrganisationId().await().indefinitely().toString()
+    }
+    override fun name() = "header-custom"
 
-    /**
-     * See above notes about when called without a routingContext
-     */
-    override fun resolveTenantId(): String =
-        if (null != context) {
-            context.request()?.getHeader(REQUEST_ORGANISATION_ID) ?: defaultTenantId
-        } else {
-            TODO("Unhandled situation in hibernate configuration")
-        }
+    override fun resolve(context: TenantResolutionContext): TenantResolution {
+        return context.get(ContainerRequestContext::class.java)
+            .map { req ->
+                // Check the URL. return TenantResolution.notApplicable if not found.
+                if (req.uriInfo.path.orEmpty().cleanUrl().startsWith(AUTH_PATH_WITHOUT_PREFIX)) {
+                    TenantResolution.notApplicable()
+                } else {
+                    req.getHeaderString(REQUEST_ORGANISATION_ID).orEmpty().trim().let {
+                        try {
+                            TenantResolution.resolved(Uuid.parse(it).toString())
+                        } catch (_: IllegalArgumentException) {
+                            TenantResolution.rejected("missing or invalid header")
+                        }
+                    }
+                }
+            }.orElseGet {
+                TODO("missing context, need to see what cases.")
+            }
+    }
 }
+
+//@PersistenceUnitExtension
+//@RequestScoped
+//class DataTenantResolver @Inject constructor(
+//    private val context: RoutingContext?
+//): TenantResolver {
+//    companion object {
+//        /**
+//         * Random schema name for handling platform requests. This should never resolve to a real organisation
+//         * schema, but we don't want to return null, since that will end up getting the default, which will throw an
+//         * exception.
+//         */
+//        val randomSchema: String = RandomStringUtils.insecure().nextAlphanumeric(10)
+//    }
+//
+//    /**
+//     * We never want to have a default tenant, that Hibernate automatically falls back to. This should never be
+//     * called/used.
+//     */
+//    override fun getDefaultTenantId(): String = throw OrganisationNotSpecifiedException()
+//
+//    /**
+//     * See above notes about when called without a routingContext.
+//     * There are specific URLs
+//     */
+//    override fun resolveTenantId(): String =
+//        if (null != context) {
+//            val orgId = context.request().getHeader(REQUEST_ORGANISATION_ID)
+//
+//            // If an organisation is specified, use it.
+//            if (null != orgId) {
+//                return orgId
+//            }
+//
+//            // Check if a known request that does not require an organisation, i.e. access to the platform
+//            // schema, or an unauthenticated request.
+//            if (context.request().path().orEmpty().cleanUrl().startsWith(AUTH_PATH)) {
+//                return randomSchema
+//            }
+//
+//            // Otherwise throw an exception that the organisation needs to be specified.
+//            throw OrganisationNotSpecifiedException()
+//        } else {
+//            TODO("Unhandled situation in hibernate configuration")
+//        }
+//}
 
 /**
  * Resolve the OIDC tenant (configuration) for a request. This is not really the tenant, it is the OIDC
@@ -86,7 +145,7 @@ class DataTenantResolver @Inject constructor(
  */
 @ApplicationScoped
 class OidcTenantConfigResolver @Inject constructor(
-    private val providerConfigurationService: OidcProviderConfigurationService
+    private val authenticationService: AuthenticationService
 ) : TenantConfigResolver {
 
     companion object {
@@ -141,7 +200,31 @@ class OidcTenantConfigResolver @Inject constructor(
                         }
                     }
                 }
-                .onItem().transformToUni { providerConfigurationService.getById(it) }
+                .onItem().transformToUni {
+                    // Need to map the provider id to an organisation, then get the full config for that organisation,
+                    // will need to switch context/establish a context here, then use a utility library to look up the
+                    // URL, get the well known configuration and then convert it over.
+                    authenticationService.getIdentityProviderById(it)
+                }
+                .emitOn(Infrastructure.getDefaultWorkerPool())
+                .onItem().transform { provider ->
+                    // This is the conversion to a OidcTenantConfig, which includes all the endpoint resolution.
+                    // This will invoke a web request to identify the endpoint.
+                    // TODO: create an object cache for OidcTenantConfig, it will be used frequently and not change often.
+                    // In the event of a cache hit, bypass the whole lookup/transformation route.
+                    OidcTenantConfig.builder()
+                        .tenantId(provider.id.toString())
+                        .authServerUrl(provider.url)
+                        .clientId(provider.clientId)
+                        .credentials(provider.clientSecretReference) // FIXME: should reference the credential vault.
+                        .applicationType(io.quarkus.oidc.runtime.OidcTenantConfig.ApplicationType.HYBRID)
+                        .discoveryEnabled(true)
+                        .build()
+                }
+                .onItem().transform { v ->
+                    v
+                }
+                .emitOn(Infrastructure.getDefaultWorkerPool())
         } else {
             Uni.createFrom().nullItem()
         }

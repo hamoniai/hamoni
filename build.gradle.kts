@@ -24,4 +24,5 @@ version = "1.0.0-SNAPSHOT"
  */
 tasks.register<Delete>("clean") {
     delete(project.layout.buildDirectory)
+    delete(project.layout.projectDirectory.dir(".gradle/configuration-cache"))
 }

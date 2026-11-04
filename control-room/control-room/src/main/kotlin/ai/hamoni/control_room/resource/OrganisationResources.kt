@@ -19,23 +19,20 @@
 package ai.hamoni.control_room.resource
 
 import ai.hamoni.common.core.APPLICATION_JSON_UTF8
+import ai.hamoni.control_room.PlatformTenantResolver
 import ai.hamoni.control_room.data.Organisation
-import ai.hamoni.control_room.data.OrganisationAuthConfiguration
-import ai.hamoni.control_room.data.OrganisationConfiguration
-import ai.hamoni.control_room.service.ConfigurationService
+import ai.hamoni.control_room.data.OrganisationIdentityProvider
+import ai.hamoni.control_room.data.OrganisationSetting
 import ai.hamoni.control_room.service.OrganisationService
 import ai.hamoni.control_room.service.OrganisationServiceHydration
 import io.quarkus.security.Authenticated
 import io.smallrye.mutiny.Uni
-import jakarta.annotation.security.PermitAll
 import jakarta.inject.Inject
 import jakarta.ws.rs.GET
 import jakarta.ws.rs.Path
-import jakarta.ws.rs.PathParam
 import jakarta.ws.rs.Produces
 import org.jboss.resteasy.reactive.RestQuery
 import org.jboss.resteasy.reactive.RestResponse
-import java.util.UUID
 
 /**
  * The organisation interface.
@@ -49,65 +46,51 @@ import java.util.UUID
 @Path("/organisation")
 class OrganisationResource @Inject constructor(
     private val organisationService: OrganisationService,
-    private val configurationService: ConfigurationService
 ) {
 
     /**
      * Get an organisation, hydrating the related data named by the caller.
      *
-     * @param id the organisation identifier
+     * Getting an organisation only happens from within the organisation context. So there is no path parameter.
+     * This also means that all the security is managed from the [PlatformTenantResolver] class.
+     * There should never be a case where we need to perform actions on organisation from a different organisation.
+     *
      * @param hydrate the related data to attach to the organisation
      * @return the organisation
      */
     @GET
-    @Path("/{id}")
     @Produces(APPLICATION_JSON_UTF8)
     fun get(
-        @PathParam("id") id: UUID,
         @RestQuery hydrate: List<OrganisationServiceHydration>
     ): Uni<RestResponse<Organisation>> =
-        organisationService.getById(id, hydrate)
+        organisationService.get(hydrate)
             .onItem().transform { data -> RestResponse.ok(data) }
 
     /**
-     * Get an organisation's authentication configuration.
+     * Get an organisation's identity providers. This service is for managing the identity providers. For the
+     * un-authenticated way to get identity providers, for the login page, use '/auth/identityProviders'.
      *
-     * @param id the organisation identifier
-     * @return the organisation's authentication configuration
+     * It should be noted that the name appears on the login page, so when choosing names for the identity providers.
+     *
+     * @return the organisation's identity providers. This will only return the header projection, which contains
+     * non-sensitive information. To get the full information, access specifically by identifier.
      */
-    @PermitAll
     @GET
-    @Path("/{id}/authConfiguration")
+    @Path("/identityProviders")
     @Produces(APPLICATION_JSON_UTF8)
-    fun getAuthConfiguration(@PathParam("id") id: UUID): Uni<RestResponse<OrganisationAuthConfiguration>> =
-        organisationService.getAuthConfigurationById(id)
+    fun getIdentityProviders(): Uni<RestResponse<List<OrganisationIdentityProvider>>> =
+        organisationService.getIdentityProviders()
             .onItem().transform { data -> RestResponse.ok(data) }
 
     /**
-     * Get the default organisation's authentication configuration without
-     * exposing the default organisation's identifier to the sign-in page.
+     * Get an organisation's settings.
      *
-     * @return the default organisation's authentication configuration
-     */
-    @PermitAll
-    @GET
-    @Path("/default/authConfiguration")
-    @Produces(APPLICATION_JSON_UTF8)
-    fun getAuthConfigurationForDefault(): Uni<RestResponse<OrganisationAuthConfiguration>> =
-        configurationService.getDefaultOrganisationId()
-            .onItem().transformToUni { id -> organisationService.getAuthConfigurationById(id) }
-            .onItem().transform { data -> RestResponse.ok(data) }
-
-    /**
-     * Get an organisation's configuration.
-     *
-     * @param id the organisation identifier
      * @return the organisation's configuration
      */
     @GET
-    @Path("/{id}/configuration")
+    @Path("/settings")
     @Produces(APPLICATION_JSON_UTF8)
-    fun getConfiguration(@PathParam("id") id: UUID): Uni<RestResponse<OrganisationConfiguration>> =
-        organisationService.getConfigurationById(id)
+    fun getSettings(): Uni<RestResponse<List<OrganisationSetting>>> =
+        organisationService.getSettings()
             .onItem().transform { data -> RestResponse.ok(data) }
 }

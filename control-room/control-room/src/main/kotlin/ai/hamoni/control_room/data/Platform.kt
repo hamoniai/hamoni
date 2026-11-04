@@ -1,3 +1,21 @@
+/*
+ * Hamoni: Cloud workflow platform
+ * Copyright (C) 2026  Hamoni Limited
+ *
+ * Unless you have received this program directly from Hamoni Limited pursuant to
+ * the terms of a commercial license agreement with Hamoni Limited, then this
+ * program is licensed to you under the terms of version 3 of the GNU Affero
+ * General Public License.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package ai.hamoni.control_room.data
 
 import ai.hamoni.common.core.PLATFORM_SCHEMA
@@ -10,8 +28,8 @@ import java.util.*
 
 
 /*
- * All frontend specific entities and data types (including any projections) go in here. Entities and data types
- * that are common to the frontend and backend should go into one of the common projects.
+ * All frontend specific entities and data types (including any projections) for the platform schema go in here.
+ * Entities and data types that are common to the frontend and backend should go into one of the common projects.
  */
 
 /**
@@ -134,141 +152,35 @@ class AuthenticationProfileOrganisation (
     override fun equals(other: Any?): Boolean = other is AuthenticationProfileOrganisation && id == other.id
 }
 
+
 /**
- * An organisation.
- *
- * The configuration is held as element collections and is populated by the
- * organisation service's hydration options.
- *
- * scope: schema
- *
+ * The organisation identity provider index. This is because we need to backtrack from an identity provider
+ * identifier to the organisation identity providers for full configuration. This has a by-product of making
+ * identity provider ids unique across all organisations.
  */
 @Serializable
 @Entity
-@Table(name = "organisation", comment = "Organisations")
-class Organisation(
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Serializable(with = UUIDSerializer::class)
-    var id: UUID? = null,
-
-    @Column(name = "name", nullable = false, updatable = true, comment = "Organisation name")
-    var name: String,
-
-    @Column(name = "initialised", nullable = false, updatable = true, comment = "Initialised status")
-    var initialised: Boolean,
-) {
-
-    /**
-     * The organisation's configuration, populated when the `configuration`
-     * hydration option is requested.
-     */
-    @ElementCollection
-    @CollectionTable(
-        name = "organisation_configuration",
-        joinColumns = [JoinColumn(name = "organisation_id")],
-        foreignKey = ForeignKey(name = "fk_organisation_configuration")
-    )
-    var configuration: List<OrganisationConfiguration>? = null
-
-    /**
-     * The organisation's authentication configuration, populated when the
-     * `authConfiguration` hydration option is requested.
-     */
-    @OneToMany(cascade = [CascadeType.REMOVE], orphanRemoval = true)
-    @JoinColumn(name = "organisation_id", foreignKey = ForeignKey(name = "fk_organisation_authconfiguration"))
-    var authConfiguration: List<OrganisationAuthConfiguration> = emptyList()
-
-    /**
-     * Compare organisations by their technical identifier, never by the display
-     * name (CODING-STANDARDS §9).
-     */
-    override fun equals(other: Any?): Boolean = other is Organisation && id == other.id
-
-    /**
-     * Hash the technical identifier (CODING-STANDARDS §9).
-     */
-    override fun hashCode(): Int = Objects.hash(id)
-}
-
-/**
- * A projection of [Organisation] for a list.
- *
- * The header is the identity of an organisation only; it grows into a genuine
- * projection as the organisation gains fields a list does not need.
- */
-@Serializable
-@JvmRecord
-data class OrganisationHeader(
-    @Serializable(with = UUIDSerializer::class)
-    val id: UUID,
-
-    val name: String
-) {
-    constructor(organisation: Organisation) : this(organisation.id!!, organisation.name)
-}
-
-/**
- * The identity providers an organisation has enabled for sign-in.
- *
- * This is an empty placeholder until the authentication configuration is
- * modelled.
- *
- * scope: schema
- *
- */
-@Serializable
-@Entity
-@Table(name = "organisation_authconfiguration", comment = "Organisation Authentication Configuration (OIDC)")
-class OrganisationAuthConfiguration(
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Serializable(with = UUIDSerializer::class)
-    var id: UUID? = null,
-
-    @Column(name = "name", nullable = false, updatable = true, unique = true, comment = "The display name for the OIDC provider")
-    var name: String,
-
-    @Column(name = "url", nullable = false, updatable = true, unique = true, comment = "URL for the OIDC provider")
-    var url: String,
-
-    @Column(name = "client_id", nullable = false, updatable = true, unique = true, comment = "The client id")
-    var clientId: String,
-
-    @Column(name = "client_secret_ref", nullable = false, updatable = true, unique = true, comment = "The client secret reference, the actual value is in the credential vault. Null means public client.")
-    var clientSecretReference: String,
-
-    @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status")
-    var enabled: Boolean,
-
-    @kotlinx.serialization.Transient
-    @Column(name = "created", nullable = false, updatable = false, comment = "Date the account was created (UTC)")
-    @CreationTimestamp
-    var created: Instant? = null,
-
-    @kotlinx.serialization.Transient
-    @Column(name = "updated", nullable = false, updatable = false, comment = "Date the account was last updated (UTC)")
-    var updated: Instant? = null
-) {
-    override fun hashCode(): Int = Objects.hash(id)
-    override fun equals(other: Any?): Boolean = other is OrganisationAuthConfiguration && id == other.id
-
-}
-
-/**
- * The settings that configure how an organisation works.
- *
- * This is an empty placeholder until the settings are modelled.
- *
- * scope: schema
- *
- */
-@Serializable
-@Embeddable
-class OrganisationConfiguration(
-    /**
-     * A temporary placeholder to allow Hibernate tests to pass while we do not know the structure for this.
-     */
-    @Column(name = "removeMe", nullable = false, updatable = true, unique = true, comment = "REMOVE ME")
-    var removeMe: String
+@Table(name = "idpindex", comment = "Organisation Identity Provider index.", schema = PLATFORM_SCHEMA,
+    indexes = [],
+    uniqueConstraints = [
+        UniqueConstraint("uk_idpindex_identity_provider_id_organisation_id", ["identity_provider_id", "organisation_id"])
+    ]
 )
+@NamedQueries()
+class IdentityProviderIndex (
+    /**
+     * This will become the organisation identity provider id.
+     */
+    @Id
+    @Column(name = "identity_provider_id", updatable = false, nullable = false, unique = true, comment="Identity Provider identifier")
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Serializable(with = UUIDSerializer::class)
+    var identityProviderId: UUID? = null,
+
+    @Column(name = "organisation_id", nullable = false, updatable = false, unique = false, comment = "Organisation identifier")
+    @Serializable(with = UUIDSerializer::class)
+    var organisationId: UUID
+) {
+    override fun hashCode(): Int = Objects.hash(identityProviderId)
+    override fun equals(other: Any?): Boolean = other is IdentityProviderIndex && identityProviderId == other.identityProviderId
+}

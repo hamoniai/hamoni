@@ -66,7 +66,7 @@ tasks.withType<JavaCompile>().configureEach {
     options.isDeprecation = true
     options.isWarnings = true
     options.encoding = "UTF-8"
-    options.compilerArgs.add("-implicit:none")
+    options.compilerArgs.addAll(listOf("-implicit:none", "-parameters"))
     // These are useful for getting more information into the logs
     //options.isDebug = true
     //options.debugOptions.debugLevel = "source,lines,vars"

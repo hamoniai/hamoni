@@ -4,8 +4,11 @@ import ai.hamoni.common.core.APPLICATION_JSON_UTF8
 import ai.hamoni.control_room.LANDING_PATH
 import ai.hamoni.control_room.data.AuthenticationProfile
 import ai.hamoni.control_room.data.AuthenticationProfileOrganisation
+import ai.hamoni.control_room.data.OrganisationIdentityProviderHeaderWithSource
 import ai.hamoni.control_room.service.AuthenticationProfileService
 import ai.hamoni.control_room.service.AuthenticationProfileServiceHydration
+import ai.hamoni.control_room.service.AuthenticationService
+import ai.hamoni.control_room.service.ConfigurationService
 import io.quarkus.security.Authenticated
 import io.quarkus.security.identity.SecurityIdentity
 import io.smallrye.mutiny.Uni
@@ -16,6 +19,7 @@ import jakarta.ws.rs.*
 import jakarta.ws.rs.core.HttpHeaders
 import org.jboss.resteasy.reactive.RestQuery
 import org.jboss.resteasy.reactive.RestResponse
+import java.util.UUID
 
 /**
  * Authentication resources/services
@@ -23,9 +27,11 @@ import org.jboss.resteasy.reactive.RestResponse
 @Authenticated
 @Path("/auth")
 class AuthenticationResource @Inject constructor(
-        private val identity: SecurityIdentity,
-        private val authenticationProfileService: AuthenticationProfileService
-    ) {
+    private val identity: SecurityIdentity,
+    private val authenticationService: AuthenticationService,
+    private val authenticationProfileService: AuthenticationProfileService,
+    private val configurationService: ConfigurationService
+) {
 
     /**
      * Start the OIDC authorization code flow, or continue to the next login stage
@@ -40,7 +46,6 @@ class AuthenticationResource @Inject constructor(
      * code flow, so there is no authenticated caller yet. The optional
      * `returnUrl` must be a local path; anything else is rejected.
      */
-    @PermitAll
     @GET
     @Path("/login")
     fun login(
@@ -83,13 +88,33 @@ class AuthenticationResource @Inject constructor(
             }
 
     /**
+     * Get the identity provider information for an organisation. This is used to support the login page. This service
+     * ignores any organisation header. Since this service is unauthenticated, and potentially cross-organisation, and
+     * therefore will likely need to establish a new session, we will call into the authentication service, instead of
+     * the organisation service.
+     *
+     * Kotlin serialisation is dumb here. An invalid UUID gets mapped to null, rather than an invalid input, so the
+     * error message will be strange.
+     *
+     * If the [organisationId] parameter is not provided, the result will be the default organisation's identity providers.
+     */
+    @PermitAll
+    @GET
+    @Path("/identityProviders")
+    @Produces(APPLICATION_JSON_UTF8)
+    fun getIdentityProviders(@PathParam("organisationId") organisationId: UUID?): Uni<RestResponse<List<OrganisationIdentityProviderHeaderWithSource>>> =
+        if (organisationId == null) { configurationService.getDefaultOrganisationId() } else { Uni.createFrom().item { organisationId } }
+            .onItem().transformToUni { authenticationService.listIdentityProvidersByOrganisationId(it) }
+            .onItem().transform { data -> RestResponse.ok(data) }
+
+    /**
      * Logout locally, clearing the Quarkus session cookie.
      */
     @GET
     @Path("/logout")
     @Produces(APPLICATION_JSON_UTF8)
     fun logout(): Uni<RestResponse<Boolean>> =
-        authenticationProfileService.logout()
+        authenticationService.logout()
             .onItem().transform { _ ->
                 RestResponse.ResponseBuilder.create<Boolean>(RestResponse.Status.OK)
                     .entity(true)
