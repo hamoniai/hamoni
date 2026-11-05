@@ -23,6 +23,7 @@ import ai.hamoni.common.core.ORGANISATION_SCHEMA
 import ai.hamoni.common.core.util.isValidUuid
 import ai.hamoni.common.platform.PlatformConfig
 import ai.hamoni.control_room.ResourceLogger
+import io.quarkus.arc.properties.IfBuildProperty
 import io.quarkus.flyway.FlywayConfigurationCustomizer
 import io.quarkus.flyway.FlywayDataSource
 import io.quarkus.flyway.runtime.FlywayContainer
@@ -60,6 +61,7 @@ import javax.sql.DataSource
  * still work as expected.
  */
 @ApplicationScoped
+@IfBuildProperty(name = "quarkus.flyway.enabled", stringValue = "true", enableIfMissing = true)
 class DatabaseUpdater @Inject constructor (
     private val platformConfig: PlatformConfig,
     private val dataSource: DataSource,

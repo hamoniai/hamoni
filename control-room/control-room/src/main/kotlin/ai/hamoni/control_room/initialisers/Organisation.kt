@@ -20,6 +20,7 @@ package ai.hamoni.control_room.initialisers
 
 import ai.hamoni.common.platform.PlatformConfig
 import ai.hamoni.control_room.ResourceLogger
+import io.quarkus.arc.properties.IfBuildProperty
 import io.quarkus.runtime.StartupEvent
 import io.smallrye.mutiny.Uni
 import io.vertx.mutiny.core.Vertx
@@ -39,6 +40,7 @@ import java.io.FileNotFoundException
  * initialised. If there is a config file supplied, it will initialise, if not, it will throw an error
  */
 @ApplicationScoped
+@IfBuildProperty(name = "quarkus.flyway.enabled", stringValue = "true", enableIfMissing = true)
 class OrganisationInitialiser @Inject constructor (
     private val platformConfig: PlatformConfig,
     private val vertx: Vertx
