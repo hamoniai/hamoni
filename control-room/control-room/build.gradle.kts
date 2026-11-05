@@ -16,6 +16,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import io.quarkus.gradle.extension.QuarkusPluginExtension
+import io.quarkus.gradle.tasks.QuarkusApplicationModelTask
+import io.quarkus.gradle.tasks.QuarkusRun
+
+// TODO: create a custom configuration for the schema export with the JDBC drivers on it.
+
 plugins {
     id("quarkus-application-conventions")
 }
@@ -87,11 +93,8 @@ project.tasks.named("clean").configure {
  * project source tree.
  *
  * The export command deliberately writes to the build directory first, so a
- * failed export never leaves a partially overwritten migration in place.
- *
- * NOTE: the generated directory is not cleaned before an export yet. Once the
- * Quarkus schema-export start task is wired into Gradle, add a pre-start clean
- * task here so Gradle can track which files each task generated.
+ * failed export never leaves a partially overwritten migration in place. The
+ * aggregate schema export task cleans the generated directory before it runs.
  */
 val copySchemaMigrations = tasks.register<Copy>("copySchemaMigrations") {
     group = "schema"
@@ -111,4 +114,75 @@ val copySchemaMigrations = tasks.register<Copy>("copySchemaMigrations") {
             )
         }
     }
+}
+
+/**
+ * Export the schema for every configured database.
+ *
+ * Each database gets its own QuarkusRun task, named schemaExportH2 for H2 and so
+ * on. The dev application model is used because it contains the database
+ * drivers; the per-database task selects the driver with
+ * `quarkus.datasource.db-kind`.
+ */
+val schemaExportPrefix = "schemaExport"
+val schemaExportDatabases = listOf("h2").map { dbName -> dbName to "${schemaExportPrefix}${dbName.replaceFirstChar { it.titlecase() }}" }
+
+// The schema export profile must be active while Quarkus builds the application,
+// not only when the application runs. QuarkusRun obtains the build profile from
+// the Quarkus extension, so select it only for a schema export invocation.
+if (gradle.startParameter.taskNames.any { it.substringAfterLast(':').startsWith(schemaExportPrefix) }) {
+    extensions.getByType<QuarkusPluginExtension>()
+        .set("profile", "dev,schema-export")
+}
+
+val cleanSchemaExport = tasks.register<Delete>("cleanSchemaExport") {
+    group = "schema"
+    description = "Remove the generated schema output directory."
+    delete(layout.buildDirectory.dir("generated/schema"))
+}
+
+val devApplicationModel = tasks.named<QuarkusApplicationModelTask>("quarkusGenerateDevAppModel")
+val baseQuarkusRun = tasks.named<QuarkusRun>("quarkusRun")
+
+val schemaExportTasks = schemaExportDatabases.map { database ->
+    tasks.register<QuarkusRun>(database.second) {
+        group = "schema"
+        description = "Export the platform and organisation schema for '${database.first}'."
+
+        // The dev app model contains the database drivers and the dev configuration.
+        applicationModel.set(devApplicationModel.flatMap { it.applicationModel })
+
+        // Reuse the plugin's configured build services and build inputs.
+        additionalForcedProperties.set(baseQuarkusRun.flatMap { it.additionalForcedProperties })
+        fileSystemOperationsProvider.set(baseQuarkusRun.flatMap { it.fileSystemOperationsProvider })
+        cachingRelevantInput.set(baseQuarkusRun.flatMap { it.cachingRelevantInput })
+        jarEnabled.set(baseQuarkusRun.flatMap { it.jarEnabled })
+        nativeEnabled.set(baseQuarkusRun.flatMap { it.nativeEnabled })
+        nativeSourcesOnly.set(baseQuarkusRun.flatMap { it.nativeSourcesOnly })
+        runnerSuffix.set(baseQuarkusRun.flatMap { it.runnerSuffix })
+        runnerName.set(baseQuarkusRun.flatMap { it.runnerName })
+        outputDirectory.set(baseQuarkusRun.flatMap { it.outputDirectory })
+        jarType.set(baseQuarkusRun.flatMap { it.jarType })
+        manifestAttributes.set(baseQuarkusRun.flatMap { it.manifestAttributes })
+        manifestSections.set(baseQuarkusRun.flatMap { it.manifestSections })
+        setCompileClasspath(files(sourceSets.named("main").map { it.runtimeClasspath }))
+
+        jvmArgs = listOf(
+            "-Dquarkus.profile=dev,schema-export",
+            // FIXME: this needs to set specific database properties and drivers.
+            "-Dquarkus.datasource.db-kind=${database.first}"
+        )
+
+        notCompatibleWithConfigurationCache("QuarkusRun is not compatible with the configuration cache")
+        dependsOn(cleanSchemaExport)
+        dependsOn(tasks.named("jandex"))
+        mustRunAfter(cleanSchemaExport)
+    }
+}
+
+val schemaExport = tasks.register(schemaExportPrefix) {
+    group = "schema"
+    description = "Export the schema for every configured database."
+    dependsOn(schemaExportTasks)
+    finalizedBy(copySchemaMigrations)
 }
