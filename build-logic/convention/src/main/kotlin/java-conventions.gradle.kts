@@ -60,7 +60,7 @@ java {
 }
 
 /**
- * Standard configuration for java tasks.
+ * Standard configuration for Java tasks.
  */
 tasks.withType<JavaCompile>().configureEach {
     options.isDeprecation = true
@@ -71,6 +71,17 @@ tasks.withType<JavaCompile>().configureEach {
     //options.isDebug = true
     //options.debugOptions.debugLevel = "source,lines,vars"
     //options.isVerbose = true
+}
+
+/**
+ * Configuration for Java execution tasks.
+ */
+tasks.withType<JavaExec>().configureEach {
+    javaLauncher.set(
+        javaToolchains.launcherFor {
+            languageVersion.set(JavaLanguageVersion.of(javaLanguageVersion))
+        }
+    )
 }
 
 /**

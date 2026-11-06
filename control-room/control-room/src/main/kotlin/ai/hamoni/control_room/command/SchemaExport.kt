@@ -19,6 +19,8 @@
 package ai.hamoni.control_room.command
 
 import io.quarkus.arc.profile.IfBuildProfile
+import io.quarkus.runtime.LaunchMode
+import io.quarkus.runtime.Quarkus
 import io.quarkus.runtime.QuarkusApplication
 import io.quarkus.runtime.annotations.QuarkusMain
 import jakarta.enterprise.context.ApplicationScoped
@@ -33,6 +35,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
+
 
 /**
  * The command that generates the platform and organisation schema migrations
@@ -50,6 +53,15 @@ class SchemaExportCommand @Inject constructor(
 
     private val logger = Logger.getLogger(SchemaExportCommand::class.java)
 
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            LaunchMode.set(LaunchMode.NORMAL);
+            Quarkus.run(SchemaExportCommand::class.java, *args)
+            Quarkus.asyncExit()
+        }
+    }
+
     /**
      * Run the export, returning zero when both scripts were written.
      */
@@ -58,6 +70,7 @@ class SchemaExportCommand @Inject constructor(
             .forEach { logger.infof("Generated schema migration: %s", it) }
         return 0
     }
+
 }
 
 /**
@@ -72,7 +85,7 @@ class SchemaExportService @Inject constructor(
     @param:ConfigProperty(name = "quarkus.application.version")
     private val applicationVersion: String,
 
-    @param:ConfigProperty(name = "quarkus.datasource.db-kind")
+    @param:ConfigProperty(name = "hamoni.schema-export.db-kind")
     private val databaseKind: String,
 
     @param:ConfigProperty(name = "hamoni.schema-export.output-directory")
