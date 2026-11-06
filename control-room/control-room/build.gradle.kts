@@ -94,8 +94,8 @@ schemaExportDatabases.forEach { database ->
     tasks.register<JavaExec>(database.second) {
         group = "schema"
         description = "Export the schema for '${database.first}'."
-        classpath(providers.provider { sourceSets.main.get().runtimeClasspath })
-        dependsOn("compileJava", "jandex")
+        classpath(sourceSets.main.get().runtimeClasspath)
+        dependsOn("classes", "jandex")
         mainClass = "ai.hamoni.control_room.command.SchemaExportCommand"
         systemProperty("quarkus.profile", "dev,schema-export,schema-export-${database.first}")
         // Hard coded this because Gradle has a stupid bug that prefixes providers with "fixed".

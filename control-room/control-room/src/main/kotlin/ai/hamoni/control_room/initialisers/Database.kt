@@ -18,8 +18,8 @@
 
 package ai.hamoni.control_room.initialisers
 
-import ai.hamoni.common.core.PLATFORM_SCHEMA
 import ai.hamoni.common.core.ORGANISATION_SCHEMA
+import ai.hamoni.common.core.PLATFORM_SCHEMA
 import ai.hamoni.common.core.util.isValidUuid
 import ai.hamoni.common.platform.PlatformConfig
 import ai.hamoni.control_room.ResourceLogger
@@ -35,8 +35,11 @@ import jakarta.enterprise.event.Observes
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import jakarta.interceptor.Interceptor
+import org.eclipse.microprofile.config.inject.ConfigProperty
 import org.flywaydb.core.api.FlywayException
+import org.flywaydb.core.api.ResourceProvider
 import org.flywaydb.core.api.configuration.FluentConfiguration
+import org.flywaydb.core.api.resource.LoadableResource
 import java.sql.SQLException
 import javax.sql.DataSource
 
@@ -44,6 +47,8 @@ import javax.sql.DataSource
 /*
  * Custom initialisers for database related activities.
  */
+
+const val COMMON_PATH = "common"
 
 /**
  * Custom database initialiser and migrator. This is required because of the schema separation. In Hamoni,
@@ -68,7 +73,10 @@ class DatabaseUpdater @Inject constructor (
     private val flywayContainerProducer: FlywayContainerProducer,
     private val defaultFlywayContainer: FlywayContainer,
     @param:FlywayDataSource(ORGANISATION_SCHEMA)
-    private val schemaSelector: FlywayConfigurationSchemaCustomizer
+    private val schemaSelector: FlywayConfigurationSchemaCustomizer,
+
+    @param:ConfigProperty(name = "quarkus.datasource.db-kind")
+    private val dataSourceKind: String,
 ) {
 
     /**
@@ -84,6 +92,7 @@ class DatabaseUpdater @Inject constructor (
             defaultFlywayContainer.isCreatePossible,
             defaultFlywayContainer.resourceLocations
                 .filter { it.contains("/${PLATFORM_SCHEMA}/") }
+                .flatMap { base -> base.removeSuffix("/").let { listOf("${it}/${dataSourceKind}/", "${it}/${COMMON_PATH}/") } }
                 .toSet()
         )
 
@@ -141,6 +150,7 @@ class DatabaseUpdater @Inject constructor (
                     defaultFlywayContainer.isCreatePossible,
                     defaultFlywayContainer.resourceLocations
                         .filter { it.contains("/${ORGANISATION_SCHEMA}/") }
+                        .flatMap { base -> base.removeSuffix("/").let { listOf("${it}/${dataSourceKind}/", "${it}/${COMMON_PATH}/") } }
                         .toSet()
                 )
 
@@ -170,4 +180,82 @@ class FlywayConfigurationSchemaCustomizer : FlywayConfigurationCustomizer {
             .defaultSchema(schema)
             .schemas(schema)
     }
+}
+
+/**
+ * A customiser filter the paths for a config (organisation)
+ */
+@Singleton
+@FlywayDataSource(ORGANISATION_SCHEMA)
+class FlywayConfigurationOrganisationResourcesCustomizer @Inject constructor (
+    @param:ConfigProperty(name = "quarkus.datasource.db-kind")
+    private val dataSourceKind: String
+) : FlywayConfigurationCustomizer {
+
+    override fun customize(configuration: FluentConfiguration) {
+        configuration.resourceProvider(
+            FilteringResourceProvider(
+                configuration.resourceProvider,
+                ORGANISATION_SCHEMA,
+                dataSourceKind
+            )
+        )
+    }
+}
+
+/**
+ * A customiser filter the paths for a config (platform)
+ */
+@Singleton
+@FlywayDataSource(PLATFORM_SCHEMA)
+class FlywayConfigurationPlatformResourcesCustomizer @Inject constructor (
+    @param:ConfigProperty(name = "quarkus.datasource.db-kind")
+    private val dataSourceKind: String
+) : FlywayConfigurationCustomizer {
+
+    override fun customize(configuration: FluentConfiguration) {
+        configuration.resourceProvider(
+            FilteringResourceProvider(
+                configuration.resourceProvider,
+                PLATFORM_SCHEMA,
+                dataSourceKind
+            )
+        )
+    }
+}
+
+/**
+ * A filtering resource provider based on the schema and database type.
+ *
+ * We need to do this because there's a bug(?) in Quarkus. The Flyway resources are scanned at build time, and
+ * as the second and third Flyway instances are not active, their resources are not found. It seems that underlying,
+ * all Flyway instances get the same set of resources, and the FlywayContainer works as a filter. However, this means
+ * that all three Flyway instances get the same resources, casuing a duplicate problem. This filters that list
+ * so that each Flyway instance only gets the specific resources it needs.
+ */
+class FilteringResourceProvider(
+    private val parent: ResourceProvider,
+    schema: String,
+    dataSourceType: String
+) : ResourceProvider {
+    private val commonPath = "/${schema}/${COMMON_PATH}/"
+    private val typePath = "/${schema}/${dataSourceType}/"
+
+    override fun getResource(name: String): LoadableResource? =
+        parent.getResource(name)?.takeIf { filterMatches(it) }
+
+    override fun getResources(
+        prefix: String,
+        suffixes: Array<out String>
+    ): Collection<LoadableResource> =
+        parent
+            .getResources(prefix, suffixes)
+            .filter { filterMatches(it) }
+
+    /**
+     * Filter the resources
+     */
+    private fun filterMatches(loadableResource: LoadableResource): Boolean =
+        loadableResource.absolutePath.contains(commonPath) ||
+                loadableResource.absolutePath.contains(typePath)
 }

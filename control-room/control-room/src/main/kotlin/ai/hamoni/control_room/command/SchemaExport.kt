@@ -44,7 +44,7 @@ import kotlin.io.path.createDirectories
  * The command is meant for development only. It writes both scripts in one run,
  * platform first and organisation second, so the two schemas cannot drift.
  */
-@QuarkusMain
+@QuarkusMain(name = "schema-export")
 @ApplicationScoped
 @IfBuildProfile("schema-export")
 class SchemaExportCommand @Inject constructor(
