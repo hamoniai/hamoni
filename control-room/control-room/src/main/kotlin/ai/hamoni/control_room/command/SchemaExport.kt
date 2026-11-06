@@ -43,6 +43,9 @@ import kotlin.io.path.createDirectories
  *
  * The command is meant for development only. It writes both scripts in one run,
  * platform first and organisation second, so the two schemas cannot drift.
+ *
+ * The non-default [QuarkusMain] name keeps Quarkus dev mode from treating this
+ * command as the application's main entry point.
  */
 @QuarkusMain(name = "schema-export")
 @ApplicationScoped
@@ -56,8 +59,10 @@ class SchemaExportCommand @Inject constructor(
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            LaunchMode.set(LaunchMode.NORMAL);
+            // The command runs as a normal application; the dev profile is only used for its datasource config.
+            LaunchMode.set(LaunchMode.NORMAL)
             Quarkus.run(SchemaExportCommand::class.java, *args)
+            // The application otherwise keeps a thread pool alive and prevents the JVM from exiting.
             Quarkus.asyncExit()
         }
     }
@@ -111,28 +116,25 @@ class SchemaExportService @Inject constructor(
             path.bufferedWriter(Charsets.UTF_8).use {
                 writeHeader(it, scope, migrationVersion)
 
-                // Export
                 val properties = sessionFactory.properties
 
-                // When we configure the properties here, we need to use the Jakarta namespace settings, and be
-                // aware of the 'orm' collector which Quarkus maps to. We cannot set these properties in the
-                // main application properties because it will automatically run the schema generation, in the
-                // Quarkus startup. We need to run manually as we need to update the filter on each run.
-                // Additionally, when we call 'schemaManager.create()', it will overwrite the root properties,
-                // in a copy of the properties map. Therefore, we need to specify the contributor properties to
-                // override that.
+                // Set the Jakarta-namespace Hibernate properties on the live session factory for this one-shot
+                // command. They cannot live in application.properties because Quarkus would run schema generation
+                // at startup, and the filter and target change for each database and scope.
                 properties[AvailableSettings.JAKARTA_HBM2DDL_DATABASE_ACTION] = Action.NONE
                 properties[AvailableSettings.JAKARTA_HBM2DDL_SCRIPTS_ACTION] = Action.CREATE_ONLY
                 properties[AvailableSettings.JAKARTA_HBM2DDL_SCRIPTS_CREATE_TARGET] = it
                 properties[AvailableSettings.FORMAT_SQL] = true
                 properties[AvailableSettings.HBM2DDL_FILTER_PROVIDER] = scope.filterProvider.name
 
-                // Delete the contributor specific overrides so that we rely on the root settings.
+                // `schemaManager.create()` copies the root properties with the database action already set, so
+                // the contributor-specific actions must match the root actions or the script target is bypassed.
                 listOf("orm").forEach { contributor ->
                     properties["${AvailableSettings.JAKARTA_HBM2DDL_DATABASE_ACTION}.${contributor}"] = Action.NONE
                     properties["${AvailableSettings.JAKARTA_HBM2DDL_SCRIPTS_ACTION}.${contributor}"] = Action.CREATE_ONLY
                 }
 
+                // false: do not create database schemas; Flyway creates the schema and applies the script.
                 sessionFactory.schemaManager.create(false)
             }
             path
@@ -140,10 +142,10 @@ class SchemaExportService @Inject constructor(
     }
 
     /**
-     * Write the generated-file header to the SQL that was just written.
+     * Write the generated-file header before Hibernate appends the DDL.
      *
-     * The generation target overwrites the file, so the header is added after
-     * the export rather than before it.
+     * The same writer is passed to Hibernate as the script target, so the header
+     * remains at the top of the file.
      */
     private fun writeHeader(writer: BufferedWriter, scope: SchemaScope, migrationVersion: String) {
         writer.write("""
