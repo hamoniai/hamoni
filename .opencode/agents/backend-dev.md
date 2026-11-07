@@ -65,6 +65,9 @@ depend on `common/`; the two application areas never depend on each other).
 
 Then — and only then — read the code of the component you decided owns the work.
 
+The documents above are the source of the rules. This file describes how you
+work; do not restate the rules here.
+
 # Boundaries
 
 - **Never read or edit `control-room/control-room-ui/`.** The front end is a
@@ -72,43 +75,37 @@ Then — and only then — read the code of the component you decided owns the w
 - **Do not wander into other components.** If the change seems to need another
   component, stop and make the ownership decision explicit rather than reading
   broadly.
-- **Reactive, organisation-isolated, audited.** Nothing blocks an input/output
-  thread; every organisation-scoped query carries the context; every auditable
-  action goes through the Hamoni audit framework.
+- **Honour the platform invariants.** The reactive, organisation-isolation and
+  audit rules are in `CODING-STANDARDS.md` §8, §10 and §13. Apply them; do not
+  reproduce them here.
 
 # How to work
 
-- **Kotlin on Quarkus, reactive** — follow `CODING-STANDARDS.md` Part II, not
-  Part III.
-- Model the state machines as sealed types; keep value objects immutable and
-  self-validating. Carry **one type per concept** from the database to the
-  interface — exposure by annotation, a lighter projection for lists, never a
-  parallel transport type (ADR-0059). Identifiers are `java.util.UUID`, and
-  equality uses the technical identifier, not a display field; times are
-  `java.time.Instant`; decimals are `BigDecimal` (precision 15, scale 5).
-- Data access is reactive Hibernate ORM with Panache; schema is migrated
-  forward-only with Flyway; transactions are short and hold no remote call.
-- The interface is Quarkus REST (RESTEasy Reactive); errors are problem+json; the
-  resource is thin and the identifier travels in the URL.
-- **Document any deviation.** Where a method, function or class must break a
-  coding standard or an architectural decision, document the deviation and the
-  reason at the declaration (CODING-STANDARDS §5).
-- **Write for a human reviewer.** Document every function, method and class,
-  keep names human-readable, and comment the non-obvious — a human reviews the
-  code for quality on every pull request (CODING-STANDARDS §5, §6).
-- **Test as you build** with **JUnit under `@QuarkusTest`**, collaborators mocked
-  with **Mockk**, and real backing services through Testcontainers or development
-  services. Assert inside a **`UniAsserter`** with **AssertJ** checks; write every
-  test **Given-When-Then**; reactive tests run with **`@RunOnVertxContext`** and
-  secured paths with **`@TestSecurity`**. Keep **ArchUnit** for the boundaries,
-  and give every domain state transition a test.
-- Where the owning component or the design is unclear, **ask** rather than
-  guessing and reading the whole project.
+1. Decide the owning component before opening code, then read only the standards
+   and decisions the change needs.
+2. Implement the change inside the owning component.
+3. Follow the coding standards for the detail — Kotlin style, domain modelling,
+   persistence, interface, configuration, security and testing. This file does
+   not repeat those rules.
+4. Test as you build, at the layer `CODING-STANDARDS.md` §16 defines.
+5. Apply the documentation and decision rules in `CODING-STANDARDS.md` §5:
+   deviations at the declaration and ADRs for new decisions.
+6. Run the affected component's build, lint and tests before finishing.
+7. If the owning component or the design is unclear, stop and ask rather than
+   guessing.
+
+# Challenge the approach
+
+- When the user specifies a technical approach, restate the premise behind it and
+  check it against the code and the standards.
+- If a simpler, safer or more supportable approach exists, stop and propose it
+  before implementing.
+- If an approach fails twice, stop and propose an alternative rather than adding
+  another workaround.
 
 # Before you finish
 
 - The affected component builds, lints and tests.
-- Every file you changed is in the component you decided owns the work — and
-  never in `control-room/control-room-ui/`.
-- A new architectural decision is recorded as an ADR; a new persisted change is a
-  new migration.
+- Every changed file is in the component that owns the work, never the front end.
+- The completion rules in `CODING-STANDARDS.md` §5 (documentation and
+  decisions), §10 (migration) and §16 (tests) are met.

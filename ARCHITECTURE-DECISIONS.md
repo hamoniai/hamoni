@@ -1495,6 +1495,47 @@ implementation decision.
 
 ---
 
+### ADR-0067 — Schema migrations are generated from the JPA model
+
+**Status:** Accepted
+
+**Decision.** The platform and organisation schema migrations are generated from
+the JPA model by a command-mode exporter, per database type, rather than written
+by hand. The exporter runs on the control room's normal application classpath
+under a dedicated `schema-export` profile plus a database-specific profile. It
+writes the platform and organisation scripts separately, one file per schema
+scope, and is not part of runtime schema management.
+
+During development, Flyway reads the generated scripts from the build output and
+also from the classpath, so a previously deployed version still applies while the
+current version is generated. A release build regenerates the scripts and copies
+them back into the source tree before packaging; the copy-back step is owned by
+the build and release pipeline.
+
+There is no runtime schema generation and no automatic schema management in a
+deployed application. Flyway remains the only mechanism that applies schema
+change.
+
+**Reason.** Hand-written migrations drift from the entity model, and the drift is
+only discovered at runtime. Generating both schema scopes from the same model
+keeps the DDL and the JPA mapping in step, makes the platform and organisation
+schemas visibly separate, and lets the same model produce both the H2 and MariaDB
+forms. Keeping the dev and release workflows explicit — generated files in the
+build output for development, copied into source for release — avoids editing
+generated SQL and keeps the packaged application on the normal Flyway classpath
+locations.
+
+**Consequences.** The application version must move forward for a generated
+migration to be distinguishable from the previously deployed version; otherwise
+Flyway will reject duplicate versions when both the build output and the
+classpath are present. Development start regenerates both database variants, not
+only the database currently in use. The MariaDB variant is produced by running H2
+in MariaDB compatibility mode with the MariaDB dialect, so it does not require a
+running MariaDB server. The release pipeline owns the copy-back of generated SQL
+into the source tree. Generated scripts are not edited by hand.
+
+---
+
 ## Open questions
 
 These are deliberately **not** decided. Do not invent an answer; raise an ADR

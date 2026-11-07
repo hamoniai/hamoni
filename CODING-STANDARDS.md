@@ -45,6 +45,13 @@ concern, covered under UI design and language (Part III).
 - **Immutability first.** Prefer `val`; prefer immutable collections; prefer data
   classes for value objects. Mutability is a deliberate, local decision — a JPA
   entity is the one standing exception, where properties are `var` (§10).
+- **Write Kotlin, not Java in Kotlin.** Prefer expression-oriented code and the
+  standard collection transformations (`map`, `filter`, `flatMap`, `fold`,
+  `associate`, `partition`, `groupBy`, `let`, `takeIf`, `use`) over mutable local
+  collections and interim variables. Build immutable values in one expression
+  where that is clearer; do not create a mutable set or list only to populate it
+  in a loop. Use a loop only when the logic is genuinely clearer or an external
+  API requires mutation.
 - **Null safety is not optional.** No `!!` except in a projection constructor
   that builds from a persisted entity whose source column is non-null; document
   why the value cannot be absent. No platform-type leakage across a boundary.
@@ -176,6 +183,18 @@ concern, covered under UI design and language (Part III).
 - **Every architectural decision is recorded** as an ADR in
   [`ARCHITECTURE-DECISIONS.md`](./ARCHITECTURE-DECISIONS.md). A code change that
   makes a new decision writes the record in the same change.
+- **Comments must describe the code as it is.** When the code changes, the
+  comment changes in the same edit; a stale comment is a defect.
+- **Document a forced workaround as a deviation.** Where a framework, tool or
+  library defect prevents the approach the standards or the design call for,
+  state at the declaration what the normal approach would have been, what was
+  done instead, and why. Do not present a workaround as ordinary code, and do not
+  call a normal design choice a workaround.
+- **Build for the requirement in front of you.** Do not add configurability, loops
+  over supported variants, abstractions or extension points for a future need that
+  has not been agreed. A hard-coded list of the currently supported variants is
+  correct until a second real requirement exists; complexity is added
+  deliberately, and the reason recorded.
 - **Stop and ask when the design is missing.** Do not invent a field, table,
   default identifier, return value or placeholder value to make an undecided
   model compile or boot.
@@ -218,6 +237,12 @@ Do not:
 - Use an exception for an expected business outcome (§1.2).
 - Write to the console instead of the logging facade (§1.2).
 - Leave commented-out code, debug scaffolding, or an untracked TODO behind (§6).
+- Add speculative configurability or abstraction for a future requirement that is
+  not specified (§5).
+- Add a custom feature flag or boolean property to disable a bean or path when a
+  build profile, build property or profile annotation expresses the same thing
+  (§15).
+- Use a library's `internal` package or reflect into its implementation (§8).
 - Deviate from a coding standard or an architectural decision without documenting
   the deviation and its reason at the point of the code (§5).
 - Invent a placeholder field, column, default identifier or fake return value for
@@ -239,6 +264,10 @@ Do not:
   the event loop or must be replaced with a reactive alternative.
 - Prefer a Quarkus extension over a hand-rolled integration. Only drop to a
   lower-level dependency when no extension exists, and record why in an ADR.
+- **Do not use a library's `internal` package.** Hibernate, Quarkus and other
+  libraries mark implementation packages `internal`; they are not API. If the
+  public surface does not expose what is needed, stop and ask; do not reach into
+  internals or use reflection.
 
 ## 9. Domain modelling
 
@@ -440,6 +469,12 @@ Do not:
 
 - Use Quarkus configuration (`application.properties`, profile-based), typed with
   a configuration mapping where there is more than one related property.
+- **Prefer configuration over code.** Behaviour that varies by profile,
+  environment, database or deployment belongs in configuration — a profile, a
+  build property, a typed configuration mapping — or in a build/profile
+  annotation. Do not introduce a bespoke boolean flag or runtime short-circuit
+  when configuration can express the condition. If a flag is unavoidable, document
+  why at the declaration.
 - **No magic defaults for environment-specific values.** Fail fast on missing
   required configuration.
 - Profiles are `dev`, `test` and `prod`. Test configuration is self-contained;
@@ -451,15 +486,19 @@ Do not:
 
 - Test a class at the layer it belongs to. Do not test a service through
   RestAssured, or a repository through a service test.
-- Repositories and services are reactive: test them with `@QuarkusTest`, assert
-  through `UniAsserter`, and use AssertJ inside it.
+- Repositories and reactive services: test them with `@QuarkusTest` when the
+  behaviour depends on the Quarkus runtime, CDI, configuration profiles, dev
+  services or the HTTP layer; assert through `UniAsserter` and use AssertJ inside
+  it.
 - Reactive tests run on the Vert.x event loop: annotate with
   `@RunOnVertxContext`.
 - The API is tested with `@QuarkusTest` and RestAssured. RestAssured does not use
   the reactive assertion pattern, so `UniAsserter` is not required.
-- Non-reactive code — utilities, platform integration and pure functions — uses
-  plain JUnit. It needs `@QuarkusTest` only when it depends on the Quarkus or CDI
-  runtime.
+- Non-reactive code — utilities, platform integration, pure functions and a
+  command-mode service that can be constructed and driven directly — uses plain
+  JUnit. It needs `@QuarkusTest` only when it depends on the Quarkus or CDI
+  runtime. Do not add a Quarkus test only to cover one-time build wiring such as
+  Gradle tasks, `JavaExec` or profile selection.
 
 ### 16.2 Match the production structure
 
