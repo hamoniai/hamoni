@@ -16,7 +16,7 @@ security, the **Home** prompt-first surface, dashboards, and the organisation an
 preference surfaces. There are two projects today:
 
 - `control-room/control-room` — the Kotlin · Quarkus backend assembly (Gradle
-  `:control-room`), which serves the front end through Quinoa.
+  `:control-room:control-room`), which serves the front end through Quinoa.
 - `control-room/control-room-ui` — the Angular front end. It is outside backend
   scope: never read or edit it.
 
