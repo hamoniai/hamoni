@@ -21,6 +21,9 @@ import io.quarkus.extension.gradle.QuarkusExtensionConfiguration
 
 val Project.libs get() = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
+// Change the group to mode these out of the way.
+group = "${rootProject.group}.quarkus.ext"
+
 // Determine if this is a runtime or deployment project
 val isDeployment = project.name.endsWith("-deployment")
 
