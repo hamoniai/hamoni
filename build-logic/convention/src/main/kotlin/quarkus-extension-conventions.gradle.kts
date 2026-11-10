@@ -47,6 +47,11 @@ dependencies {
     // Need to use kapt to generate stubs which can then be compiled by the annotation processors.
     kapt("io.quarkus:quarkus-extension-processor")
 
+    // Common dependencies for extensions
+    if (isDeployment) {
+        implementation("io.quarkus:quarkus-core-deployment")
+    }
+
     testImplementation("io.quarkus:quarkus-junit-internal")
 }
 

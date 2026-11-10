@@ -48,19 +48,8 @@ dependencies {
     implementation(enforcedPlatform(quarkusAwsExtBom))
     testImplementation(enforcedPlatform(quarkusAwsExtBom))
 
-    // For logging. Logging classes must be in Java due to a bug in JBoss Logging.
-    annotationProcessor("org.jboss.logging:jboss-logging-processor")
-    compileOnly("org.jboss.logging:jboss-logging-annotations")
-
-    implementation("io.quarkus:quarkus-arc")
-    implementation("io.quarkus:quarkus-kotlin")
-    implementation("io.quarkus:quarkus-rest-kotlin")
-    implementation("io.quarkus:quarkus-rest-kotlin-serialization")
-    implementation("io.quarkus:quarkus-security")
+    // Common dependencies as using Kotlin
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-
-    // Messaging: compile only as a real implementation needs to provide the annotations
-    compileOnly("io.smallrye.reactive:smallrye-reactive-messaging-api")
 
     val extMockk = libs.findLibrary("platform.quarkus.ext.mockk").get()
     testImplementation(extMockk)

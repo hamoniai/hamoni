@@ -93,9 +93,9 @@ Keep the resource thin (CODING-STANDARDS §11) and business logic in the service
 The backend project is a Gradle project. Build and run it by name:
 
 ```bash
-./gradlew :<project>:test             # this project's tests
-./gradlew :<project>:quarkusDev       # dev mode, live reload (serves control-room-ui)
-./gradlew :<project>:quarkusBuild     # build the runnable artefact
+./gradlew :control-room:<project>:test             # this project's tests
+./gradlew :control-room:<project>:quarkusDev       # dev mode, live reload (serves control-room-ui)
+./gradlew :control-room:<project>:quarkusBuild     # build the runnable artefact
 ```
 
 The backend applies the shared Hamoni Gradle convention plugin; do not add build

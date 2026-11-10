@@ -19,7 +19,6 @@
 package ai.hamoni.control_room.resource
 
 import ai.hamoni.common.core.APPLICATION_JSON_UTF8
-import ai.hamoni.control_room.PlatformTenantResolver
 import ai.hamoni.control_room.data.Organisation
 import ai.hamoni.control_room.data.OrganisationIdentityProvider
 import ai.hamoni.control_room.data.OrganisationSetting
@@ -52,7 +51,7 @@ class OrganisationResource @Inject constructor(
      * Get an organisation, hydrating the related data named by the caller.
      *
      * Getting an organisation only happens from within the organisation context. So there is no path parameter.
-     * This also means that all the security is managed from the [PlatformTenantResolver] class.
+     * This also means that all the security is managed from the PlatformTenantResolver? class.
      * There should never be a case where we need to perform actions on organisation from a different organisation.
      *
      * @param hydrate the related data to attach to the organisation

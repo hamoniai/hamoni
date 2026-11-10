@@ -69,9 +69,9 @@ process-runner/
 Each project is its own Gradle project. Build and run it by name:
 
 ```bash
-./gradlew :<project>:test             # this project's tests
-./gradlew :<project>:quarkusDev       # dev mode, live reload
-./gradlew :<project>:quarkusBuild     # build the runnable artefact
+./gradlew :process-runner:<project>:test             # this project's tests
+./gradlew :process-runner:<project>:quarkusDev       # dev mode, live reload
+./gradlew :process-runner:<project>:quarkusBuild     # build the runnable artefact
 ```
 
 Each project applies the shared Hamoni Gradle convention plugin; do not add build

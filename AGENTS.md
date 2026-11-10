@@ -59,8 +59,8 @@ Use the Gradle wrapper; never a system `gradle`.
 Run an application in development mode:
 
 ```bash
-./gradlew :control-room:quarkusDev        # Control Room (UI included)
-./gradlew :process-runner:quarkusDev      # Process Runner
+./gradlew :control-room:control-room:quarkusDev        # Control Room (UI included)
+./gradlew :process-runner:process-runner:quarkusDev    # Process Runner
 ```
 
 The build is driven by the shared **Hamoni Gradle convention scripts** (installed

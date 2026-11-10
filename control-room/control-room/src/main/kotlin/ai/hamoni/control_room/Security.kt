@@ -18,14 +18,12 @@
 
 package ai.hamoni.control_room
 
-//import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
-import ai.hamoni.common.core.REQUEST_ORGANISATION_ID
 import ai.hamoni.common.core.exception.InvalidParameterException
 import ai.hamoni.common.core.util.cleanUrl
 import ai.hamoni.control_room.service.AuthenticationService
-import io.quarkiverse.multitenancy.core.runtime.api.TenantResolution
-import io.quarkiverse.multitenancy.core.runtime.api.TenantResolutionContext
-import io.quarkiverse.multitenancy.core.runtime.api.TenantResolver
+import io.quarkus.arc.Unremovable
+import io.quarkus.hibernate.orm.PersistenceUnitExtension
+import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
 import io.quarkus.oidc.JavaScriptRequestChecker
 import io.quarkus.oidc.OidcRequestContext
 import io.quarkus.oidc.OidcTenantConfig
@@ -34,13 +32,13 @@ import io.quarkus.vertx.http.runtime.security.ChallengeData
 import io.smallrye.mutiny.Uni
 import io.smallrye.mutiny.infrastructure.Infrastructure
 import io.vertx.ext.web.RoutingContext
-import jakarta.annotation.Priority
 import jakarta.enterprise.context.ApplicationScoped
+import jakarta.enterprise.context.RequestScoped
 import jakarta.inject.Inject
-import jakarta.interceptor.Interceptor
-import jakarta.ws.rs.container.ContainerRequestContext
+import org.hibernate.boot.model.naming.Identifier
+import org.hibernate.boot.model.naming.PhysicalNamingStrategySnakeCaseImpl
+import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment
 import java.util.*
-import kotlin.uuid.Uuid
 
 
 /*
@@ -48,89 +46,59 @@ import kotlin.uuid.Uuid
  * If there are overrides for these classes, check the `ModeOverrides.kt`.
  */
 
-/**
- * This the organisation to tenant mapping which creates data isolation.
- * Warning: this also gets called on non-HTTP requests, like messaging, timers etc. We will need to extend this
- * to support those situations where the RoutingContext is null.
- *
- * The tenant must be the hyphen separated form, else the schema check will fail To ensure this, we parse, then convert back to a string.
- */
-@ApplicationScoped
-@Priority(Interceptor.Priority.PLATFORM_BEFORE)
-class PlatformTenantResolver : TenantResolver {
-    companion object {
-        // ContainerRequestContext contains a relative path from the configured root, so need to strip the /api.
-        val AUTH_PATH_WITHOUT_PREFIX = AUTH_PATH.substring(API_PATH.length - 1)
+// DO NOT REMOVE THE FOLLOWING COMMENT SECTION
+// This is the real implementation for the TenantResolver when Quarkus fix the multi-tenant setup in Quarkus Panache
+// Reactive. Until then, leave this here as a reference.
+///**
+// * This the organisation to tenant mapping which creates data isolation.
+// * Warning: this also gets called on non-HTTP requests, like messaging, timers etc. We will need to extend this
+// * to support those situations where the RoutingContext is null.
+// *
+// * The tenant must be the hyphen separated form, else the schema check will fail To ensure this, we parse, then convert back to a string.
+// */
+//@ApplicationScoped
+//@Priority(Interceptor.Priority.PLATFORM_BEFORE)
+//class OrganisationTenantResolver : TenantResolver {
+//    companion object {
+//        // ContainerRequestContext contains a relative path from the configured root, so need to strip the /api.
+//        val AUTH_PATH_WITHOUT_PREFIX = AUTH_PATH.substring(API_PATH.length - 1)
+//
+//    }
+//    override fun name() = "header-custom"
+//
+//    override fun resolve(context: TenantResolutionContext): TenantResolution {
+//        return context.get(ContainerRequestContext::class.java)
+//            .map { req ->
+//                // Check the URL. return TenantResolution.notApplicable if not found.
+//                if (req.uriInfo.path.orEmpty().cleanUrl().startsWith(AUTH_PATH_WITHOUT_PREFIX)) {
+//                    TenantResolution.notApplicable()
+//                } else {
+//                    req.getHeaderString(REQUEST_ORGANISATION_ID).orEmpty().trim().let {
+//                        try {
+//                            TenantResolution.resolved(Uuid.parse(it).toString())
+//                        } catch (_: IllegalArgumentException) {
+//                            TenantResolution.rejected("missing or invalid header")
+//                        }
+//                    }
+//                }
+//            }.orElseGet {
+//                TODO("missing context, need to see what cases.")
+//            }
+//    }
+//}
 
+@PersistenceUnitExtension
+@Unremovable
+@RequestScoped
+class OrganisationTenantResolver : TenantResolver {
+    override fun getDefaultTenantId(): String {
+        return "x"
     }
-    override fun name() = "header-custom"
 
-    override fun resolve(context: TenantResolutionContext): TenantResolution {
-        return context.get(ContainerRequestContext::class.java)
-            .map { req ->
-                // Check the URL. return TenantResolution.notApplicable if not found.
-                if (req.uriInfo.path.orEmpty().cleanUrl().startsWith(AUTH_PATH_WITHOUT_PREFIX)) {
-                    TenantResolution.notApplicable()
-                } else {
-                    req.getHeaderString(REQUEST_ORGANISATION_ID).orEmpty().trim().let {
-                        try {
-                            TenantResolution.resolved(Uuid.parse(it).toString())
-                        } catch (_: IllegalArgumentException) {
-                            TenantResolution.rejected("missing or invalid header")
-                        }
-                    }
-                }
-            }.orElseGet {
-                TODO("missing context, need to see what cases.")
-            }
+    override fun resolveTenantId(): String {
+        return "y"
     }
 }
-
-//@PersistenceUnitExtension
-//@RequestScoped
-//class DataTenantResolver @Inject constructor(
-//    private val context: RoutingContext?
-//): TenantResolver {
-//    companion object {
-//        /**
-//         * Random schema name for handling platform requests. This should never resolve to a real organisation
-//         * schema, but we don't want to return null, since that will end up getting the default, which will throw an
-//         * exception.
-//         */
-//        val randomSchema: String = RandomStringUtils.insecure().nextAlphanumeric(10)
-//    }
-//
-//    /**
-//     * We never want to have a default tenant, that Hibernate automatically falls back to. This should never be
-//     * called/used.
-//     */
-//    override fun getDefaultTenantId(): String = throw OrganisationNotSpecifiedException()
-//
-//    /**
-//     * See above notes about when called without a routingContext.
-//     * There are specific URLs
-//     */
-//    override fun resolveTenantId(): String =
-//        if (null != context) {
-//            val orgId = context.request().getHeader(REQUEST_ORGANISATION_ID)
-//
-//            // If an organisation is specified, use it.
-//            if (null != orgId) {
-//                return orgId
-//            }
-//
-//            // Check if a known request that does not require an organisation, i.e. access to the platform
-//            // schema, or an unauthenticated request.
-//            if (context.request().path().orEmpty().cleanUrl().startsWith(AUTH_PATH)) {
-//                return randomSchema
-//            }
-//
-//            // Otherwise throw an exception that the organisation needs to be specified.
-//            throw OrganisationNotSpecifiedException()
-//        } else {
-//            TODO("Unhandled situation in hibernate configuration")
-//        }
-//}
 
 /**
  * Resolve the OIDC tenant (configuration) for a request. This is not really the tenant, it is the OIDC

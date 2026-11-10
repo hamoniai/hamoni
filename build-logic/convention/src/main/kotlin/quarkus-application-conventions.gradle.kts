@@ -17,6 +17,9 @@
  */
 
 import ai.hamoni.gradle.util.getOverridableProperty
+import gradle.kotlin.dsl.accessors._2efa669337583f180c8ae88f20ef351a.annotationProcessor
+import gradle.kotlin.dsl.accessors._2efa669337583f180c8ae88f20ef351a.compileOnly
+import gradle.kotlin.dsl.accessors._2efa669337583f180c8ae88f20ef351a.implementation
 import io.quarkus.gradle.tasks.QuarkusDev
 
 /**
@@ -34,7 +37,19 @@ plugins {
  */
 dependencies {
     // Extensions common to all Quarkus applications
+    implementation("io.quarkus:quarkus-arc")
+    implementation("io.quarkus:quarkus-kotlin")
+    implementation("io.quarkus:quarkus-rest-kotlin")
+    implementation("io.quarkus:quarkus-rest-kotlin-serialization")
+    implementation("io.quarkus:quarkus-security")
     implementation("io.quarkus:quarkus-smallrye-context-propagation")
+
+    // Messaging: compile only as a real implementation needs to provide the annotations
+    compileOnly("io.smallrye.reactive:smallrye-reactive-messaging-api")
+
+    // For logging. Logging classes must be in Java due to a bug in JBoss Logging.
+    annotationProcessor("org.jboss.logging:jboss-logging-processor")
+    compileOnly("org.jboss.logging:jboss-logging-annotations")
 
     // Sync and async client for AWS services
     //implementation("software.amazon.awssdk:apache-client")

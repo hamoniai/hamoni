@@ -99,8 +99,11 @@ class AuthenticationService @Inject constructor(
      * This used on public calls so must be careful of information.
      */
     fun listIdentityProvidersByOrganisationId(organisationId: UUID): Uni<List<OrganisationIdentityProviderHeaderWithSource>> =
-        //sessionFactory.withSession(organisationId.toString()) {
         Panache.withSession {
+//            identityProviderIndexRepository.findById(organisationId)
+//                .onItem().transformToUni {
+//                    Uni.createFrom().item { emptyList() }
+//                }
             organisationIdentityProviderRepository.findEnabled()
                 .project(OrganisationIdentityProviderHeader::class.java)
                 .list()

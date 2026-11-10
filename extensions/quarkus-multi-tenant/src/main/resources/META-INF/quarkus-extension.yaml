@@ -1,0 +1,10 @@
+name: "Quarkus Multi-tenant support"
+metadata:
+  short-name: "quarkus-multi-tenant"
+  keywords:
+    - "Quarkus"
+    - "Multi-tenant"
+  guide: "none"
+  categories:
+    - "quarkus"
+  status: "stable"

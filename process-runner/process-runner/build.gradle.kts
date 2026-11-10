@@ -27,7 +27,7 @@ dependencies {
     implementation(libs.platform.quarkus.ext.quinoa)
 
     // Projects
-    implementation(project(":common-platform"))
+    implementation(project(":common:common-platform"))
 
     // Main runtime (Quarkus components to include)
     implementation("io.quarkus:quarkus-flyway") // includes the h2 module

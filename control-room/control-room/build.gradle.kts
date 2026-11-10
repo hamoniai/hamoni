@@ -27,8 +27,11 @@ dependencies {
     implementation(libs.platform.quarkus.ext.quinoa)
 
     // Projects
-    implementation(project(":common-core"))
-    implementation(project(":common-platform"))
+    implementation(project(":common:common-core"))
+    implementation(project(":common:common-platform"))
+
+    // Extensions
+    implementation(project(":extensions:quarkus-multi-tenant"))
 
     // Main runtime (Quarkus components to include)
     implementation("io.quarkus:quarkus-flyway") // includes the h2 module
@@ -41,8 +44,8 @@ dependencies {
     implementation("io.quarkus:quarkus-reactive-transactions")
     implementation("io.quarkus:quarkus-scheduler")
     implementation("io.quarkus:quarkus-smallrye-context-propagation")
-    implementation(libs.platform.quarkus.ext.multitenant.http)
-    implementation(libs.platform.quarkus.ext.multitenant.orm)
+    //implementation(libs.platform.quarkus.ext.multitenant.http)
+    //implementation(libs.platform.quarkus.ext.multitenant.orm)
 
     // Support libraries
     implementation("org.apache.commons:commons-lang3")
@@ -56,7 +59,7 @@ dependencies {
     quarkusDev(libs.platform.quarkus.ext.h2db)
 
     // Test dependencies
-    testImplementation(project(":common-test"))
+    testImplementation(project(":common:common-test"))
     testImplementation("io.rest-assured:rest-assured")
     testImplementation("io.rest-assured:kotlin-extensions")
 
@@ -124,7 +127,7 @@ val schemaExportTask = tasks.register(schemaExportPrefix) {
 }
 
 /**
- * Regenerate the schema before dev mode starts. Both database variants are generated because the cost is small
+ * Regenerate the schema before dev mode starts. Both database variants are generated because the cost is small,
  * and it keeps the generated SQL and the entity model in step.
  */
 tasks.named("quarkusDev") {

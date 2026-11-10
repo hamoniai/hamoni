@@ -32,7 +32,7 @@ dependencies {
     implementation("jakarta.validation:jakarta.validation-api")
 
     // Test classes
-    testImplementation(project(":common-test"))
+    testImplementation(project(":common:common-test"))
 
     testImplementation("io.quarkus:quarkus-test-security")
     testImplementation("io.rest-assured:rest-assured")

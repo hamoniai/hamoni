@@ -20,6 +20,7 @@ package ai.hamoni.control_room.repository
 
 import ai.hamoni.control_room.data.AuthenticationProfile
 import ai.hamoni.control_room.data.IdentityProviderIndex
+import ai.hamoni.control_room.data.OrganisationIdentityProvider
 import io.quarkus.hibernate.reactive.panache.kotlin.PanacheQuery
 import io.quarkus.hibernate.reactive.panache.kotlin.PanacheRepositoryBase
 import jakarta.enterprise.context.ApplicationScoped

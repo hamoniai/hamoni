@@ -19,20 +19,52 @@
 includeBuild("build-logic")
 rootProject.name="hamoni"
 
-val rootProjectDir = rootProject.projectDir
+/**
+ * Find all projects under a path and add them
+ */
+fun File.addProjects() {
+    this.walkTopDown()
+        .maxDepth(2)
+        .onEnter { file ->
+            !(file.name.startsWith(".") || file.name == "build" || file.name == "gradle")
+        }
+        .filter { file ->
+            file.name == "build.gradle.kts"
+        }
+        .forEach { buildFile ->
+            val projectDir = buildFile.parentFile
+            val projectName = ":${this.name}:${projectDir.name}"
+            include(projectName)
+            project(projectName).projectDir = projectDir
+        }
+}
 
-// Add all projects found dynamically, but collapse all to the top level.
-rootProjectDir.walkTopDown()
-    .maxDepth(4)
+val rootProjectDir = rootProject.projectDir
+val extensionsDir = File(rootProjectDir, "extensions")
+val deploymentSuffix = "-deployment"
+
+// Add all extensions dynamically.
+extensionsDir.walkTopDown()
+    .maxDepth(2)
     .onEnter { file ->
-        !(file.name.startsWith(".") || file.name == "build-logic" || file.name == "build" || file.name == "gradle")
+        file == extensionsDir || file.name.endsWith(deploymentSuffix)
     }
     .filter { file ->
         file.name == "build.gradle.kts" && file.parentFile != rootProjectDir
     }
     .forEach { buildFile ->
-        val projectDir = buildFile.parentFile
-        val projectName = ":${projectDir.name}"
-        include(projectName)
-        project(projectName).projectDir = projectDir
+        val depProjectDir = buildFile.parentFile
+        val depProjectName = ":${extensionsDir.name}:${depProjectDir.name}"
+        val impProjectDir = File(buildFile.parentFile.parentFile, buildFile.parentFile.name.removeSuffix(deploymentSuffix))
+        val impProjectName = ":${extensionsDir.name}:${depProjectDir.name.removeSuffix(deploymentSuffix)}"
+
+        include(depProjectName)
+        project(depProjectName).projectDir = depProjectDir
+        include(impProjectName)
+        project(impProjectName).projectDir = impProjectDir
     }
+
+// Add all projects found dynamically, but collapse all to the top level.
+File(rootProjectDir, "common").addProjects()
+File(rootProjectDir, "control-room").addProjects()
+File(rootProjectDir, "process-runner").addProjects()

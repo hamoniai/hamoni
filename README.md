@@ -72,8 +72,8 @@ scripts and the Gradle version catalog. Do not hard-code versions in a project.
 Run an application in development mode (live reload):
 
 ```bash
-./gradlew :control-room:quarkusDev        # Control Room (UI included)
-./gradlew :process-runner:quarkusDev      # Process Runner
+./gradlew :control-room:control-room:quarkusDev        # Control Room (UI included)
+./gradlew :process-runner:process-runner:quarkusDev    # Process Runner
 ```
 
 Development mode enables live reload and the development interface. Development

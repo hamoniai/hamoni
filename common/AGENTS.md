@@ -98,8 +98,8 @@ grows unwieldy or its classes stop belonging together.
 Each project is its own Gradle project. Build and test it by name:
 
 ```bash
-./gradlew :<project>:build     # compile, lint and test the library
-./gradlew :<project>:test      # tests only
+./gradlew :common:<project>:build     # compile, lint and test the library
+./gradlew :common:<project>:test      # tests only
 ```
 
 The same commands apply to `:common-core` and `:common-test`.
