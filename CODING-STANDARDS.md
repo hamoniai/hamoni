@@ -74,6 +74,11 @@ concern, covered under UI design and language (Part III).
 
 - The three directories `control-room/`, `process-runner/` and `common/` are
   **holding areas for one or more build projects** (ADR-0003).
+- The sibling `extension/` directory holds **Quarkus extensions** and sits outside
+  the three application and shared project areas (ADR-0068). An extension exists
+  only for Quarkus platform setup or a capability — never Hamoni domain logic —
+  and its layout, naming and test placement are defined in
+  [`extension/AGENTS.md`](./extension/AGENTS.md).
 - A project is named **`<area>-<name>`** and maps to the package
   **`ai.hamoni.<area>.<name>`**, with a hyphen in the area becoming an underscore.
   For example `common-platform` maps to `ai.hamoni.common.platform` and
@@ -110,7 +115,9 @@ concern, covered under UI design and language (Part III).
 - Tests mirror the package of the class under test; see §16.2.
 - **Dependency direction is one-way.** Projects under `control-room/` and
   `process-runner/` may depend on projects under `common/`; the two application
-  areas never depend on each other; `common/` depends on neither.
+  areas never depend on each other; `common/` depends on neither. An application
+  project may use an extension; an extension depends on neither the application
+  nor the shared projects.
 - Keep a shared project **dependency-light**: a type belongs in `common/` only
   when both application areas need it and it brings no meaningful transitive
   dependency.
@@ -508,6 +515,9 @@ Do not:
   the source file — `<SourceFile>Test.kt` — and contains one independent test
   class per class under test.
 - Do not merge unrelated classes into one test class.
+- Quarkus extension pairs place all tests in the deployment project under the
+  `test` sub-package, which is a deliberate deviation from the same-package rule;
+  see [`extension/AGENTS.md`](./extension/AGENTS.md).
 
 ### 16.3 Mock the layer's collaborators
 

@@ -117,8 +117,8 @@ Reference the project documents rather than repeating them:
 - `API-AND-DATABASE.md` — the interface and database contract.
 - `README.md` — build and test commands.
 - `specs/README.md` — the spec lifecycle and templates.
-- The local `control-room/AGENTS.md`, `process-runner/AGENTS.md` and
-  `common/AGENTS.md` — the rules for each area.
+- The local `control-room/AGENTS.md`, `process-runner/AGENTS.md`,
+  `common/AGENTS.md` and `extension/AGENTS.md` — the rules for each area.
 
 ## API documentation
 

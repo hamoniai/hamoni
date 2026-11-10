@@ -31,7 +31,7 @@ dependencies {
     implementation(project(":common:common-platform"))
 
     // Extensions
-    implementation(project(":extensions:quarkus-multi-tenant"))
+    implementation(project(":extension:quarkus-multi-tenant"))
 
     // Main runtime (Quarkus components to include)
     implementation("io.quarkus:quarkus-flyway") // includes the h2 module

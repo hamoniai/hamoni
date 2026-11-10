@@ -28,23 +28,28 @@ project/
 ├── control-room/AGENTS.md     holding directory: user-facing projects
 ├── process-runner/AGENTS.md   holding directory: execution-runtime projects
 ├── common/AGENTS.md           holding directory: shared projects
+├── extension/AGENTS.md        holding directory: Quarkus extension projects
 └── docs/                      Antora component (AsciiDoc)
 ```
 
 ## Directory map
 
-The three directories are **holding areas**: each holds one or more build
-projects, not a project itself. The projects inside are named area by area.
+The three application and shared directories are **holding areas**: each holds
+one or more build projects, not a project itself. The projects inside are named
+area by area. A sibling `extension/` directory holds the **Quarkus extensions**
+the platform is built on; it sits outside those three areas (ADR-0068).
 
 | Directory | Holds | Never holds |
 | --- | --- | --- |
 | `control-room/` | The user-facing projects: the process designer, management, lists, teams, projects, security. | The process engine, or the runtime state machines. |
 | `process-runner/` | The runtime projects that execute a published process definition end to end. | User-facing configuration, or the design-time process schema. |
 | `common/` | Models, contracts and utilities genuinely shared by both application areas. | Runtime behaviour, or a dependency on either application area. |
+| `extension/` | Paired Quarkus extension runtime and deployment projects that supply platform setup or a capability. | Hamoni domain logic, user-facing configuration, or application code. |
 
 The dependency direction is **one way**: projects under `control-room/` and
 `process-runner/` may depend on projects under `common/`. The two application
-areas never depend on each other.
+areas never depend on each other. An application project may use an extension; an
+extension does not depend on the application or shared projects.
 
 ## Bootstrapping
 
@@ -80,6 +85,8 @@ not copy build logic into a project.
 - **Feature specs and implementation approaches** — `specs/` (start with
   [`specs/README.md`](./specs/README.md)); written by the plan team before the
   Build team implements.
+- **Quarkus extensions** — [`extension/AGENTS.md`](./extension/AGENTS.md): the
+  pair naming, package layout, required files and test placement.
 - **A directory's local rules** — that directory's `AGENTS.md`.
 - **Long-form documentation** — `docs/` (Antora).
 

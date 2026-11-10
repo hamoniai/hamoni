@@ -17,14 +17,19 @@ technologists**. Three rules follow from that and shape the whole build:
 
 ## How the code is organised
 
-Work is grouped into three **holding directories** plus the documentation set.
-Each directory holds **one or more build projects**, not a project itself.
+Platform work is grouped into three **holding directories** — `control-room/`,
+`process-runner/` and `common/` — plus the documentation set. Each directory holds
+**one or more build projects**, not a project itself. A sibling
+[`extension/`](./extension/) directory holds the **Quarkus extensions** the
+platform is built on; extensions sit outside those three areas and exist only to
+supply Quarkus platform setup or a capability (ADR-0068).
 
 | Directory | Holds |
 | --- | --- |
 | [`control-room/`](./control-room/) | The projects for everything **user-facing**: the process designer/builder, management, lists, teams, projects, security. One project may be the user interface and another the data model, for example `control-room/hamoni-cr-ui` and `control-room/hamoni-cr-model`. |
 | [`process-runner/`](./process-runner/) | The projects for the **runtime** that executes process definitions — starting, advancing, pending, resuming and completing processes and their tasks. |
 | [`common/`](./common/) | The projects for building blocks genuinely **shared** by both — the process model, the state models, shared contracts and utilities. |
+| [`extension/`](./extension/) | The **Quarkus extensions** the platform uses: paired runtime and deployment projects that supply platform setup or a capability. Not Hamoni application or domain code. |
 | [`docs/`](./docs/) | The documentation set, an **Antora** component. |
 
 ```
@@ -32,6 +37,7 @@ hamoni/
 ├── control-room/     projects for the user-facing application
 ├── process-runner/   projects for the process execution runtime
 ├── common/           projects for shared libraries
+├── extension/        Quarkus extensions used by the platform
 └── docs/             Antora (AsciiDoc)
 ```
 

@@ -78,6 +78,9 @@ dependency direction honest, and lets each area grow without renaming anything.
 **Consequences.** Project names and their exact split are decided area by area;
 the directory names are stable and are referenced throughout this document.
 
+**Refined by** ADR-0068 — Quarkus extensions live in a sibling `extension/`
+directory outside the three areas.
+
 ### ADR-0004 — Teams and projects are orthogonal, and both are top-level objects
 
 **Status:** Accepted
@@ -1533,6 +1536,38 @@ only the database currently in use. The MariaDB variant is produced by running H
 in MariaDB compatibility mode with the MariaDB dialect, so it does not require a
 running MariaDB server. The release pipeline owns the copy-back of generated SQL
 into the source tree. Generated scripts are not edited by hand.
+
+---
+
+### ADR-0068 — Quarkus extensions live in a sibling `extension/` directory
+
+**Status:** Accepted
+
+**Decision.** The Quarkus extensions Hamoni uses are held in a sibling
+`extension/` directory, outside the three project areas `control-room/`,
+`process-runner/` and `common/`. Each extension is a pair of Gradle projects —
+`<extension name>` (runtime) and `<extension name>-deployment` (deployment) —
+where the extension name is `<extension group>-<extension capability>`. An
+extension exists only to supply Quarkus platform setup or a capability; it carries
+no Hamoni domain logic and does not depend on the application or shared projects.
+The pair naming, package layout, required files and test placement are defined in
+[`extension/AGENTS.md`](./extension/AGENTS.md).
+
+**Reason.** Some behaviour must be supplied to Quarkus itself — build-time
+instrumentation, a runtime recorder, or a capability Quarkus does not provide —
+and it cannot live in the application projects without becoming application code.
+A standard Quarkus extension pair separates the build-time and runtime halves and
+keeps that platform plumbing visible and isolated. Holding the pairs in a sibling
+directory keeps them near the platform they extend without making them a fourth
+application area or changing the three-directory organisation the rest of the
+build uses.
+
+**Consequences.** ADR-0003's three directories remain the organising structure for
+application and shared work; `extension/` is an additional holding area for
+Quarkus platform extensions only. Extension pairs use the shared extension
+conventions, and all tests for a pair live in its deployment project
+(CODING-STANDARDS §16.2). A requirement that is Hamoni domain work belongs in
+`control-room/`, `process-runner/` or `common/`, not in an extension.
 
 ---
 
