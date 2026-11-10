@@ -27,7 +27,7 @@ import io.quarkus.deployment.builditem.FeatureBuildItem
 /**
  * The main processor for the extension
  */
-internal class QuarkusMultiTenant {
+internal class QuarkusMultiTenantProcessor {
     companion object {
         private const val FEATURE = "quarkus-multi-tenant"
 

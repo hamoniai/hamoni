@@ -40,7 +40,7 @@ fun File.addProjects() {
 }
 
 val rootProjectDir = rootProject.projectDir
-val extensionsDir = File(rootProjectDir, "extensions")
+val extensionsDir = File(rootProjectDir, "extension")
 val deploymentSuffix = "-deployment"
 
 // Add all extensions dynamically.
