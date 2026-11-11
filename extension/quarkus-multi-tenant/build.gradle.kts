@@ -26,4 +26,7 @@ plugins {
 description = "Enable Quarkus Schema based multi-tenancy"
 
 dependencies {
+    implementation("io.smallrye.config:smallrye-config-core")
+    implementation("io.quarkus:quarkus-core")
+    implementation("io.vertx:vertx-sql-client")
 }

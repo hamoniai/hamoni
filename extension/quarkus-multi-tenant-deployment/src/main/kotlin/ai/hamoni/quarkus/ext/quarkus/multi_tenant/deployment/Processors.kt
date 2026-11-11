@@ -19,8 +19,12 @@
 @file:Suppress("unused")
 package ai.hamoni.quarkus.ext.quarkus.multi_tenant.deployment
 
+import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config
+import ai.hamoni.quarkus.ext.quarkus.multi_tenant.ConstantsSettingRecorder
 import io.quarkus.deployment.annotations.BuildProducer
 import io.quarkus.deployment.annotations.BuildStep
+import io.quarkus.deployment.annotations.ExecutionTime
+import io.quarkus.deployment.annotations.Record
 import io.quarkus.deployment.builditem.BytecodeTransformerBuildItem
 import io.quarkus.deployment.builditem.FeatureBuildItem
 
@@ -33,7 +37,7 @@ internal class QuarkusMultiTenantProcessor {
 
         private val QUARKUS_CLASSES = mapOf(
             "io.quarkus.hibernate.reactive.runtime.customized.QuarkusSqlClientPool" to ::QuarkusSqlClientPoolClassTransformer,
-            "io.quarkus.hibernate.orm.runtime.recording.RecordedConfig" to ::RecordedConfigClassTransformer,
+            //"io.quarkus.hibernate.orm.runtime.recording.RecordedConfig" to ::RecordedConfigClassTransformer,
         )
     }
 
@@ -59,5 +63,17 @@ internal class QuarkusMultiTenantProcessor {
             .forEach {
                 bytecodeTransformers.produce(it)
             }
+    }
+
+    /**
+     * Set the placeholder value at build time.
+     */
+    @BuildStep
+    @Record(ExecutionTime.STATIC_INIT)
+    fun setupConstants(
+        constantsSettingRecorder: ConstantsSettingRecorder,
+        config: Config
+    ) {
+        constantsSettingRecorder.setTenantPlaceholder(config.placeholder())
     }
 }

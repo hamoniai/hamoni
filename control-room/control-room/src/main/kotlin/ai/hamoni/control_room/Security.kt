@@ -21,6 +21,7 @@ package ai.hamoni.control_room
 import ai.hamoni.common.core.exception.InvalidParameterException
 import ai.hamoni.common.core.util.cleanUrl
 import ai.hamoni.control_room.service.AuthenticationService
+import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config as MultiTenantConfig
 import io.quarkus.arc.Unremovable
 import io.quarkus.hibernate.orm.PersistenceUnitExtension
 import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
@@ -29,12 +30,14 @@ import io.quarkus.oidc.OidcRequestContext
 import io.quarkus.oidc.OidcTenantConfig
 import io.quarkus.oidc.TenantConfigResolver
 import io.quarkus.vertx.http.runtime.security.ChallengeData
+import io.smallrye.config.SmallRyeConfig
 import io.smallrye.mutiny.Uni
 import io.smallrye.mutiny.infrastructure.Infrastructure
 import io.vertx.ext.web.RoutingContext
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.context.RequestScoped
 import jakarta.inject.Inject
+import org.eclipse.microprofile.config.ConfigProvider
 import org.hibernate.boot.model.naming.Identifier
 import org.hibernate.boot.model.naming.PhysicalNamingStrategySnakeCaseImpl
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment
@@ -98,6 +101,29 @@ class OrganisationTenantResolver : TenantResolver {
     override fun resolveTenantId(): String {
         return "y"
     }
+}
+
+/**
+ * A Hibernate naming strategy to add the configured tenant placeholder into unqualified table names
+ * and other objects. The placeholder is emitted as a quoted identifier so the connection layer can
+ * replace it without needing to know the database's quote character.
+ */
+class PhysicalNamingStrategyTenantQualifyingSnakeCaseImpl : PhysicalNamingStrategySnakeCaseImpl() {
+    private val tenantPlaceholder: String =
+        ConfigProvider.getConfig()
+            .unwrap(SmallRyeConfig::class.java)
+            .getConfigMapping(MultiTenantConfig::class.java)
+            .placeholder()
+
+    override fun toPhysicalSchemaName(
+        logicalName: Identifier?,
+        jdbcEnvironment: JdbcEnvironment
+    ): Identifier? =
+        if (null == logicalName) {
+            Identifier(tenantPlaceholder, true, true)
+        } else {
+            super.toPhysicalSchemaName(logicalName, jdbcEnvironment)
+        }
 }
 
 /**

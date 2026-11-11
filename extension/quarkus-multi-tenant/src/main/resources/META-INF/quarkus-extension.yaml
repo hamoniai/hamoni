@@ -4,7 +4,7 @@ metadata:
   keywords:
     - "Quarkus"
     - "Multi-tenant"
-  guide: "none"
+  guide: "https://hamoni.ai/"
   categories:
     - "quarkus"
   status: "stable"
