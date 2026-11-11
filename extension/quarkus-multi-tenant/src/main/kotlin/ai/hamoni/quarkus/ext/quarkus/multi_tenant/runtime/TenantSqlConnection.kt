@@ -50,7 +50,7 @@ import io.vertx.sqlclient.SqlConnection
  * @param delegate the physical connection the SQL is delegated to
  * @param tenantId the tenant whose schema is bound to statements, or null for non-tenant work
  */
-class extension/quarkus-multi-tenant/src/main/kotlin/ai/hamoni/quarkus/ext/quarkus/multi_tenant/runtime/TenantSqlConnection.kt(
+class TenantSqlConnection(
     private val delegate: SqlConnection,
     private val tenantId: String?,
 ) : SqlConnection by delegate {
