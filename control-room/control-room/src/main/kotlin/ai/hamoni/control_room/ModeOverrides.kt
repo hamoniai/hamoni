@@ -18,19 +18,25 @@
 
 package ai.hamoni.control_room
 
+import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config
 import io.quarkus.arc.profile.IfBuildProfile
 import io.quarkus.oidc.OidcRequestContext
 import io.quarkus.oidc.OidcTenantConfig
 import io.quarkus.oidc.TenantConfigResolver
 import io.quarkus.runtime.StartupEvent
+import io.smallrye.config.SmallRyeConfig
 import io.smallrye.mutiny.Uni
 import io.vertx.ext.web.RoutingContext
 import jakarta.annotation.Priority
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.event.Observes
 import jakarta.enterprise.inject.Alternative
+import org.eclipse.microprofile.config.ConfigProvider
 import org.h2.value.DataType
 import org.h2.value.TypeInfo
+import org.hibernate.boot.model.naming.Identifier
+import org.hibernate.boot.model.naming.PhysicalNamingStrategySnakeCaseImpl
+import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment
 import java.sql.Types
 
 /*
@@ -64,4 +70,21 @@ class DevOidcTenantConfigResolver : TenantConfigResolver {
         routingContext: RoutingContext?,
         requestContext: OidcRequestContext<OidcTenantConfig>
     ): Uni<OidcTenantConfig> = Uni.createFrom().nullItem()
+}
+
+/**
+ * A Hibernate naming strategy remove any schema names when exporting. This class cannot be excluded, but is not
+ * used except in schema generation.
+ */
+@IfBuildProfile("schema-export")
+class PhysicalNamingSchemaErasingSnakeCaseImpl : PhysicalNamingStrategySnakeCaseImpl() {
+    override fun toPhysicalCatalogName(
+        logicalName: Identifier?,
+        jdbcEnvironment: JdbcEnvironment?
+    ): Identifier? = null
+
+    override fun toPhysicalSchemaName(
+        logicalName: Identifier?,
+        jdbcEnvironment: JdbcEnvironment
+    ): Identifier? = null
 }
