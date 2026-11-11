@@ -18,20 +18,17 @@
 
 package ai.hamoni.control_room
 
-import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config
 import io.quarkus.arc.profile.IfBuildProfile
 import io.quarkus.oidc.OidcRequestContext
 import io.quarkus.oidc.OidcTenantConfig
 import io.quarkus.oidc.TenantConfigResolver
 import io.quarkus.runtime.StartupEvent
-import io.smallrye.config.SmallRyeConfig
 import io.smallrye.mutiny.Uni
 import io.vertx.ext.web.RoutingContext
 import jakarta.annotation.Priority
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.event.Observes
 import jakarta.enterprise.inject.Alternative
-import org.eclipse.microprofile.config.ConfigProvider
 import org.h2.value.DataType
 import org.h2.value.TypeInfo
 import org.hibernate.boot.model.naming.Identifier
