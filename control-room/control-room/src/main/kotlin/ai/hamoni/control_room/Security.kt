@@ -18,6 +18,8 @@
 
 package ai.hamoni.control_room
 
+import ai.hamoni.common.core.PLATFORM_SCHEMA
+import ai.hamoni.common.core.REQUEST_ORGANISATION_ID
 import ai.hamoni.common.core.exception.InvalidParameterException
 import ai.hamoni.common.core.util.cleanUrl
 import ai.hamoni.control_room.service.AuthenticationService
@@ -42,6 +44,7 @@ import org.hibernate.boot.model.naming.Identifier
 import org.hibernate.boot.model.naming.PhysicalNamingStrategySnakeCaseImpl
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment
 import java.util.*
+import kotlin.uuid.Uuid
 
 
 /*
@@ -49,58 +52,45 @@ import java.util.*
  * If there are overrides for these classes, check the `ModeOverrides.kt`.
  */
 
-// DO NOT REMOVE THE FOLLOWING COMMENT SECTION
-// This is the real implementation for the TenantResolver when Quarkus fix the multi-tenant setup in Quarkus Panache
-// Reactive. Until then, leave this here as a reference.
-///**
-// * This the organisation to tenant mapping which creates data isolation.
-// * Warning: this also gets called on non-HTTP requests, like messaging, timers etc. We will need to extend this
-// * to support those situations where the RoutingContext is null.
-// *
-// * The tenant must be the hyphen separated form, else the schema check will fail To ensure this, we parse, then convert back to a string.
-// */
-//@ApplicationScoped
-//@Priority(Interceptor.Priority.PLATFORM_BEFORE)
-//class OrganisationTenantResolver : TenantResolver {
-//    companion object {
-//        // ContainerRequestContext contains a relative path from the configured root, so need to strip the /api.
-//        val AUTH_PATH_WITHOUT_PREFIX = AUTH_PATH.substring(API_PATH.length - 1)
-//
-//    }
-//    override fun name() = "header-custom"
-//
-//    override fun resolve(context: TenantResolutionContext): TenantResolution {
-//        return context.get(ContainerRequestContext::class.java)
-//            .map { req ->
-//                // Check the URL. return TenantResolution.notApplicable if not found.
-//                if (req.uriInfo.path.orEmpty().cleanUrl().startsWith(AUTH_PATH_WITHOUT_PREFIX)) {
-//                    TenantResolution.notApplicable()
-//                } else {
-//                    req.getHeaderString(REQUEST_ORGANISATION_ID).orEmpty().trim().let {
-//                        try {
-//                            TenantResolution.resolved(Uuid.parse(it).toString())
-//                        } catch (_: IllegalArgumentException) {
-//                            TenantResolution.rejected("missing or invalid header")
-//                        }
-//                    }
-//                }
-//            }.orElseGet {
-//                TODO("missing context, need to see what cases.")
-//            }
-//    }
-//}
-
+/**
+ * Create a tenant resolver that directs queries based on the organisation header.
+ *
+ * If the organisation header is not present or not correct, an exception will be thrown.
+ */
 @PersistenceUnitExtension
-@Unremovable
 @RequestScoped
-class OrganisationTenantResolver : TenantResolver {
-    override fun getDefaultTenantId(): String {
-        return "x"
-    }
+@Unremovable
+class OrganisationTenantResolver @Inject constructor(
+    private val routingContext: RoutingContext
+): TenantResolver {
 
-    override fun resolveTenantId(): String {
-        return "y"
-    }
+    /**
+     * Never return a default
+     */
+    override fun getDefaultTenantId(): String = error("Request for default tenant")
+
+    override fun resolveTenantId(): String =
+        if (routingContext.request().path().orEmpty().cleanUrl().startsWith(AUTH_PATH)) {
+            // Organisation agnostic, but we can not set the tenant to null, the
+            // HibernateCurrentTenantIdentifierResolver will throw an error. Instead, since all of these requests will
+            // route to the platform schema anyway, just set the platform schema
+            PLATFORM_SCHEMA
+        } else {
+            // Everything else requires an organisation. If we cannot resolve one, and it is valid then throw an error.
+            // Do not let unvalidated organisation identifiers pass here.
+            try {
+                Uuid.parse(
+                    routingContext.request().getHeader(REQUEST_ORGANISATION_ID)
+                        .orEmpty()
+                        .trim()
+                ).toString()
+            } catch (_: IllegalArgumentException) {
+                // This should end up returning a bad request - it's the caller's issue.
+                error("Invalid organisation id header")
+            }
+        }
+
+    override fun isRoot(tenantId: String?): Boolean = PLATFORM_SCHEMA == tenantId
 }
 
 /**
