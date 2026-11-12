@@ -102,7 +102,7 @@ class AuthenticationResource @Inject constructor(
     @GET
     @Path("/identityProviders")
     @Produces(APPLICATION_JSON_UTF8)
-    fun getIdentityProviders(@PathParam("organisationId") organisationId: UUID?): Uni<RestResponse<List<OrganisationIdentityProviderHeaderWithSource>>> =
+    fun getIdentityProviders(@QueryParam("organisationId") organisationId: UUID?): Uni<RestResponse<List<OrganisationIdentityProviderHeaderWithSource>>> =
         if (organisationId == null) { configurationService.getDefaultOrganisationId() } else { Uni.createFrom().item { organisationId } }
             .onItem().transformToUni { authenticationService.listIdentityProvidersByOrganisationId(it) }
             .onItem().transform { data -> RestResponse.ok(data) }
