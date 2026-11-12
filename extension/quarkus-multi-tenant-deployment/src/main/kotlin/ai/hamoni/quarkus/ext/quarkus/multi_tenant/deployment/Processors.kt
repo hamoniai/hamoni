@@ -19,6 +19,7 @@
 @file:Suppress("unused")
 package ai.hamoni.quarkus.ext.quarkus.multi_tenant.deployment
 
+import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config
 import ai.hamoni.quarkus.ext.quarkus.multi_tenant.ConstantsSettingRecorder
 import io.quarkus.deployment.annotations.BuildProducer
 import io.quarkus.deployment.annotations.BuildStep
@@ -68,18 +69,15 @@ internal class QuarkusMultiTenantProcessor {
     /**
      * Set the placeholder value at build time.
      * Related issue: https://github.com/quarkusio/quarkus/issues/58349
+     *
+     * Effectively disabled for now because the recorder has the same classloader issue.
      */
-    @BuildStep
-    @Record(ExecutionTime.STATIC_INIT)
+    //@BuildStep
+    //@Record(ExecutionTime.STATIC_INIT)
     fun setupConstants(
         constantsSettingRecorder: ConstantsSettingRecorder,
+        config: Config
     ) {
-        // Have to do this manually for now due to bug
-        val placeholder = ConfigProvider
-            .getConfig()
-            .getConfigValue("hamoni.ext.quarkus.multi-tenant.placeholder")
-            .value
-
-        constantsSettingRecorder.setTenantPlaceholder(placeholder)
+        constantsSettingRecorder.setTenantPlaceholder(config.placeholder())
     }
 }
