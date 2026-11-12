@@ -19,7 +19,6 @@
 @file:Suppress("unused")
 package ai.hamoni.quarkus.ext.quarkus.multi_tenant.deployment
 
-import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config
 import ai.hamoni.quarkus.ext.quarkus.multi_tenant.ConstantsSettingRecorder
 import io.quarkus.deployment.annotations.BuildProducer
 import io.quarkus.deployment.annotations.BuildStep
@@ -27,6 +26,7 @@ import io.quarkus.deployment.annotations.ExecutionTime
 import io.quarkus.deployment.annotations.Record
 import io.quarkus.deployment.builditem.BytecodeTransformerBuildItem
 import io.quarkus.deployment.builditem.FeatureBuildItem
+import org.eclipse.microprofile.config.ConfigProvider
 
 /**
  * The main processor for the extension
@@ -67,13 +67,19 @@ internal class QuarkusMultiTenantProcessor {
 
     /**
      * Set the placeholder value at build time.
+     * Related issue: https://github.com/quarkusio/quarkus/issues/58349
      */
     @BuildStep
     @Record(ExecutionTime.STATIC_INIT)
     fun setupConstants(
         constantsSettingRecorder: ConstantsSettingRecorder,
-        config: Config
     ) {
-        constantsSettingRecorder.setTenantPlaceholder(config.placeholder())
+        // Have to do this manually for now due to bug
+        val placeholder = ConfigProvider
+            .getConfig()
+            .getConfigValue("hamoni.ext.quarkus.multi-tenant.placeholder")
+            .value
+
+        constantsSettingRecorder.setTenantPlaceholder(placeholder)
     }
 }

@@ -110,6 +110,9 @@ schemaExportDatabases.forEach { database ->
         // Hard coded this because Gradle has a stupid bug that prefixes providers with "fixed".
         // systemProperty("hamoni.schema-export.output-directory", schemaExportDir.map { it.asFile.path })
 
+        // Do not remove this line, it is for when we need to debug.
+        //jvmArgs("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005")
+
         outputs.dir(schemaExportDir)
 
         standardOutput = System.out
