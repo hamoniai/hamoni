@@ -50,7 +50,7 @@ idea {
 /**
  * Java projects setup
  */
-val javaLanguageVersion = 25
+val javaLanguageVersion = libs.findVersion("platform.java").get().toString()
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(javaLanguageVersion)
@@ -167,7 +167,7 @@ tasks.withType<Jar>().configureEach {
         attributes["Implementation-Title"] = project.name
         attributes["Implementation-Version"] = project.version.toString()
         attributes["Created-By"] = "Gradle JAR plugin ${GradleVersion.current().version}"
-        attributes["Java-Version"] = javaLanguageVersion.toString()
+        attributes["Java-Version"] = javaLanguageVersion
         attributes["Build-Jdk-Spec"] = JavaVersion.current().majorVersion
     }
     exclude("**/.gitkeep")
