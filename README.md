@@ -109,6 +109,11 @@ software. Read them before you write code:
 Each directory carries its own `AGENTS.md` with the local rules, layout and
 commands for the projects it holds.
 
+## Raised issues
+
+Upstream issues raised by the platform, with their impact and the current
+workaround, are recorded in [`ISSUES.md`](./ISSUES.md).
+
 ## Acronyms
 
 Acronyms specific to the Hamoni project, written out in full. The first letter
