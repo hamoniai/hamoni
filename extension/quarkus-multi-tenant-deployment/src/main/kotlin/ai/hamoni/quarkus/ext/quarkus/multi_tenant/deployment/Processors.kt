@@ -25,8 +25,6 @@ import io.quarkus.deployment.annotations.BuildProducer
 import io.quarkus.deployment.annotations.BuildStep
 import io.quarkus.deployment.builditem.BytecodeTransformerBuildItem
 import io.quarkus.deployment.builditem.FeatureBuildItem
-import io.quarkus.hibernate.orm.runtime.migration.MultiTenancyStrategy
-import org.eclipse.microprofile.config.ConfigProvider
 import org.objectweb.asm.ClassVisitor
 
 /**
@@ -37,8 +35,6 @@ internal class QuarkusMultiTenantProcessor {
         private const val FEATURE = "quarkus-multi-tenant"
         private const val QUARKUS_SQL_CLIENT_POOL =
             "io.quarkus.hibernate.reactive.runtime.customized.QuarkusSqlClientPool"
-        private const val RECORDED_CONFIG =
-            "io.quarkus.hibernate.orm.runtime.recording.RecordedConfig"
     }
 
     @BuildStep
@@ -53,12 +49,8 @@ internal class QuarkusMultiTenantProcessor {
     fun instrumentQuarkusClasses(
         bytecodeTransformers: BuildProducer<BytecodeTransformerBuildItem>
     ) {
-        val multiTenancyStrategy = resolveMultiTenancyStrategy()
         val transformers: Map<String, (ClassVisitor) -> ClassVisitor> = mapOf(
             QUARKUS_SQL_CLIENT_POOL to ::QuarkusSqlClientPoolClassTransformer,
-            RECORDED_CONFIG to { visitor ->
-                RecordedConfigClassTransformer(visitor, multiTenancyStrategy)
-            },
         )
 
         transformers
@@ -72,19 +64,6 @@ internal class QuarkusMultiTenantProcessor {
                 bytecodeTransformers.produce(it)
             }
     }
-
-    /**
-     * Resolve the configured Hibernate multi-tenancy strategy at build time.
-     */
-    private fun resolveMultiTenancyStrategy(): MultiTenancyStrategy =
-        ConfigProvider.getConfig()
-            .getConfigValue("quarkus.hibernate-orm.multitenant")
-            .value
-            ?.let { configured ->
-                MultiTenancyStrategy.entries
-                    .firstOrNull { it.name.equals(configured, ignoreCase = true) }
-            }
-            ?: MultiTenancyStrategy.NONE
 
     /**
      * Set the placeholder value at build time.

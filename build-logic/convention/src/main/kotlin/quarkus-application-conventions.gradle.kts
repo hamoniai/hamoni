@@ -57,6 +57,17 @@ dependencies {
 }
 
 /**
+ * Very special handling because of a problem in the Quarkus multi-tenant setup. Have to transform some classes
+ * before they will allow multi-tenant hibernate.
+ */
+val agentJar = rootProject.layout.projectDirectory.dir("build-logic/libs").file("quarkus-multi-tenant-agent.jar")
+quarkus {
+    buildForkOptions {
+        jvmArgs.add("-javaagent:${agentJar}")
+    }
+}
+
+/**
  * Javadoc needs Jandex to complete first
  */
 tasks.withType(Javadoc::class.java).configureEach {
@@ -70,6 +81,7 @@ tasks.withType<QuarkusDev>().configureEach {
     //getOverridableProperty("aws.default.profile")?.let {
     //    jvmArgs = listOf("-Daws.profile=$it")
     //}
+    jvmArguments.add("-javaagent:${agentJar}")
     notCompatibleWithConfigurationCache("Plugin not compatible")
 }
 

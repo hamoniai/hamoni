@@ -30,3 +30,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "build-logic"
 include(":convention")
+include(":quarkus-multi-tenant-agent")
