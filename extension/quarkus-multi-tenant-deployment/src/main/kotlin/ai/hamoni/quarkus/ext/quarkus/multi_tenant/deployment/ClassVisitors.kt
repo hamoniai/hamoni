@@ -18,6 +18,7 @@
 
 package ai.hamoni.quarkus.ext.quarkus.multi_tenant.deployment
 
+import io.quarkus.hibernate.orm.runtime.migration.MultiTenancyStrategy
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
@@ -118,13 +119,68 @@ class QuarkusSqlClientPoolClassTransformer(cv: ClassVisitor) : ClassVisitor(Opco
 }
 
 /**
- * Transform the RecordedConfig class. This is very tricky because the class below is annotated with
- * '@RecordableConstructor', so patching it has to be done really early, i.e. before anything else uses the constructor.
- *
- * We might be able to override the getter??
+ * Transform the RecordedConfig class to apply the build-time configured multi-tenancy strategy.
  *
  * Actions:
- * 1. Patch the constructor in [io.quarkus.hibernate.orm.runtime.recording.RecordedConfig] to use schema multi-tenancy
+ * 1. Replace [io.quarkus.hibernate.orm.runtime.recording.RecordedConfig.getMultiTenancyStrategy]
+ *    so it returns the configured [MultiTenancyStrategy] constant.
+ *
+ * See `ISSUES.md` (quarkusio/quarkus#58249) for the related Quarkus issue.
  */
-class RecordedConfigClassTransformer(cv: ClassVisitor) : ClassVisitor(Opcodes.ASM9, cv) {
+class RecordedConfigClassTransformer(
+    cv: ClassVisitor,
+    private val multiTenancyStrategy: MultiTenancyStrategy,
+) : ClassVisitor(Opcodes.ASM9, cv) {
+
+    /**
+     * Remove the existing getter; the replacement is added in [visitEnd].
+     */
+    override fun visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String?,
+        exceptions: Array<out String>?
+    ): MethodVisitor? {
+        if (name == GET_MULTI_TENANCY_STRATEGY && descriptor == GET_MULTI_TENANCY_STRATEGY_DESCRIPTOR) {
+            return null
+        }
+        return super.visitMethod(access, name, descriptor, signature, exceptions)
+    }
+
+    /**
+     * Add
+     * `public MultiTenancyStrategy getMultiTenancyStrategy() { return MultiTenancyStrategy.<configured>; }`.
+     */
+    override fun visitEnd() {
+        super.visitMethod(
+            Opcodes.ACC_PUBLIC,
+            GET_MULTI_TENANCY_STRATEGY,
+            GET_MULTI_TENANCY_STRATEGY_DESCRIPTOR,
+            null,
+            null
+        ).apply {
+            visitCode()
+            visitFieldInsn(
+                Opcodes.GETSTATIC,
+                MULTI_TENANCY_STRATEGY,
+                multiTenancyStrategy.name,
+                MULTI_TENANCY_STRATEGY_DESCRIPTOR
+            )
+            visitInsn(Opcodes.ARETURN)
+            visitMaxs(1, 1)
+            visitEnd()
+        }
+        super.visitEnd()
+    }
+
+    private companion object {
+        private const val GET_MULTI_TENANCY_STRATEGY = "getMultiTenancyStrategy"
+        private const val GET_MULTI_TENANCY_STRATEGY_DESCRIPTOR =
+            "()Lio/quarkus/hibernate/orm/runtime/migration/MultiTenancyStrategy;"
+        private const val MULTI_TENANCY_STRATEGY =
+            "io/quarkus/hibernate/orm/runtime/migration/MultiTenancyStrategy"
+        private const val MULTI_TENANCY_STRATEGY_DESCRIPTOR =
+            "Lio/quarkus/hibernate/orm/runtime/migration/MultiTenancyStrategy;"
+    }
 }

@@ -46,17 +46,20 @@ enum class SchemaScope(
  * Include only the explicit platform schema.
  *
  * Platform entities carry `@Table(schema = PLATFORM_SCHEMA)`.
+ *
+ * The namespace filter selects the schema scope. Hibernate only asks about the
+ * tables and sequences inside an included namespace, and the physical names have
+ * their schema erased by the schema-export naming strategy, so the physical
+ * table and sequence schema must not be used to select the scope.
  */
 class PlatformSchemaFilter : SchemaFilter {
 
     override fun includeNamespace(namespace: Namespace): Boolean =
         namespace.name.schema().isPlatformSchema()
 
-    override fun includeTable(table: Table): Boolean =
-        table.schema.isPlatformSchema()
+    override fun includeTable(table: Table): Boolean = true
 
-    override fun includeSequence(sequence: Sequence): Boolean =
-        sequence.name.schemaName.isPlatformSchema()
+    override fun includeSequence(sequence: Sequence): Boolean = true
 }
 
 /**
@@ -64,17 +67,20 @@ class PlatformSchemaFilter : SchemaFilter {
  *
  * The organisation script is applied to each organisation's schema by Flyway, so
  * it contains the default schema and any future non-platform schema.
+ *
+ * The namespace filter selects the schema scope. Hibernate only asks about the
+ * tables and sequences inside an included namespace, and the physical names have
+ * their schema erased by the schema-export naming strategy, so the physical
+ * table and sequence schema must not be used to select the scope.
  */
 class OrganisationSchemaFilter : SchemaFilter {
 
     override fun includeNamespace(namespace: Namespace): Boolean =
         !namespace.name.schema().isPlatformSchema()
 
-    override fun includeTable(table: Table): Boolean =
-        !table.schema.isPlatformSchema()
+    override fun includeTable(table: Table): Boolean = true
 
-    override fun includeSequence(sequence: Sequence): Boolean =
-        !sequence.name.schemaName.isPlatformSchema()
+    override fun includeSequence(sequence: Sequence): Boolean = true
 }
 
 /**
@@ -126,9 +132,3 @@ class OrganisationSchemaFilterProvider : SchemaFilterProvider {
  */
 private fun Identifier?.isPlatformSchema(): Boolean =
     this?.text.equals(PLATFORM_SCHEMA, ignoreCase = true)
-
-/**
- * Whether the name is the explicit platform schema.
- */
-private fun String?.isPlatformSchema(): Boolean =
-    this.equals(PLATFORM_SCHEMA, ignoreCase = true)

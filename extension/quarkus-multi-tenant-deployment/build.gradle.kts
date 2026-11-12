@@ -28,5 +28,7 @@ description = "Enable Quarkus Schema based multi-tenancy (deployment module)"
 dependencies {
     implementation(project(":extension:quarkus-multi-tenant"))
 
+    implementation("io.quarkus:quarkus-hibernate-orm-deployment")
+
     testImplementation("io.vertx:vertx-sql-client")
 }

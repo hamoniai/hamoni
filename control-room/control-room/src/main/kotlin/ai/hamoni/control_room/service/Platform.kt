@@ -100,6 +100,14 @@ class AuthenticationService @Inject constructor(
      */
     fun listIdentityProvidersByOrganisationId(organisationId: UUID): Uni<List<OrganisationIdentityProviderHeaderWithSource>> =
         Panache.withSession {
+            // This is a particularly tricky query. We should really check if the schema exists before attempting to
+            // query the organisation providers. However, there's no platform-agnostic way to do that. The easiest way
+            // achieve it is try to get the settings from the organisation, specifically whether to include the
+            // default authenticaiton providers. if that throws an error, the organisation must not exist, but we will
+            // map it to a default value of true.
+            //
+            // The method is also particularly bad as we must bypass standard tenant resolution and to access the
+            // specific tenant. The data is safe because it is converted to a UUID type here.
 //            identityProviderIndexRepository.findById(organisationId)
 //                .onItem().transformToUni {
 //                    Uni.createFrom().item { emptyList() }
