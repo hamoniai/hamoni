@@ -45,13 +45,20 @@ concern, covered under UI design and language (Part III).
 - **Immutability first.** Prefer `val`; prefer immutable collections; prefer data
   classes for value objects. Mutability is a deliberate, local decision — a JPA
   entity is the one standing exception, where properties are `var` (§10).
-- **Write Kotlin, not Java in Kotlin.** Prefer expression-oriented code and the
+- **Write Kotlin, not Java in Kotlin.** Use the language rather than translating
+  Java structure: primary constructors, immutable properties, data and sealed
+  types, `when`, expression bodies, delegation (`by`), extension functions and the
   standard collection transformations (`map`, `filter`, `flatMap`, `fold`,
-  `associate`, `partition`, `groupBy`, `let`, `takeIf`, `use`) over mutable local
-  collections and interim variables. Build immutable values in one expression
-  where that is clearer; do not create a mutable set or list only to populate it
-  in a loop. Use a loop only when the logic is genuinely clearer or an external
-  API requires mutation.
+  `associate`, `partition`, `groupBy`, `let`, `takeIf`, `use`). Do not write
+  Java-style explicit getters and setters for simple properties, mutable fields
+  for values that are immutable, mutable collections only to populate them in a
+  loop, or utility classes when a top-level function or object is the Kotlin
+  idiom. If a Kotlin file reads like Java with `fun`, rewrite it. Use a loop only
+  when the logic is genuinely clearer or an external API requires mutation.
+- **Order the class body deliberately.** Declare properties first, then the
+  companion object, then initialisers and methods. Order methods alphabetically
+  by name and keep overloads together; apply the same ordering inside the
+  companion object.
 - **Null safety is not optional.** No `!!` except in a projection constructor
   that builds from a persisted entity whose source column is non-null; document
   why the value cannot be absent. No platform-type leakage across a boundary.
@@ -121,6 +128,10 @@ concern, covered under UI design and language (Part III).
 - Keep a shared project **dependency-light**: a type belongs in `common/` only
   when both application areas need it and it brings no meaningful transitive
   dependency.
+- **Validate at the boundary that owns the rule.** Do not add business validation
+  to platform, driver or infrastructure code. The rule belongs in the service or
+  domain boundary that owns it; for example, a tenant identifier is validated by
+  the tenant resolver, not by the connection or pool layer.
 
 ## 3. Dependencies and version management
 
@@ -197,6 +208,12 @@ concern, covered under UI design and language (Part III).
   state at the declaration what the normal approach would have been, what was
   done instead, and why. Do not present a workaround as ordinary code, and do not
   call a normal design choice a workaround.
+- **A temporary upstream workaround is recorded, not treated as a new decision.**
+  When a workaround is forced by an upstream dependency or platform defect, record
+  it in [`ISSUES.md`](./ISSUES.md) with its impact, current handling and removal
+  condition, and document it at the declaration. Do not change the architecture
+  decisions, this document or [`API-AND-DATABASE.md`](./API-AND-DATABASE.md) for a
+  tactical workaround; propose a change only if a rule genuinely changes.
 - **Build for the requirement in front of you.** Do not add configurability, loops
   over supported variants, abstractions or extension points for a future need that
   has not been agreed. A hard-coded list of the currently supported variants is

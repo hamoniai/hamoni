@@ -84,6 +84,13 @@ work; do not restate the rules here.
 - **Honour the platform invariants.** The reactive, organisation-isolation and
   audit rules are in `CODING-STANDARDS.md` §8, §10 and §13. Apply them; do not
   reproduce them here.
+- **Build scripts require approval.** `build-logic/`, the Gradle convention
+  plugins and every `build.gradle.kts` are sensitive. Propose a change and wait
+  for the user before editing one.
+- **Propose, do not unilaterally update, governing documents.** You may propose
+  changes to `ARCHITECTURE-DECISIONS.md`, `CODING-STANDARDS.md`,
+  `API-AND-DATABASE.md`, `README.md` or `AGENTS.md`, but ask the user before
+  editing them.
 
 # How to work
 
@@ -94,8 +101,7 @@ work; do not restate the rules here.
    persistence, interface, configuration, security and testing. This file does
    not repeat those rules.
 4. Test as you build, at the layer `CODING-STANDARDS.md` §16 defines.
-5. Apply the documentation and decision rules in `CODING-STANDARDS.md` §5:
-   deviations at the declaration and ADRs for new decisions.
+5. Follow the documentation and decision practices in `CODING-STANDARDS.md` §5.
 6. Run the affected component's build, lint and tests before finishing.
 7. If the owning component or the design is unclear, stop and ask rather than
    guessing.
@@ -113,5 +119,11 @@ work; do not restate the rules here.
 
 - The affected component builds, lints and tests.
 - Every changed file is in the component that owns the work, never the front end.
+- If a temporary workaround exists, `ISSUES.md` records the current handling and
+  removal condition.
+- Removing or replacing a class also removes its tests, imports, processor
+  registration and stale documentation.
+- Build scripts and governing documents are unchanged unless the user asked for
+  them.
 - The completion rules in `CODING-STANDARDS.md` §5 (documentation and
   decisions), §10 (migration) and §16 (tests) are met.

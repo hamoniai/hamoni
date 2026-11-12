@@ -19,17 +19,12 @@
 package ai.hamoni.quarkus.ext.quarkus.multi_tenant.test
 
 import ai.hamoni.quarkus.ext.quarkus.multi_tenant.deployment.QuarkusSqlClientPoolClassTransformer
-import ai.hamoni.quarkus.ext.quarkus.multi_tenant.deployment.RecordedConfigClassTransformer
-import io.quarkus.hibernate.orm.runtime.migration.MultiTenancyStrategy
 import java.lang.reflect.Proxy
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.FieldInsnNode
-import org.objectweb.asm.tree.InsnNode
 
 /**
  * Behavioural tests for the class visitors in
@@ -153,83 +148,4 @@ class QuarkusSqlClientPoolClassTransformerTest {
     }
 }
 
-/**
- * Behavioural tests for [RecordedConfigClassTransformer].
- */
-class RecordedConfigClassTransformerTest {
 
-    @Test
-    fun `getMultiTenancyStrategy returns the configured multi-tenancy strategy`() {
-        // Given
-        val original = fixtureClass()
-        val writer = ClassWriter(0)
-
-        // When
-        ClassReader(original).accept(
-            RecordedConfigClassTransformer(writer, MultiTenancyStrategy.DISCRIMINATOR),
-            0
-        )
-        val classNode = ClassNode()
-        ClassReader(writer.toByteArray()).accept(classNode, 0)
-
-        // Then
-        val methods = classNode.methods.filter { it.name == GET_MULTI_TENANCY_STRATEGY }
-        assertThat(methods).hasSize(1)
-
-        val method = methods.single()
-        assertThat(method.access and Opcodes.ACC_PUBLIC).isNotZero()
-        assertThat(method.desc).isEqualTo(GET_MULTI_TENANCY_STRATEGY_DESCRIPTOR)
-        assertThat(method.instructions.size()).isEqualTo(2)
-
-        val getStatic = method.instructions[0] as FieldInsnNode
-        assertThat(getStatic.opcode).isEqualTo(Opcodes.GETSTATIC)
-        assertThat(getStatic.owner).isEqualTo(MULTI_TENANCY_STRATEGY)
-        assertThat(getStatic.name).isEqualTo(MultiTenancyStrategy.DISCRIMINATOR.name)
-        assertThat(getStatic.desc).isEqualTo(MULTI_TENANCY_STRATEGY_DESCRIPTOR)
-
-        val areturn = method.instructions[1] as InsnNode
-        assertThat(areturn.opcode).isEqualTo(Opcodes.ARETURN)
-    }
-
-    /**
-     * Build a fixture with the original getter, which the transformer must replace.
-     */
-    private fun fixtureClass(): ByteArray {
-        val writer = ClassWriter(0)
-        writer.visit(
-            Opcodes.V17,
-            Opcodes.ACC_PUBLIC or Opcodes.ACC_SUPER,
-            FIXTURE_CLASS_NAME,
-            null,
-            "java/lang/Object",
-            null
-        )
-        writer.visitMethod(
-            Opcodes.ACC_PUBLIC,
-            GET_MULTI_TENANCY_STRATEGY,
-            GET_MULTI_TENANCY_STRATEGY_DESCRIPTOR,
-            null,
-            null
-        ).apply {
-            visitCode()
-            visitInsn(Opcodes.ACONST_NULL)
-            visitInsn(Opcodes.ARETURN)
-            visitMaxs(1, 1)
-            visitEnd()
-        }
-        writer.visitEnd()
-        return writer.toByteArray()
-    }
-
-    private companion object {
-        private const val FIXTURE_CLASS_NAME =
-            "ai/hamoni/quarkus/ext/quarkus/multi_tenant/test/RecordedConfigFixture"
-        private const val GET_MULTI_TENANCY_STRATEGY = "getMultiTenancyStrategy"
-        private const val GET_MULTI_TENANCY_STRATEGY_DESCRIPTOR =
-            "()Lio/quarkus/hibernate/orm/runtime/migration/MultiTenancyStrategy;"
-        private const val MULTI_TENANCY_STRATEGY =
-            "io/quarkus/hibernate/orm/runtime/migration/MultiTenancyStrategy"
-        private const val MULTI_TENANCY_STRATEGY_DESCRIPTOR =
-            "Lio/quarkus/hibernate/orm/runtime/migration/MultiTenancyStrategy;"
-    }
-}
