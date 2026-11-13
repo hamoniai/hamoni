@@ -18,8 +18,9 @@
 
 package ai.hamoni.control_room.data
 
-import ai.hamoni.common.core.PLATFORM_SCHEMA
 import ai.hamoni.common.core.data.KeyValueTableKeyType
+import ai.hamoni.common.core.shared.TypedSetting
+import ai.hamoni.common.core.shared.TypedSettingType
 import ai.hamoni.common.platform.serialization.UUIDSerializer
 import jakarta.persistence.*
 import kotlinx.serialization.SerialName
@@ -253,32 +254,32 @@ class OrganisationSetting (
 
 /**
  * Keys that can be stored in the [OrganisationSetting] table.
- * TODO: how to store the type and pattern for validation. Also need to store a default.
+ *
+ * Each key declares its value type and the value used when the organisation has
+ * not stored a setting.
  */
 @Serializable
-enum class OrganisationSettingKey {
+enum class OrganisationSettingKey(
+    override val type: TypedSettingType<*>,
+    override val default: Any
+) : TypedSetting {
+
     /**
-     * defines the calendar
+     * Defines the calendar.
      */
     @SerialName("country")
-    COUNTRY,
+    COUNTRY(TypedSettingType.StringType, "GB"),
 
     /**
-     * Defines the default application language
+     * Defines the default application language.
      */
     @SerialName("language")
-    LANGUAGE,
+    LANGUAGE(TypedSettingType.StringType, "en"),
 
     /**
-     * Defines the time zone. Not linked to country due to countries having multiple time zones.
-     */
-    @SerialName("timezone")
-    TIMEZONE,
-
-    /**
-     * Defines whether an organisation also uses the default organisation auth methods in addition to its own.
+     * Defines whether an organisation also uses the default organisation auth
+     * methods in addition to its own.
      */
     @SerialName("includeDefaultAuthenticationMethods")
-    INCLUDE_DEFAULT_AUTHENTICATION_METHODS,
-
+    INCLUDE_DEFAULT_AUTHENTICATION_METHODS(TypedSettingType.BooleanType, true),
 }
