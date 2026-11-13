@@ -2,9 +2,6 @@
   "$schema": "https://opencode.ai/config.json",
   "lsp": true,
   "instructions": [
-    "AGENTS.md",
-    "CODING-STANDARDS.md",
-    "ARCHITECTURE-DECISIONS.md",
-    "API-AND-DATABASE.md"
+    "AGENTS.md"
   ]
 }

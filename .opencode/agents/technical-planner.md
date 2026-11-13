@@ -26,6 +26,9 @@ invent a requirement or assume what a file contains.
 # Read first
 
 - The agreed spec at `specs/NNNN-<Title>-spec.md`.
+- For a UI feature, the **completed screens** at
+  `specs/NNNN-<Title>-screens/` and the spec's **screens section** (the
+  designer's summary) — they are the input to the frontend plan.
 - `CODING-STANDARDS.md`, `ARCHITECTURE-DECISIONS.md` and `API-AND-DATABASE.md`.
 - The structure of the code it touches, read-only: the relevant `AGENTS.md`, the
   component layout and the existing patterns.
@@ -34,9 +37,14 @@ invent a requirement or assume what a file contains.
 
 - **Work from the agreed spec only.** Do not add, remove or restate requirements;
   if the spec is wrong or incomplete, stop and raise it with the plan lead.
+- **Do not start a UI feature before its screens are complete.** If the spec is
+  UI-facing and `specs/NNNN-<Title>-screens/` is missing or unfinished, stop and
+  raise it. If the designer flagged a requirement or assumption change, confirm
+  the spec reflects it before you plan.
 - **Be concrete.** The approach details, for the feature:
   - **backend changes** — projects, files, classes and endpoints to add or change;
-  - **frontend changes** — components, services, routes and state;
+   - **frontend changes** — components, services, routes and state, mapped to the
+     screens;
   - **data model and migrations** — tables, columns, keys, indexes;
   - **API changes** — resources, methods, payloads;
   - **tests to implement** — the positive and negative cases from the spec;

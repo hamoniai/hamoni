@@ -78,6 +78,9 @@ not copy build logic into a project.
 - **Architecture decisions** — [`ARCHITECTURE-DECISIONS.md`](./ARCHITECTURE-DECISIONS.md),
   each record stating its own reasoning. This is the only architecture reference
   the build needs.
+- **Design decisions (handover snapshot)** — [`DESIGN-DECISIONS.md`](./DESIGN-DECISIONS.md):
+  a read-only copy of the design project's decisions. The design project is the
+  source of truth; do not edit it here.
 - **How to write the code** — [`CODING-STANDARDS.md`](./CODING-STANDARDS.md).
 - **The interface and the database rules** —
   [`API-AND-DATABASE.md`](./API-AND-DATABASE.md): the frontend–backend contract
@@ -86,9 +89,9 @@ not copy build logic into a project.
 - **Raised upstream issues** — [`ISSUES.md`](./ISSUES.md): issues raised against
   Quarkus or other dependencies, their impact on the platform and the current
   workaround.
-- **Feature specs and implementation approaches** — `specs/` (start with
-  [`specs/README.md`](./specs/README.md)); written by the plan team before the
-  Build team implements.
+- **Feature specs, screen designs and implementation approaches** — `specs/`
+  (start with [`specs/README.md`](./specs/README.md)); written by the plan team
+  before the Build team implements.
 - **Quarkus extensions** — [`extension/AGENTS.md`](./extension/AGENTS.md): the
   pair naming, package layout, required files and test placement.
 - **A directory's local rules** — that directory's `AGENTS.md`.

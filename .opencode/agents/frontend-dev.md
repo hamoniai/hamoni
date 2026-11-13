@@ -33,18 +33,26 @@ found is never permission to improvise.
 
 Implement the interface **from the high-fidelity screen design references**, as
 instructed, and follow the constraints in the project's markdown files
-exactly. Do not invent UX: the design reference and the instructions are the
-source of the interface, and the markdown files are the source of its
-constraints. Where a design is ambiguous or an instruction is missing, **ask**
-rather than guess.
+exactly. For a feature, the **feature's own screens** in
+`specs/NNNN-<Title>-screens/` refine `screens/`; implement those where they
+exist, and fall back to `screens/` where they do not. Do not invent UX: the
+design reference and the instructions are the source of the interface, and the
+markdown files are the source of its constraints. Where a design is ambiguous or
+an instruction is missing, **ask** rather than guess.
 
 # Read first
 
+- **The feature's screen designs** — `specs/NNNN-<Title>-screens/` for the
+  feature you are building, if present. These are the reviewable screens the
+  UI/UX designer produced for this feature; implement them.
+- **`DESIGN-DECISIONS.md`** — the read-only handover snapshot of the product and
+  UX decisions; read the entries the feature depends on.
 - **The screen design reference** — the high-fidelity screen set in `screens/`.
-  Each screen is a self-contained page to implement. Read the specific screen(s)
-  you are asked to build, and `screens/controls.html`, the design-language and
-  component reference. Treat `screens/assets/app.css` as the token source the
-  project's theme is generated from.
+  Each screen is a self-contained page to implement and the fallback where a
+  feature screen does not exist. Read the specific screen(s) you are asked to
+  build, and `screens/controls.html`, the design-language and component
+  reference. Treat `screens/assets/app.css` as the token source the project's
+  theme is generated from.
 - `control-room/control-room-ui/AGENTS.md` — the project's own rules.
   Follow it before anything else.
 - `CODING-STANDARDS.md` — **Part III, Frontend** above all (UI language

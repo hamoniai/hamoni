@@ -4,9 +4,9 @@
   -----------------------------------------------------------------------------
   A plain HTML fragment (no <html>/<head>/<body>) to drop into an Angular
   template. Layout is Tailwind utilities only; every colour comes from the
-  Hamoni preset — add no local colours. Copy to, for example,
-  src/app/component-board/component-board.html and paste the stub below into
-  its host component.
+  Hamoni preset — add no local colours. It lives at
+  src/app/pages/home/components.html; paste the stub below into its host
+  component.
 
   REQUIRED IMPORTS (host standalone component `imports: [...]`):
     FormsModule
@@ -32,7 +32,7 @@
     import { MessageService } from 'primeng/api';
 
     @Component({ selector: 'app-component-board', standalone: true,
-      imports: [ /* the list above */ ], templateUrl: './component-board.html' })
+      imports: [ /* the list above */ ], templateUrl: './components.html' })
     export class ComponentBoardComponent {
       readonly toast = inject(MessageService);
 
