@@ -46,8 +46,27 @@ import java.util.*
  * scope: schema
  *
  */
-@Serializable
 @Entity
+@NamedNativeQueries(value = [
+    NamedNativeQuery(
+        name = "Organisation.checkOrganisationExists",
+        hints = [QueryHint(name = "org.hibernate.readOnly", value = "true")],
+        query = """
+            SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+            WHERE (LOWER(TABLE_CATALOG) = :schema OR LOWER(TABLE_SCHEMA) = :schema) AND LOWER(TABLE_NAME) = 'organisation'
+        """,
+        resultClass = Boolean::class
+    )
+])
+@NamedQueries(value = [
+    NamedQuery(
+        name = "Organisation.isOrganisationInitialised",
+        hints = [QueryHint(name = "org.hibernate.readOnly", value = "true")],
+        query = "SELECT 1 = COUNT(o) FROM Organisation o",
+        resultClass = Boolean::class
+    )
+])
+@Serializable
 @Table(name = "organisation", comment = "Organisations")
 class Organisation(
     @Id
@@ -130,8 +149,8 @@ data class OrganisationHeader(
  * scope: schema
  *
  */
-@Serializable
 @Entity
+@Serializable
 @Table(name = "organisation_identity_provider", comment = "Organisation identify providers (OIDC)")
 class OrganisationIdentityProvider (
     /**
