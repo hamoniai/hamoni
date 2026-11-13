@@ -277,6 +277,14 @@ enum class OrganisationSettingKey(
     LANGUAGE(TypedSettingType.StringType, "en"),
 
     /**
+     * Defines the time zone as a BCP 47 `-tz-` key, for example `utc` for UTC
+     * or `gbldn` for London. The key is stored as text; translating it to a
+     * time zone is a separate concern.
+     */
+    @SerialName("timezone")
+    TIMEZONE(TypedSettingType.StringType, "utc"),
+
+    /**
      * Defines whether an organisation also uses the default organisation auth
      * methods in addition to its own.
      */
