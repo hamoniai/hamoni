@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import gradle.kotlin.dsl.accessors._18ec383114db3701cb956cd98f8b44e2.spotless
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val Project.libs get() = extensions.getByType<VersionCatalogsExtension>().named("libs")
@@ -42,6 +43,7 @@ dependencies {
 
 /**
  * Standard Kotlin configuration
+ * TODO: apply detekt
  */
 kotlin {
     jvmToolchain {
@@ -53,11 +55,24 @@ kotlin {
 }
 
 /**
+ * Code quality configuration for Java
+ * Order is important. We only have a small amount of Java, so the actual syntax isn't really important
+ */
+val spotlessDirectory = rootProject.layout.projectDirectory.dir(".spotless")
+spotless {
+    kotlin {
+        licenseHeaderFile(spotlessDirectory.file("license"))
+        ktlint()
+            .setEditorConfigPath(spotlessDirectory.file("editorconfig"))
+    }
+}
+
+/**
  * Generate the pom.xml and pom.properties before the Kotlin compilation so that the annotation processors have
  * access to the POM.
  */
 tasks.withType<KotlinCompile>().configureEach {
-    dependsOn(tasks.named { it.startsWith("generatePomFileFor") || it == "generatePomPropertiesFile"})
+    dependsOn(tasks.named { it.startsWith("generatePomFileFor") || it == "generatePomPropertiesFile" })
 }
 
 /**
@@ -86,4 +101,3 @@ allOpen {
     annotation("io.quarkus.test.junit.QuarkusTest")
     annotation("io.quarkus.runtime.annotations.Recorder")
 }
-

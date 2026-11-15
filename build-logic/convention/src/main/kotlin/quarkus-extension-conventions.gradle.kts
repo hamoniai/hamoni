@@ -16,8 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import org.jetbrains.kotlin.gradle.internal.KaptTask
 import io.quarkus.extension.gradle.QuarkusExtensionConfiguration
+import org.jetbrains.kotlin.gradle.internal.KaptTask
 
 val Project.libs get() = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
@@ -68,14 +68,15 @@ tasks.withType(Javadoc::class.java).configureEach {
 /**
  * Hack to put the pom.xml in the correct place for the extension annotation processor, which expects a Maven layout
  */
-val pomCopierTask = tasks.register<Copy>("pomCopier") {
-    into(project.layout.buildDirectory.map { it.asFile.toPath().resolve("tmp/kapt3").toFile() })
-    from(tasks.named("generatePomFileForDefaultPublication")) {
-        rename(".*", "pom.xml")
+val pomCopierTask =
+    tasks.register<Copy>("pomCopier") {
+        into(project.layout.buildDirectory.map { it.asFile.toPath().resolve("tmp/kapt3").toFile() })
+        from(tasks.named("generatePomFileForDefaultPublication")) {
+            rename(".*", "pom.xml")
+        }
     }
-}
 tasks.withType<KaptTask>().configureEach {
-    dependsOn(pomCopierTask, tasks.named { it.startsWith("generatePomFileFor") || it == "generatePomPropertiesFile"})
+    dependsOn(pomCopierTask, tasks.named { it.startsWith("generatePomFileFor") || it == "generatePomPropertiesFile" })
 }
 
 /**
@@ -93,12 +94,13 @@ tasks.withType<KaptTask>().configureEach {
 if (isDeployment) {
     val kaptGeneratedSources = project.layout.buildDirectory.dir("generated/sources/kapt/resources/main")
     // Stage the files we want
-    val kaptResourcesCopyTask = tasks.register<Copy>("kaptResourcesCopy") {
-        into(kaptGeneratedSources)
-        from(project.tasks.named("kaptKotlin")) {
-            include("META-INF/**")
+    val kaptResourcesCopyTask =
+        tasks.register<Copy>("kaptResourcesCopy") {
+            into(kaptGeneratedSources)
+            from(project.tasks.named("kaptKotlin")) {
+                include("META-INF/**")
+            }
         }
-    }
     // Add to the main SourceSet resources
     sourceSets.main.configure {
         resources.srcDir(kaptResourcesCopyTask)

@@ -56,26 +56,7 @@ spotless {
     java {
         leadingTabsToSpaces(4)
         trimTrailingWhitespace()
-        licenseHeader(
-            $$"""
-            /*
-             * Hamoni: Cloud workflow platform
-             * Copyright (C) $YEAR Hamoni Limited
-             *
-             * Unless you have received this program directly from Hamoni Limited pursuant to
-             * the terms of a commercial license agreement with Hamoni Limited, then this
-             * program is licensed to you under the terms of version 3 of the GNU Affero
-             * General Public License.
-             *
-             * This program is distributed in the hope that it will be useful,
-             * but WITHOUT ANY WARRANTY; without even the implied warranty of
-             * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-             * GNU Affero General Public License for more details.
-             *
-             * You should have received a copy of the GNU Affero General Public License
-             * along with this program.  If not, see <https://www.gnu.org/licenses/>.
-             */""".trimIndent()
-        )
+        licenseHeaderFile(rootProject.layout.projectDirectory.dir(".spotless").file("license"))
         expandWildcardImports()
         removeUnusedImports()
         importOrder("", "\\#")
@@ -105,9 +86,9 @@ tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
     options.compilerArgs.addAll(listOf("-implicit:none", "-parameters"))
     // These are useful for getting more information into the logs
-    //options.isDebug = true
-    //options.debugOptions.debugLevel = "source,lines,vars"
-    //options.isVerbose = true
+    // options.isDebug = true
+    // options.debugOptions.debugLevel = "source,lines,vars"
+    // options.isVerbose = true
 }
 
 /**
@@ -186,7 +167,7 @@ tasks.register<GeneratePomPropertiesFileTask>("generatePomPropertiesFile")
  * access to the POM.
  */
 tasks.withType<JavaCompile>().configureEach {
-    dependsOn(tasks.named { it.startsWith("generatePomFileFor") || it == "generatePomPropertiesFile"})
+    dependsOn(tasks.named { it.startsWith("generatePomFileFor") || it == "generatePomPropertiesFile" })
 }
 
 /**

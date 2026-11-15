@@ -22,7 +22,9 @@
 
 // Pre-check that the runtime is correct
 if (JavaVersion.current().majorVersion.toInt() < JavaVersion.VERSION_25.majorVersion.toInt()) {
-    throw GradleException("Java version error. Project ${project.name} must run with Java 25 or higher. Currently using ${JavaVersion.current()}")
+    throw GradleException(
+        "Java version error. Project ${project.name} must run with Java 25 or higher. Currently using ${JavaVersion.current()}"
+    )
 }
 
 plugins {
@@ -43,11 +45,21 @@ repositories {
 /**
  * Code quality configuration for Java
  */
+val spotlessDirectory = rootProject.layout.projectDirectory.dir(".spotless")
 spotless {
     format("misc") {
         target("*.md", ".gitignore")
         leadingTabsToSpaces(4)
         trimTrailingWhitespace()
         endWithNewline()
+    }
+    kotlinGradle {
+        target("*.gradle.kts")
+        licenseHeaderFile(
+            spotlessDirectory.file("license"),
+            "(import |plugins |buildscript |dependencies |rootProject)"
+        )
+        ktlint()
+            .setEditorConfigPath(spotlessDirectory.file("editorconfig"))
     }
 }

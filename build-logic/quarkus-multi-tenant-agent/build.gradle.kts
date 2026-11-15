@@ -33,11 +33,13 @@ tasks.withType<Jar> {
     archiveBaseName.set("quarkus-multi-tenant-agent")
     archiveVersion.set("")
     manifest {
-        attributes(mapOf(
-            "Premain-Class" to "ai.hamoni.buildlogic.multitenant.QuarkusMultiTenantAgent",
-            "Can-Redefine-Classes" to "true",
-            "Can-Retransform-Classes" to "true",
-        ))
+        attributes(
+            mapOf(
+                "Premain-Class" to "ai.hamoni.buildlogic.multitenant.QuarkusMultiTenantAgent",
+                "Can-Redefine-Classes" to "true",
+                "Can-Retransform-Classes" to "true",
+            )
+        )
     }
 }
 

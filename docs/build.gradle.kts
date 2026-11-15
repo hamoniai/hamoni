@@ -37,20 +37,22 @@ tasks.named("assemble") {
  */
 antora {
     playbook = file("antora-playbook.yml")
-    packages = mapOf(
-        "@antora/collector-extension" to "latest",
-        "asciidoctor-kroki" to "latest-0"
-    )
+    packages =
+        mapOf(
+            "@antora/collector-extension" to "latest",
+            "asciidoctor-kroki" to "latest-0"
+        )
 
     // References in need to be static.
     setOptions(
         mapOf(
-            "attributes" to mapOf(
-                "project-version" to project.version.toString(),
-                "hamoni-org-url" to "https://github.com/hamoniai",
-                "design-system-url" to "https://github.com/hamoniai/hamoni-design-system",
-                "openapi-url" to "#",
-            )
+            "attributes" to
+                mapOf(
+                    "project-version" to project.version.toString(),
+                    "hamoni-org-url" to "https://github.com/hamoniai",
+                    "design-system-url" to "https://github.com/hamoniai/hamoni-design-system",
+                    "openapi-url" to "#",
+                )
         )
     )
 }
@@ -65,7 +67,7 @@ tasks.withType<AntoraTask>().configureEach {
         gitUrlProvider.map { gitUrl ->
             listOf(
                 "--attribute",
-                "project-clone-url=${gitUrl}",
+                "project-clone-url=$gitUrl",
                 "--attribute",
                 "project-base-url=${gitUrl.replace(".git$".toRegex(), "")}",
             )
@@ -76,12 +78,13 @@ tasks.withType<AntoraTask>().configureEach {
 /**
  * Additional clean tasks
  */
-val cleanNodeTask = project.tasks.register<Delete>("cleanNode") {
-    val base = project.layout.projectDirectory
-    delete(
-        base.dir(".gradle"),
-    )
-}
+val cleanNodeTask =
+    project.tasks.register<Delete>("cleanNode") {
+        val base = project.layout.projectDirectory
+        delete(
+            base.dir(".gradle"),
+        )
+    }
 project.tasks.named("clean").configure {
     dependsOn(cleanNodeTask)
 }

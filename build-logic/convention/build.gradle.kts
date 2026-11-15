@@ -19,9 +19,10 @@
 /**
  * Turn a plugin version library reference into a dependency
  */
-fun Provider<PluginDependency>.toDependency(): Provider<Dependency> {
-    return this.map { project.dependencies.create("${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}") }
-}
+fun Provider<PluginDependency>.toDependency(): Provider<Dependency> =
+    this.map {
+        project.dependencies.create("${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}")
+    }
 
 /**
  * Plugins used by the build script

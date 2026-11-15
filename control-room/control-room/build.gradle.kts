@@ -1,6 +1,6 @@
 /*
  * Hamoni: Cloud workflow platform
- * Copyright (C) 2026  Hamoni Limited
+ * Copyright (C) 2026 Hamoni Limited
  *
  * Unless you have received this program directly from Hamoni Limited pursuant to
  * the terms of a commercial license agreement with Hamoni Limited, then this
@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 plugins {
     id("quarkus-application-conventions")
 }
@@ -73,15 +72,16 @@ dependencies {
 /**
  * Additional clean tasks
  */
-val cleanNodeTask = project.tasks.register<Delete>("cleanNode") {
-    val base = project.layout.projectDirectory.dir("../control-room-ui")
-    delete(
-        base.dir("node_modules"),
-        base.dir("build"),
-        base.dir("dist"),
-        base.dir(".angular"),
-    )
-}
+val cleanNodeTask =
+    project.tasks.register<Delete>("cleanNode") {
+        val base = project.layout.projectDirectory.dir("../control-room-ui")
+        delete(
+            base.dir("node_modules"),
+            base.dir("build"),
+            base.dir("dist"),
+            base.dir(".angular"),
+        )
+    }
 project.tasks.named("clean").configure {
     dependsOn(cleanNodeTask)
 }
@@ -94,7 +94,11 @@ project.tasks.named("clean").configure {
  */
 val schemaExportDir = project.layout.buildDirectory.dir("generated/schema")
 val schemaExportPrefix = "schemaExport"
-val schemaExportDatabases = listOf("h2", "mariadb").map { dbName -> dbName to "${schemaExportPrefix}${dbName.replaceFirstChar { it.titlecase() }}" }
+val schemaExportDatabases =
+    listOf("h2", "mariadb").map { dbName ->
+        dbName to
+            "${schemaExportPrefix}${dbName.replaceFirstChar { it.titlecase() }}"
+    }
 
 schemaExportDatabases.forEach { database ->
     tasks.register<JavaExec>(database.second) {
@@ -112,7 +116,8 @@ schemaExportDatabases.forEach { database ->
         // systemProperty("hamoni.schema-export.output-directory", schemaExportDir.map { it.asFile.path })
 
         jvmArgs(
-            "--add-opens", "java.base/java.lang.invoke=ALL-UNNAMED",
+            "--add-opens",
+            "java.base/java.lang.invoke=ALL-UNNAMED",
             // Do not remove this line, it is for when we need to debug.
             //"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
         )
@@ -127,11 +132,12 @@ schemaExportDatabases.forEach { database ->
 /**
  * Master export task
  */
-val schemaExportTask = tasks.register(schemaExportPrefix) {
-    group = "schema"
-    description = "Export the schema for every configured database."
-    dependsOn(schemaExportDatabases.map { it.second })
-}
+val schemaExportTask =
+    tasks.register(schemaExportPrefix) {
+        group = "schema"
+        description = "Export the schema for every configured database."
+        dependsOn(schemaExportDatabases.map { it.second })
+    }
 
 /**
  * Regenerate the schema before dev mode starts. Both database variants are generated because the cost is small,

@@ -17,7 +17,7 @@
  */
 
 includeBuild("build-logic")
-rootProject.name="hamoni"
+rootProject.name = "hamoni"
 
 /**
  * Find all projects under a path and add them
@@ -55,7 +55,8 @@ extensionsDir.walkTopDown()
     .forEach { buildFile ->
         val depProjectDir = buildFile.parentFile
         val depProjectName = ":${extensionsDir.name}:${depProjectDir.name}"
-        val impProjectDir = File(buildFile.parentFile.parentFile, buildFile.parentFile.name.removeSuffix(deploymentSuffix))
+        val impProjectDir =
+            File(buildFile.parentFile.parentFile, buildFile.parentFile.name.removeSuffix(deploymentSuffix))
         val impProjectName = ":${extensionsDir.name}:${depProjectDir.name.removeSuffix(deploymentSuffix)}"
 
         include(depProjectName)

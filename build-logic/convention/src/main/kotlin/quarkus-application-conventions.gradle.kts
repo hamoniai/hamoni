@@ -60,7 +60,7 @@ dependencies {
 val agentJar = rootProject.layout.projectDirectory.dir("build-logic/libs").file("quarkus-multi-tenant-agent.jar")
 quarkus {
     buildForkOptions {
-        jvmArgs.add("-javaagent:${agentJar}")
+        jvmArgs.add("-javaagent:$agentJar")
     }
 }
 
@@ -78,7 +78,7 @@ tasks.withType<QuarkusDev>().configureEach {
     //getOverridableProperty("aws.default.profile")?.let {
     //    jvmArgs = listOf("-Daws.profile=$it")
     //}
-    jvmArguments.add("-javaagent:${agentJar}")
+    jvmArguments.add("-javaagent:$agentJar")
     notCompatibleWithConfigurationCache("Plugin not compatible")
 }
 
@@ -87,7 +87,13 @@ tasks.withType<QuarkusDev>().configureEach {
  * name.
  */
 if (project.projectDir.name != project.projectDir.parentFile.name) {
-    val quarkusDisabledTasks = listOf("quarkusBuild", "quarkusBuildAppModel", "quarkusAppPartsBuild", "quarkusDependenciesBuild")
+    val quarkusDisabledTasks =
+        listOf(
+            "quarkusBuild",
+            "quarkusBuildAppModel",
+            "quarkusAppPartsBuild",
+            "quarkusDependenciesBuild"
+        )
     tasks.named { it in quarkusDisabledTasks }.configureEach {
         enabled = false
     }

@@ -1,0 +1,48 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{kt,kts}]
+ktlint_code_style = ktlint_official
+# We want to allow chaining on the next line, it's clearer with large lambdas
+ktlint_standard_chain-method-continuation = disabled
+
+# Line length and indentation
+max_line_length = 120
+
+# Rule sets (enabled or disabled)
+ktlint_standard = enabled
+ktlint_experimental = disabled
+
+# Don't require trailing commas on method calls
+ktlint_standard_trailing-comma-on-call-site = disabled
+
+# Common rule overrides
+#ktlint_standard_no-wildcard-imports = disabled
+#ktlint_function_naming_ignore_when_annotated_with = Composable
+
+# Sync IntelliJ IDEA / Android Studio formatting with ktlint
+#ij_kotlin_allow_trailing_comma = true
+#ij_kotlin_allow_trailing_comma_on_call_site = true
+#ij_kotlin_imports_layout = *
+#ij_kotlin_packages_to_use_import_on_demand = unset
+
+# Common practical overrides
+# Allow backticked method names in tests without triggering max-line-length or naming errors
+#ktlint_ignore_back_ticked_identifier = true
+#ktlint_function_naming_ignore_when_annotated_with = Composable,Test
+
+# Disable rules that often cause friction in real-world codebases
+#ktlint_standard_no-wildcard-imports = disabled
+
+# Kotlin script (Gradle disables)
+[*.kts]
+ktlint_standard_comment-spacing = disabled
+ktlint_standard_kdoc = disabled
+ktlint_standard_no-consecutive-comments = disabled
