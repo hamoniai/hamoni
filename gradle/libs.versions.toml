@@ -9,6 +9,7 @@ platform-quarkus-ext-aws = "3.23.0"
 platform-quarkus-ext-h2db = "0.8.0"
 platform-quarkus-ext-mockk = "latest.release"
 platform-quarkus-ext-multitenant = "0.2.0"
+quality-spotless = "8.11.0"
 test-assertj = "3.27.7"
 util-jandex = "2.3.0"
 
@@ -32,4 +33,5 @@ platform-quarkus-extension = { id = "io.quarkus.extension", version.ref = "platf
 kotlin-core = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-core" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin-core" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-core" }
+quality-spotless = { id = "com.diffplug.spotless", version.ref = "quality-spotless"}
 util-jandex = { id = "org.kordamp.gradle.jandex", version.ref = "util-jandex" }

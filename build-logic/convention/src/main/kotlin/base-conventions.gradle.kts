@@ -25,6 +25,10 @@ if (JavaVersion.current().majorVersion.toInt() < JavaVersion.VERSION_25.majorVer
     throw GradleException("Java version error. Project ${project.name} must run with Java 25 or higher. Currently using ${JavaVersion.current()}")
 }
 
+plugins {
+    id("com.diffplug.spotless")
+}
+
 project.group = project.rootProject.group
 project.version = project.rootProject.version
 
@@ -34,4 +38,16 @@ project.version = project.rootProject.version
 repositories {
     mavenCentral()
     mavenLocal()
+}
+
+/**
+ * Code quality configuration for Java
+ */
+spotless {
+    format("misc") {
+        target("*.md", ".gitignore")
+        leadingTabsToSpaces(4)
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }

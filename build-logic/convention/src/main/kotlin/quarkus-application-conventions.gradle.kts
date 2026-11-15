@@ -17,9 +17,6 @@
  */
 
 import ai.hamoni.gradle.util.getOverridableProperty
-import gradle.kotlin.dsl.accessors._2efa669337583f180c8ae88f20ef351a.annotationProcessor
-import gradle.kotlin.dsl.accessors._2efa669337583f180c8ae88f20ef351a.compileOnly
-import gradle.kotlin.dsl.accessors._2efa669337583f180c8ae88f20ef351a.implementation
 import io.quarkus.gradle.tasks.QuarkusDev
 
 /**

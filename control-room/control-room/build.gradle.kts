@@ -48,6 +48,7 @@ dependencies {
     //implementation(libs.platform.quarkus.ext.multitenant.orm)
 
     // Support libraries
+    implementation("io.smallrye.reactive:smallrye-mutiny-vertx-json-schema")
     implementation("org.apache.commons:commons-lang3")
 
     // Dependencies for build

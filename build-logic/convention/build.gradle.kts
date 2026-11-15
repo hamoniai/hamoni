@@ -49,10 +49,11 @@ dependencies {
     implementation(libs.plugins.kotlin.serialization.toDependency())
     implementation(libs.plugins.platform.quarkus.application.toDependency())
     implementation(libs.plugins.platform.quarkus.extension.toDependency())
+    implementation(libs.plugins.quality.spotless.toDependency())
     implementation(libs.plugins.util.jandex.toDependency())
 
     // Support for integrating with AWS directly in the build. The AWS services BOM imports the AWS BOM
-    implementation(enforcedPlatform(libs.platform.quarkus.bom))
+    //implementation(enforcedPlatform(libs.platform.quarkus.bom))
     //implementation("software.amazon.awssdk:sts:2.46.17")
     //implementation("software.amazon.awssdk:sso:2.46.17")
     //implementation("software.amazon.awssdk:ssooidc:2.46.17")
