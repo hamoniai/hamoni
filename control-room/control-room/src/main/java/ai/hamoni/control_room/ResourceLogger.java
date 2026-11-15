@@ -1,6 +1,6 @@
 /*
  * Hamoni: Cloud workflow platform
- * Copyright (C) 2026  Hamoni Limited
+ * Copyright (C) 2026 Hamoni Limited
  *
  * Unless you have received this program directly from Hamoni Limited pursuant to
  * the terms of a commercial license agreement with Hamoni Limited, then this
@@ -15,19 +15,17 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room;
 
+import java.lang.invoke.MethodHandles;
+import java.sql.SQLException;
+import java.util.UUID;
 import org.flywaydb.core.api.FlywayException;
 import org.jboss.logging.Logger;
 import org.jboss.logging.annotations.Cause;
 import org.jboss.logging.annotations.LogMessage;
 import org.jboss.logging.annotations.Message;
 import org.jboss.logging.annotations.MessageLogger;
-
-import java.lang.invoke.MethodHandles;
-import java.sql.SQLException;
-import java.util.UUID;
 
 /**
  * Must do this in Java as there is a bug in the annotation processor for JBoss Logging
@@ -54,4 +52,8 @@ public interface ResourceLogger {
     @LogMessage(level = Logger.Level.INFO)
     @Message(id = 102, format = Message.Format.MESSAGE_FORMAT, value = "Setting default organisation id to ''{0}''")
     void showDefaultOrganisationId(UUID defaultOrganisationId);
+
+    @LogMessage(level = Logger.Level.FATAL)
+    @Message(id = 103, format = Message.Format.MESSAGE_FORMAT, value = "Failed to initialise default organisation ''{0}''")
+    void organisationInitialisationError(UUID defaultOrganisationId, @Cause Throwable cause);
 }

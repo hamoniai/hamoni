@@ -57,7 +57,7 @@ spotless {
         leadingTabsToSpaces(4)
         trimTrailingWhitespace()
         licenseHeader(
-            """
+            $$"""
             /*
              * Hamoni: Cloud workflow platform
              * Copyright (C) $YEAR Hamoni Limited
@@ -78,7 +78,7 @@ spotless {
         )
         expandWildcardImports()
         removeUnusedImports()
-        importOrder()
+        importOrder("", "\\#")
         formatAnnotations()
         endWithNewline()
     }
