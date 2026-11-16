@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.plugins.kotlin.serialization.toDependency())
     implementation(libs.plugins.platform.quarkus.application.toDependency())
     implementation(libs.plugins.platform.quarkus.extension.toDependency())
+    implementation(libs.plugins.quality.detekt.toDependency())
     implementation(libs.plugins.quality.spotless.toDependency())
     implementation(libs.plugins.util.jandex.toDependency())
 

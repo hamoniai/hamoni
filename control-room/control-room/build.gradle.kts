@@ -21,6 +21,9 @@ plugins {
 
 description = "Main assembly for the Control Room component"
 
+val jsonExportDir = project.layout.buildDirectory.dir("generated/json")
+val sqlSchemaExportDir = project.layout.buildDirectory.dir("generated/schema")
+
 dependencies {
     // For frontend development
     implementation(libs.platform.quarkus.ext.quinoa)
@@ -64,11 +67,17 @@ dependencies {
     testImplementation(project(":common:common-test"))
     testImplementation("io.rest-assured:rest-assured")
     testImplementation("io.rest-assured:kotlin-extensions")
+}
 
-    // JSON schema, will likely need jackson:
-    // implementation("io.quarkus:quarkus-jackson")
-    //implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-    // but make sure quarkus-rest-jackson **does not** get included.
+/**
+ * Configure the source sets to pick up the command mode outputs.
+ */
+sourceSets {
+    main {
+        resources {
+            srcDir(sqlSchemaExportDir)
+        }
+    }
 }
 
 /**
@@ -89,29 +98,28 @@ project.tasks.named("clean").configure {
 }
 
 /**
- * Create the schema export tasks.
+ * Create the SQL schema export tasks.
  *
  * Both database outputs are generated on every dev start. They write into the shared build output, so Gradle
  * can track the generated files as task outputs.
  */
-val schemaExportDir = project.layout.buildDirectory.dir("generated/schema")
-val schemaExportPrefix = "schemaExport"
-val schemaExportDatabases =
+val sqlSchemaExportPrefix = "sqlSchemaExport"
+val sqlSchemaExportDatabases =
     listOf("h2", "mariadb").map { dbName ->
         dbName to
-            "${schemaExportPrefix}${dbName.replaceFirstChar { it.titlecase() }}"
+            "${sqlSchemaExportPrefix}${dbName.replaceFirstChar { it.titlecase() }}"
     }
 
-schemaExportDatabases.forEach { database ->
+sqlSchemaExportDatabases.forEach { database ->
     tasks.register<JavaExec>(database.second) {
         group = "schema"
         description = "Export the schema for '${database.first}'."
         classpath(sourceSets.main.get().runtimeClasspath)
         dependsOn("classes", "jandex")
         mainClass = "ai.hamoni.control_room.command.SchemaExportCommand"
-        // The database-specific profile supplies the datasource configuration; the common schema-export
+        // The database-specific profile supplies the datasource configuration; the common cmd
         // profile supplies the command-mode and Flyway settings.
-        systemProperty("quarkus.profile", "dev,schema-export,schema-export-${database.first}")
+        systemProperty("quarkus.profile", "dev,cmd,sql-schema-export,sql-schema-export-${database.first}")
 
         // Do not remove this comment or the next two lines.
         // Hard coded this because Gradle has a stupid bug that prefixes providers with "fixed".
@@ -124,7 +132,7 @@ schemaExportDatabases.forEach { database ->
             //"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
         )
 
-        outputs.dir(schemaExportDir)
+        outputs.dir(sqlSchemaExportDir)
 
         standardOutput = System.out
         errorOutput = System.err
@@ -132,19 +140,43 @@ schemaExportDatabases.forEach { database ->
 }
 
 /**
- * Master export task
+ * Master SQL export task
  */
-val schemaExportTask =
-    tasks.register(schemaExportPrefix) {
+val sqlSchemaExportTask =
+    tasks.register(sqlSchemaExportPrefix) {
         group = "schema"
         description = "Export the schema for every configured database."
-        dependsOn(schemaExportDatabases.map { it.second })
+        dependsOn(sqlSchemaExportDatabases.map { it.second })
     }
+
+/**
+ * OpenAPI and Organisation import JSON schema export
+ */
+val jsonSchemaExportTask = tasks.register<JavaExec>("jsonSchemaExport") {
+    group = "schema"
+    description = "Export the JSON schema."
+    classpath(sourceSets.main.get().runtimeClasspath)
+    dependsOn("classes", "jandex", sqlSchemaExportTask)
+    mainClass = "ai.hamoni.control_room.command.JsonSchemaGenerateCommand"
+    systemProperty("quarkus.profile", "dev,cmd,json-schema-export")
+
+    jvmArgs(
+        "--add-opens",
+        "java.base/java.lang.invoke=ALL-UNNAMED",
+        // Do not remove this line, it is for when we need to debug.
+        //"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
+    )
+
+    outputs.dir(jsonExportDir)
+
+    standardOutput = System.out
+    errorOutput = System.err
+}
 
 /**
  * Regenerate the schema before dev mode starts. Both database variants are generated because the cost is small,
  * and it keeps the generated SQL and the entity model in step.
  */
 tasks.named("quarkusDev") {
-    dependsOn(schemaExportTask)
+    dependsOn(sqlSchemaExportTask, jsonSchemaExportTask)
 }

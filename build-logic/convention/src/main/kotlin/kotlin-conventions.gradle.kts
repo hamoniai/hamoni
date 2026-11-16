@@ -30,6 +30,7 @@ plugins {
     kotlin("kapt")
     kotlin("plugin.allopen")
     kotlin("plugin.serialization")
+    id("dev.detekt")
 }
 
 /**
@@ -65,6 +66,19 @@ spotless {
         ktlint()
             .setEditorConfigPath(spotlessDirectory.file("editorconfig"))
     }
+}
+
+/**
+ * Code quality for Detekt
+ */
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false // Enable only stable rules
+    config.setFrom(spotlessDirectory.file("detekt-custom.yml"))
+    baseline = spotlessDirectory.file("detekt-baseline.yml")
+}
+project.tasks.named("check") {
+    dependsOn("detekt")
 }
 
 /**
