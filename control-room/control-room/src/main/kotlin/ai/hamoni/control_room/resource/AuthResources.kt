@@ -17,9 +17,7 @@ import jakarta.inject.Inject
 import jakarta.validation.constraints.Pattern
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.HttpHeaders
-import org.eclipse.microprofile.openapi.annotations.OpenAPIDefinition
 import org.eclipse.microprofile.openapi.annotations.extensions.Extension
-import org.eclipse.microprofile.openapi.annotations.info.Info
 import org.jboss.resteasy.reactive.RestQuery
 import org.jboss.resteasy.reactive.RestResponse
 import java.util.UUID
@@ -28,12 +26,7 @@ import java.util.UUID
  * Authentication resources/services
  */
 @Authenticated
-@OpenAPIDefinition(
-    extensions = [
-        Extension(name = "x-smallrye-profile-pfm", value = "")
-    ],
-    info = Info(title = "Authentication & profile APIs", version = "x"),
-)
+@Extension(name = "x-smallrye-profile-pfm", value = "")
 @Path("/auth")
 class AuthenticationResource @Inject constructor(
     private val identity: SecurityIdentity,

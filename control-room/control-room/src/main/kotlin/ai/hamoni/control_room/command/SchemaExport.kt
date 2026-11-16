@@ -49,7 +49,7 @@ import kotlin.io.path.createDirectories
  */
 @QuarkusMain(name = "schema-export")
 @ApplicationScoped
-@IfBuildProfile("schema-export")
+@IfBuildProfile("sql-schema-export")
 class SchemaExportCommand @Inject constructor(
     private val schemaExportService: SchemaExportService
 ) : QuarkusApplication {
@@ -83,7 +83,7 @@ class SchemaExportCommand @Inject constructor(
  * model.
  */
 @ApplicationScoped
-@IfBuildProfile("schema-export")
+@IfBuildProfile("sql-schema-export")
 class SchemaExportService @Inject constructor(
     private val sessionFactory: SessionFactory,
 

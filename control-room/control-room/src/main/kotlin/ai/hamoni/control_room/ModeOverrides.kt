@@ -73,7 +73,7 @@ class DevOidcTenantConfigResolver : TenantConfigResolver {
  * A Hibernate naming strategy remove any schema names when exporting. This class cannot be excluded, but is not
  * used except in schema generation.
  */
-@IfBuildProfile("schema-export")
+@IfBuildProfile("cmd")
 class PhysicalNamingSchemaErasingSnakeCaseImpl : PhysicalNamingStrategySnakeCaseImpl() {
     override fun toPhysicalCatalogName(
         logicalName: Identifier?,

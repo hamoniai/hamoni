@@ -30,9 +30,7 @@ import jakarta.inject.Inject
 import jakarta.ws.rs.GET
 import jakarta.ws.rs.Path
 import jakarta.ws.rs.Produces
-import org.eclipse.microprofile.openapi.annotations.OpenAPIDefinition
 import org.eclipse.microprofile.openapi.annotations.extensions.Extension
-import org.eclipse.microprofile.openapi.annotations.info.Info
 import org.jboss.resteasy.reactive.RestQuery
 import org.jboss.resteasy.reactive.RestResponse
 
@@ -45,12 +43,7 @@ import org.jboss.resteasy.reactive.RestResponse
  * (group C).
  */
 @Authenticated
-@OpenAPIDefinition(
-    extensions = [
-        Extension(name = "x-smallrye-profile-org", value = "")
-    ],
-    info = Info(title = "Organisation APIs", version = "x"),
-)
+@Extension(name = "x-smallrye-profile-org", value = "")
 @Path("/organisation")
 class OrganisationResource @Inject constructor(
     private val organisationService: OrganisationService,
