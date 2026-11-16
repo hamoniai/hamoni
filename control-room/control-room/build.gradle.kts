@@ -72,13 +72,13 @@ dependencies {
 /**
  * Configure the source sets to pick up the command mode outputs.
  */
-sourceSets {
-    main {
-        resources {
-            srcDir(sqlSchemaExportDir)
-        }
-    }
-}
+//sourceSets {
+//    main {
+//        resources {
+//            srcDir(sqlSchemaExportDir)
+//        }
+//    }
+//}
 
 /**
  * Additional clean tasks
@@ -152,26 +152,27 @@ val sqlSchemaExportTask =
 /**
  * OpenAPI and Organisation import JSON schema export
  */
-val jsonSchemaExportTask = tasks.register<JavaExec>("jsonSchemaExport") {
-    group = "schema"
-    description = "Export the JSON schema."
-    classpath(sourceSets.main.get().runtimeClasspath)
-    dependsOn("classes", "jandex", sqlSchemaExportTask)
-    mainClass = "ai.hamoni.control_room.command.JsonSchemaGenerateCommand"
-    systemProperty("quarkus.profile", "dev,cmd,json-schema-export")
+val jsonSchemaExportTask =
+    tasks.register<JavaExec>("jsonSchemaExport") {
+        group = "schema"
+        description = "Export the JSON schema."
+        classpath(sourceSets.main.get().runtimeClasspath)
+        dependsOn("classes", "jandex", sqlSchemaExportTask)
+        mainClass = "ai.hamoni.control_room.command.JsonSchemaGenerateCommand"
+        systemProperty("quarkus.profile", "dev,cmd,json-schema-export")
 
-    jvmArgs(
-        "--add-opens",
-        "java.base/java.lang.invoke=ALL-UNNAMED",
-        // Do not remove this line, it is for when we need to debug.
-        //"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
-    )
+        jvmArgs(
+            "--add-opens",
+            "java.base/java.lang.invoke=ALL-UNNAMED",
+            // Do not remove this line, it is for when we need to debug.
+            //"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
+        )
 
-    outputs.dir(jsonExportDir)
+        outputs.dir(jsonExportDir)
 
-    standardOutput = System.out
-    errorOutput = System.err
-}
+        standardOutput = System.out
+        errorOutput = System.err
+    }
 
 /**
  * Regenerate the schema before dev mode starts. Both database variants are generated because the cost is small,
