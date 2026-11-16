@@ -18,7 +18,6 @@
 
 package ai.hamoni.control_room.data
 
-import ai.hamoni.common.core.data.KeyValueTableKeyType
 import ai.hamoni.common.core.shared.TypedSetting
 import ai.hamoni.common.core.shared.TypedSettingType
 import ai.hamoni.common.platform.serialization.UUIDSerializer
@@ -52,8 +51,12 @@ import java.util.*
         name = "Organisation.checkOrganisationExists",
         hints = [QueryHint(name = "org.hibernate.readOnly", value = "true")],
         query = """
-            SELECT 1 FROM INFORMATION_SCHEMA.TABLES
-            WHERE (LOWER(TABLE_CATALOG) = :schema OR LOWER(TABLE_SCHEMA) = :schema) AND LOWER(TABLE_NAME) = 'organisation'
+            SELECT
+                COUNT(*) > 0
+            FROM
+                INFORMATION_SCHEMA.TABLES
+            WHERE
+                (LOWER(TABLE_CATALOG) = :schema OR LOWER(TABLE_SCHEMA) = :schema) AND LOWER(TABLE_NAME) = 'organisation'
         """,
         resultClass = Boolean::class
     )
@@ -62,8 +65,17 @@ import java.util.*
     NamedQuery(
         name = "Organisation.isOrganisationInitialised",
         hints = [QueryHint(name = "org.hibernate.readOnly", value = "true")],
-        query = "SELECT 1 = COUNT(o) FROM Organisation o",
-        resultClass = Boolean::class
+        query = """
+            SELECT
+                CASE 
+                    WHEN COUNT(*) = 0 THEN ai.hamoni.control_room.data.OrganisationState.NOT_INITIALISED
+                    WHEN COUNT(*) = 1 THEN ai.hamoni.control_room.data.OrganisationState.INITIALISED
+                    ELSE ai.hamoni.control_room.data.OrganisationState.ERROR
+                END as organisationState
+            FROM
+                Organisation o
+        """,
+        resultClass = OrganisationState::class
     )
 ])
 @Serializable
@@ -254,13 +266,6 @@ class OrganisationSetting (
     @Column(name = "value", nullable = true, updatable = true, unique = false, comment = "Settings value", columnDefinition = "TEXT")
     var value: String,
 
-    /**
-     * The type of the value in the key/value pair. If null, it implies Any.
-     */
-    @Column(name = "type", nullable = true, updatable = false, unique = false, comment = "Settings value type")
-    @Enumerated(EnumType.STRING)
-    var type: KeyValueTableKeyType,
-
     @kotlinx.serialization.Transient
     @Column(name = "created", nullable = false, updatable = false, comment = "Date the key/value created (UTC)")
     @CreationTimestamp
@@ -309,4 +314,34 @@ enum class OrganisationSettingKey(
      */
     @SerialName("includeDefaultAuthenticationMethods")
     INCLUDE_DEFAULT_AUTHENTICATION_METHODS(TypedSettingType.BooleanType, true),
+}
+
+/**
+ * The organisation state
+ */
+@Serializable
+enum class OrganisationState {
+    /**
+     * Organisation has not been created.
+     */
+    @SerialName("not-created")
+    NOT_CREATED,
+
+    /**
+     * Organisation has not been initialised.
+     */
+    @SerialName("not-initialised")
+    NOT_INITIALISED,
+
+    /**
+     * Organisation has been initialised and appears good.
+     */
+    @SerialName("initialised")
+    INITIALISED,
+
+    /**
+     * Organisation is in error (corrupted data).
+     */
+    @SerialName("error")
+    ERROR,
 }

@@ -18,10 +18,16 @@
 
 package ai.hamoni.control_room.service
 
+import ai.hamoni.common.core.exception.ServiceException
+import ai.hamoni.control_room.PlatformAuthoriser
 import ai.hamoni.control_room.data.Organisation
 import ai.hamoni.control_room.data.OrganisationIdentityProvider
 import ai.hamoni.control_room.data.OrganisationSetting
+import ai.hamoni.control_room.data.OrganisationState
 import ai.hamoni.control_room.repository.OrganisationRepository
+import io.quarkus.hibernate.orm.PersistenceUnitExtension
+import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
+import io.quarkus.hibernate.reactive.panache.kotlin.Panache
 import io.quarkus.runtime.annotations.RegisterForReflection
 import io.smallrye.mutiny.Uni
 import jakarta.enterprise.context.ApplicationScoped
@@ -50,8 +56,30 @@ import kotlinx.serialization.Serializable
 @ApplicationScoped
 @RegisterForReflection
 class OrganisationService @Inject constructor(
-    private val organisationRepository: OrganisationRepository
+    private val organisationRepository: OrganisationRepository,
+    private val platformAuthoriser: PlatformAuthoriser,
+    @param:PersistenceUnitExtension private val tenantResolver: TenantResolver,
 ) {
+    /**
+     * Create an organisation. This requires the organisation schema and tables to already exist. A provisioning
+     * service must perform that. This will only populate the schema. It will not check the state of the schema,
+     * that is the caller's responsibility
+     *
+     * The security check is not completed yet. This should check for an ID with the platform admin role, or a
+     * system security context (from startup)
+     *
+     * @param organisation The organisation representation
+     * @return A Uni with the updated organisation, i.e. identifiers populated.
+     */
+    fun create(organisation: Organisation): Uni<Organisation> =
+        Panache.withTransaction {
+            platformAuthoriser.checkPlatformAdminOrSystem()
+                .onItem().transformToUni {
+                    Uni.createFrom().failure { NotImplementedError("TODO") }
+                }
+            // If identity providers are included, then create all the identity providers first, and then the
+            // main organisations. The settings should persist automatically.
+        }
 
     /**
      * Get an organisation and attach the related data the caller asked for. The organisation id comes from the header
@@ -87,6 +115,41 @@ class OrganisationService @Inject constructor(
     fun getSettings(): Uni<List<OrganisationSetting>> {
         TODO()
     }
+
+    /**
+     * Get the organisation state.
+     *
+     * Startup only. This bypasses the request-scoped tenant resolver and must
+     * never be exposed through the interface.
+     *
+     * This requires a platform admin role, or a system security context.
+     *
+     * @return whether the organisation table exists
+     */
+    fun state(): Uni<OrganisationState> =
+        // To do this properly, and safely, we need to chain two queries. The first checks the organisation schema
+        // exists, and the second checks the data state.
+        Panache.withSession {
+            platformAuthoriser.checkPlatformAdminOrSystem()
+                .onItem().transformToUni { Panache.getSession() }
+                .onItem().transformToUni { session ->
+                    session.createNamedQuery<Boolean>("Organisation.checkOrganisationExists")
+                        .setParameter("schema", tenantResolver.resolveTenantId())
+                        .singleResult
+                }
+                .onItem().transformToUni { result ->
+                    if (result) {
+                        organisationRepository.find("#Organisation.isOrganisationInitialised")
+                            .project(OrganisationState::class.java)
+                            .singleResult()
+                    } else {
+                        Uni.createFrom().item(OrganisationState.NOT_CREATED)
+                    }
+                }
+                .onFailure().transform { throwable ->
+                    ServiceException(::state, "Unable to determine organisation state", throwable)
+                }
+        }
 }
 
 /**

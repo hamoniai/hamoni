@@ -50,10 +50,10 @@ public interface ResourceLogger {
     void databaseMigrationError(String schema, @Cause FlywayException cause);
 
     @LogMessage(level = Logger.Level.INFO)
-    @Message(id = 102, format = Message.Format.MESSAGE_FORMAT, value = "Setting default organisation id to ''{0}''")
-    void showDefaultOrganisationId(UUID defaultOrganisationId);
+    @Message(id = 102, format = Message.Format.MESSAGE_FORMAT, value = "Organisation initialisation ''{0}'': {1}")
+    void organisationInitialisationUpdate(UUID defaultOrganisationId, String message);
 
     @LogMessage(level = Logger.Level.FATAL)
-    @Message(id = 103, format = Message.Format.MESSAGE_FORMAT, value = "Failed to initialise default organisation ''{0}''")
-    void organisationInitialisationError(UUID defaultOrganisationId, @Cause Throwable cause);
+    @Message(id = 103, format = Message.Format.MESSAGE_FORMAT, value = "Failed to initialise default organisation ''{0}'': {1}")
+    void organisationInitialisationError(UUID defaultOrganisationId, String message, @Cause Throwable cause);
 }

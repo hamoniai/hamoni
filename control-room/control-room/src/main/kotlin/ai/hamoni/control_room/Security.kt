@@ -23,7 +23,6 @@ import ai.hamoni.common.core.REQUEST_ORGANISATION_ID
 import ai.hamoni.common.core.exception.InvalidParameterException
 import ai.hamoni.common.core.util.cleanUrl
 import ai.hamoni.control_room.service.AuthenticationService
-import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config as MultiTenantConfig
 import io.quarkus.arc.Unremovable
 import io.quarkus.hibernate.orm.PersistenceUnitExtension
 import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
@@ -38,6 +37,7 @@ import io.smallrye.mutiny.infrastructure.Infrastructure
 import io.vertx.ext.web.RoutingContext
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.context.RequestScoped
+import jakarta.enterprise.inject.Produces
 import jakarta.inject.Inject
 import org.eclipse.microprofile.config.ConfigProvider
 import org.hibernate.boot.model.naming.Identifier
@@ -45,6 +45,7 @@ import org.hibernate.boot.model.naming.PhysicalNamingStrategySnakeCaseImpl
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment
 import java.util.*
 import kotlin.uuid.Uuid
+import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config as MultiTenantConfig
 
 
 /*
@@ -53,44 +54,93 @@ import kotlin.uuid.Uuid
  */
 
 /**
- * Create a tenant resolver that directs queries based on the organisation header.
+ * A bean to centralise all authorisation checks All checks are reactive since there might be database or cache
+ * access.
+ *
+ * A session is always required to be active for this.
+ */
+class PlatformAuthoriser @Inject constructor(
+    @param:PersistenceUnitExtension private val tenantResolver: TenantResolver
+) {
+    /**
+     * Check an authenticated identity has access to an organisation. This is the standard platform wide check
+     * that must be invoked before accessing an organisation.
+     *
+     * @return An empty Uni on success, or a failed Uni on error
+     */
+    fun checkOrganisationAccess(): Uni<Unit> {
+        return Uni.createFrom().item(Unit)
+    }
+
+    /**
+     * Check if the caller has the platform admin role, or if it is a system security context.
+     *
+     * @return An empty Uni on success, or a failed Uni on error
+     */
+    fun checkPlatformAdminOrSystem(): Uni<Unit> {
+        return Uni.createFrom().item(Unit)
+    }
+}
+
+/**
+ * In the usual case, we want to have tenant resolver that directs queries based on the organisation header.
+ *
+ * However, in certain circumstances, the routingContext will not be available, e.g. startup jobs. Instead of allowing
+ * an override, we are allowing a fallback. The value from the RoutingContext should always be taken in preference,
+ * and if it is available, the producer method ensures that it is fixed for the request scope so that anything
+ * unaccounted for cannot change the tenant. This also allows the TenantResolver to be injected without performance
+ * impact.
  *
  * If the organisation header is not present or not correct, an exception will be thrown.
  */
-@PersistenceUnitExtension
 @RequestScoped
 @Unremovable
-class OrganisationTenantResolver @Inject constructor(
+class OrganisationTenantResolverProducer @Inject constructor(
     private val routingContext: RoutingContext
-): TenantResolver {
-
+) {
     /**
-     * Never return a default
+     * Use this to produce a fallback in the request scope. It will only work before the TenantResolver has been
+     * produced, and if the RoutingContext does not exist. Once the tenant override has been produced, it will not be
+     * overridable since the bean already exists.
      */
-    override fun getDefaultTenantId(): String = error("Request for default tenant")
+    var tenantFallback: String? = null
 
-    override fun resolveTenantId(): String =
-        if (routingContext.request().path().orEmpty().cleanUrl().startsWith(AUTH_PATH)) {
-            // Organisation agnostic, but we can not set the tenant to null, the
-            // HibernateCurrentTenantIdentifierResolver will throw an error. Instead, since all of these requests will
-            // route to the platform schema anyway, just set the platform schema
-            PLATFORM_SCHEMA
-        } else {
-            // Everything else requires an organisation. If we cannot resolve one, and it is valid then throw an error.
-            // Do not let unvalidated organisation identifiers pass here.
-            try {
-                Uuid.parse(
-                    routingContext.request().getHeader(REQUEST_ORGANISATION_ID)
-                        .orEmpty()
-                        .trim()
-                ).toString()
-            } catch (_: IllegalArgumentException) {
-                // This should end up returning a bad request - it's the caller's issue.
-                error("Invalid organisation id header")
+    @PersistenceUnitExtension
+    @Produces
+    @RequestScoped
+    @Unremovable
+    fun get(): TenantResolver? =
+        // Cannot use Instance.isResolvable because it only checks the bean's existence. Therefore, just have to
+        // try and access the request data.
+        runCatching { routingContext.request() }.fold(
+            { request ->
+                if (request.path().orEmpty().cleanUrl().startsWith(AUTH_PATH)) {
+                    // Organisation agnostic, but we can not set the tenant to null, the
+                    // HibernateCurrentTenantIdentifierResolver will throw an error. Instead, since all of these requests will
+                    // route to the platform schema anyway, just set the platform schema
+                    PLATFORM_SCHEMA
+                } else {
+                    // Everything else requires an organisation. If we cannot resolve one, and it is valid then throw an error.
+                    // Do not let unvalidated organisation identifiers pass here.
+                    try {
+                        Uuid.parse(
+                            request.getHeader(REQUEST_ORGANISATION_ID)
+                                .orEmpty()
+                                .trim()
+                        ).toString()
+                    } catch (_: IllegalArgumentException) {
+                        throw InvalidParameterException(REQUEST_ORGANISATION_ID, "Invalid organisation identifier")
+                    }
+                }
+            },
+            { tenantFallback } // If there is no fallback, this will end up being unresolved.
+        )?.let {
+            object : TenantResolver {
+                override fun getDefaultTenantId(): String = it
+                override fun resolveTenantId(): String = it
+                override fun isRoot(tenantId: String?): Boolean = PLATFORM_SCHEMA == tenantId
             }
         }
-
-    override fun isRoot(tenantId: String?): Boolean = PLATFORM_SCHEMA == tenantId
 }
 
 /**

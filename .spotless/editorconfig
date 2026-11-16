@@ -42,7 +42,7 @@ ktlint_standard_trailing-comma-on-call-site = disabled
 #ktlint_standard_no-wildcard-imports = disabled
 
 # Kotlin script (Gradle disables)
-[*.kts]
+[*.gradle.kts]
 ktlint_standard_comment-spacing = disabled
 ktlint_standard_kdoc = disabled
 ktlint_standard_no-consecutive-comments = disabled

@@ -43,7 +43,7 @@ repositories {
 }
 
 /**
- * Code quality configuration for Java
+ * Code quality configuration for the base project
  */
 val spotlessDirectory = rootProject.layout.projectDirectory.dir(".spotless")
 spotless {
@@ -62,4 +62,11 @@ spotless {
         ktlint()
             .setEditorConfigPath(spotlessDirectory.file("editorconfig"))
     }
+}
+
+/**
+ * Bind the spotless check to the 'check'
+ */
+tasks.named("check") {
+    dependsOn(tasks.named("spotlessCheck"))
 }
