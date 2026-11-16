@@ -18,103 +18,122 @@
 
 package ai.hamoni.control_room
 
+import ai.hamoni.common.core.PLATFORM_SCHEMA
+import ai.hamoni.common.core.REQUEST_ORGANISATION_ID
+import ai.hamoni.common.core.exception.EntityNotFoundException
 import ai.hamoni.common.core.exception.InvalidParameterException
-import ai.hamoni.control_room.service.OidcProviderConfigurationService
+import ai.hamoni.control_room.data.OrganisationIdentityProvider
+import ai.hamoni.control_room.service.AuthenticationService
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
+import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
 import io.quarkus.oidc.OidcRequestContext
 import io.quarkus.oidc.OidcTenantConfig
-import io.quarkus.test.junit.QuarkusTest
-import io.quarkus.test.vertx.RunOnVertxContext
-import io.quarkus.test.vertx.UniAsserter
 import io.smallrye.mutiny.Uni
 import io.vertx.core.http.HttpServerRequest
 import io.vertx.ext.web.RoutingContext
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.util.UUID
 
 /**
  * Behaviour of the OIDC tenant configuration resolver.
  */
-@QuarkusTest
 class OidcTenantConfigResolverTest {
 
-    private val providerConfigurationService = mockk<OidcProviderConfigurationService>()
-    private val resolver = OidcTenantConfigResolver(providerConfigurationService)
+    private val authenticationService = mockk<AuthenticationService>()
+    private val resolver = OidcTenantConfigResolver(authenticationService)
 
     private val providerId = UUID.fromString("11111111-1111-1111-1111-111111111111")
 
     @BeforeEach
-    fun resetProviderConfigurationService() {
-        clearMocks(providerConfigurationService)
+    fun resetAuthenticationService() {
+        clearMocks(authenticationService)
     }
 
     @Test
-    @RunOnVertxContext
-    fun `a login without a provider is rejected`(asserter: UniAsserter) {
+    fun `a login without a provider is rejected`() {
         // Given
         val context = routingContextFor(LOGIN_PATH, null)
 
-        // When
-        val result = resolver.resolve(context, requestContext())
-
-        // Then
-        asserter.assertFailedWith({ result }, InvalidParameterException::class.java)
+        // When / Then
+        assertThrows<InvalidParameterException> {
+            resolver.resolve(context, requestContext()).await().indefinitely()
+        }
     }
 
     @Test
-    @RunOnVertxContext
-    fun `a login with an invalid provider identifier is rejected`(asserter: UniAsserter) {
+    fun `a login with an invalid provider identifier is rejected`() {
         // Given
         val context = routingContextFor(LOGIN_PATH, "not-a-uuid")
 
-        // When
-        val result = resolver.resolve(context, requestContext())
-
-        // Then
-        asserter.assertFailedWith({ result }, InvalidParameterException::class.java)
+        // When / Then
+        assertThrows<InvalidParameterException> {
+            resolver.resolve(context, requestContext()).await().indefinitely()
+        }
     }
 
     @Test
-    @RunOnVertxContext
-    fun `a login with an unknown provider is rejected`(asserter: UniAsserter) {
+    fun `a login with an unknown provider is rejected`() {
         // Given
-        every { providerConfigurationService.getById(providerId) } returns
+        every { authenticationService.getIdentityProviderById(providerId) } returns
             Uni.createFrom().failure(
-                InvalidParameterException(
-                    OidcTenantConfigResolver.PROVIDER_QUERY_PARAMETER,
-                    "unknown provider"
+                EntityNotFoundException(
+                    AuthenticationService::getIdentityProviderById,
+                    "identity provider not found"
                 )
             )
         val context = routingContextFor(LOGIN_PATH, providerId.toString())
 
-        // When
-        val result = resolver.resolve(context, requestContext())
-
-        // Then
-        asserter.assertFailedWith({ result }, InvalidParameterException::class.java)
+        // When / Then
+        assertThrows<EntityNotFoundException> {
+            resolver.resolve(context, requestContext()).await().indefinitely()
+        }
     }
 
     @Test
-    @RunOnVertxContext
-    fun `a login with a known provider resolves its configuration`(asserter: UniAsserter) {
+    fun `a login with a known provider resolves its configuration`() {
         // Given
-        val configuration = mockk<OidcTenantConfig>()
-        every { providerConfigurationService.getById(providerId) } returns
-            Uni.createFrom().item(configuration)
+        every { authenticationService.getIdentityProviderById(providerId) } returns
+            Uni.createFrom().item(provider())
         val context = routingContextFor(LOGIN_PATH, providerId.toString())
 
         // When
-        val result = resolver.resolve(context, requestContext())
+        val actual = checkNotNull(resolver.resolve(context, requestContext()).await().indefinitely())
 
         // Then
-        asserter.assertThat({ result }) { actual ->
-            assertThat(actual).isSameAs(configuration)
-        }
+        assertThat(actual.tenantId().get()).isEqualTo(providerId.toString())
+        assertThat(actual.authServerUrl().get()).isEqualTo("https://issuer.example.com")
+        assertThat(actual.clientId().get()).isEqualTo("client-id")
+        assertThat(actual.credentials().secret().get()).isEqualTo("secret-ref")
+        assertThat(actual.applicationType().get().toString()).isEqualTo("HYBRID")
+        assertThat(actual.discoveryEnabled().get()).isTrue()
     }
+
+    @Test
+    fun `a non-login path does not resolve an OIDC tenant`() {
+        // Given
+        val context = routingContextFor("${API_PATH}organisation", null)
+
+        // When
+        val actual = resolver.resolve(context, requestContext()).await().indefinitely()
+
+        // Then
+        assertThat(actual).isNull()
+    }
+
+    private fun provider(): OrganisationIdentityProvider =
+        OrganisationIdentityProvider(
+            id = providerId,
+            name = "Test provider",
+            url = "https://issuer.example.com",
+            clientId = "client-id",
+            clientSecretReference = "secret-ref",
+            enabled = true
+        )
 
     private fun requestContext(): OidcRequestContext<OidcTenantConfig> =
         mockk<OidcRequestContext<OidcTenantConfig>>()
@@ -131,9 +150,150 @@ class OidcTenantConfigResolverTest {
 }
 
 /**
+ * Behaviour of the organisation tenant resolver fallback.
+ */
+class OrganisationTenantResolverProducerTest {
+
+    private val organisationId = UUID.fromString("22222222-2222-2222-2222-222222222222")
+
+    @Test
+    fun `an authentication path resolves the platform schema`() {
+        // Given
+        val producer = OrganisationTenantResolverProducer(routingContextFor("${AUTH_PATH}login"))
+
+        // When
+        val resolver = checkNotNull(producer.get())
+
+        // Then
+        assertThat(resolver.resolveTenantId()).isEqualTo(PLATFORM_SCHEMA)
+        assertThat(resolver.defaultTenantId).isEqualTo(PLATFORM_SCHEMA)
+        assertThat(resolver.isRoot(PLATFORM_SCHEMA)).isTrue()
+    }
+
+    @Test
+    fun `an organisation header resolves the organisation tenant`() {
+        // Given
+        val producer = OrganisationTenantResolverProducer(
+            routingContextFor(
+                "${API_PATH}organisation",
+                organisationId.toString()
+            )
+        )
+
+        // When
+        val resolver = checkNotNull(producer.get())
+
+        // Then
+        assertThat(resolver.resolveTenantId()).isEqualTo(organisationId.toString())
+        assertThat(resolver.defaultTenantId).isEqualTo(organisationId.toString())
+        assertThat(resolver.isRoot(organisationId.toString())).isFalse()
+    }
+
+    @Test
+    fun `a missing organisation header is rejected`() {
+        // Given
+        val producer = OrganisationTenantResolverProducer(routingContextFor("${API_PATH}organisation"))
+
+        // When / Then
+        assertThrows<InvalidParameterException> { producer.get() }
+    }
+
+    @Test
+    fun `an invalid organisation header is rejected`() {
+        // Given
+        val producer = OrganisationTenantResolverProducer(
+            routingContextFor("${API_PATH}organisation", "not-a-uuid")
+        )
+
+        // When / Then
+        assertThrows<InvalidParameterException> { producer.get() }
+    }
+
+    @Test
+    fun `the fallback is used when there is no routing context`() {
+        // Given
+        val producer = OrganisationTenantResolverProducer(noRoutingContext())
+        producer.tenantFallback = organisationId.toString()
+
+        // When
+        val resolver = checkNotNull(producer.get())
+
+        // Then
+        assertThat(resolver.resolveTenantId()).isEqualTo(organisationId.toString())
+    }
+
+    @Test
+    fun `the routing context wins over the fallback`() {
+        // Given
+        val fallbackId = UUID.fromString("33333333-3333-3333-3333-333333333333")
+        val producer = OrganisationTenantResolverProducer(
+            routingContextFor("${API_PATH}organisation", organisationId.toString())
+        )
+        producer.tenantFallback = fallbackId.toString()
+
+        // When
+        val resolver = checkNotNull(producer.get())
+
+        // Then
+        assertThat(resolver.resolveTenantId()).isEqualTo(organisationId.toString())
+    }
+
+    @Test
+    fun `no routing context and no fallback resolves no tenant`() {
+        // Given
+        val producer = OrganisationTenantResolverProducer(noRoutingContext())
+
+        // When / Then
+        assertThat(producer.get()).isNull()
+    }
+
+    private fun routingContextFor(path: String, organisationHeader: String? = null): RoutingContext {
+        val request = mockk<HttpServerRequest>()
+        every { request.path() } returns path
+        every { request.getHeader(REQUEST_ORGANISATION_ID) } returns organisationHeader
+
+        val context = mockk<RoutingContext>()
+        every { context.request() } returns request
+        return context
+    }
+
+    private fun noRoutingContext(): RoutingContext {
+        val context = mockk<RoutingContext>()
+        every { context.request() } throws IllegalStateException("no request")
+        return context
+    }
+}
+
+/**
+ * Behaviour of the platform authorisation gateway.
+ */
+class PlatformAuthoriserTest {
+
+    private val authoriser =
+        PlatformAuthoriser(mockk<TenantResolver>(relaxed = true))
+
+    @Test
+    fun `organisation access currently succeeds`() {
+        // When
+        val result = authoriser.checkOrganisationAccess().await().indefinitely()
+
+        // Then
+        assertThat(result).isEqualTo(Unit)
+    }
+
+    @Test
+    fun `platform admin or system access currently succeeds`() {
+        // When
+        val result = authoriser.checkPlatformAdminOrSystem().await().indefinitely()
+
+        // Then
+        assertThat(result).isEqualTo(Unit)
+    }
+}
+
+/**
  * Behaviour of the REST authentication challenge.
  */
-@QuarkusTest
 class RestAuthenticationChallengeTest {
 
     private val challenge = RestAuthenticationChallenge()
