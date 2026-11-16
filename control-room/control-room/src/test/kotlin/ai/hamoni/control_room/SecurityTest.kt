@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room
 
 import ai.hamoni.common.core.PLATFORM_SCHEMA
@@ -43,7 +42,6 @@ import java.util.UUID
  * Behaviour of the OIDC tenant configuration resolver.
  */
 class OidcTenantConfigResolverTest {
-
     private val authenticationService = mockk<AuthenticationService>()
     private val resolver = OidcTenantConfigResolver(authenticationService)
 
@@ -135,10 +133,12 @@ class OidcTenantConfigResolverTest {
             enabled = true
         )
 
-    private fun requestContext(): OidcRequestContext<OidcTenantConfig> =
-        mockk<OidcRequestContext<OidcTenantConfig>>()
+    private fun requestContext(): OidcRequestContext<OidcTenantConfig> = mockk<OidcRequestContext<OidcTenantConfig>>()
 
-    private fun routingContextFor(path: String, provider: String?): RoutingContext {
+    private fun routingContextFor(
+        path: String,
+        provider: String?,
+    ): RoutingContext {
         val request = mockk<HttpServerRequest>()
         every { request.path() } returns path
         every { request.getParam(OidcTenantConfigResolver.PROVIDER_QUERY_PARAMETER) } returns provider
@@ -153,7 +153,6 @@ class OidcTenantConfigResolverTest {
  * Behaviour of the organisation tenant resolver fallback.
  */
 class OrganisationTenantResolverProducerTest {
-
     private val organisationId = UUID.fromString("22222222-2222-2222-2222-222222222222")
 
     @Test
@@ -173,12 +172,13 @@ class OrganisationTenantResolverProducerTest {
     @Test
     fun `an organisation header resolves the organisation tenant`() {
         // Given
-        val producer = OrganisationTenantResolverProducer(
-            routingContextFor(
-                "${API_PATH}organisation",
-                organisationId.toString()
+        val producer =
+            OrganisationTenantResolverProducer(
+                routingContextFor(
+                    "${API_PATH}organisation",
+                    organisationId.toString()
+                )
             )
-        )
 
         // When
         val resolver = checkNotNull(producer.get())
@@ -201,9 +201,10 @@ class OrganisationTenantResolverProducerTest {
     @Test
     fun `an invalid organisation header is rejected`() {
         // Given
-        val producer = OrganisationTenantResolverProducer(
-            routingContextFor("${API_PATH}organisation", "not-a-uuid")
-        )
+        val producer =
+            OrganisationTenantResolverProducer(
+                routingContextFor("${API_PATH}organisation", "not-a-uuid")
+            )
 
         // When / Then
         assertThrows<InvalidParameterException> { producer.get() }
@@ -226,9 +227,10 @@ class OrganisationTenantResolverProducerTest {
     fun `the routing context wins over the fallback`() {
         // Given
         val fallbackId = UUID.fromString("33333333-3333-3333-3333-333333333333")
-        val producer = OrganisationTenantResolverProducer(
-            routingContextFor("${API_PATH}organisation", organisationId.toString())
-        )
+        val producer =
+            OrganisationTenantResolverProducer(
+                routingContextFor("${API_PATH}organisation", organisationId.toString())
+            )
         producer.tenantFallback = fallbackId.toString()
 
         // When
@@ -247,7 +249,10 @@ class OrganisationTenantResolverProducerTest {
         assertThat(producer.get()).isNull()
     }
 
-    private fun routingContextFor(path: String, organisationHeader: String? = null): RoutingContext {
+    private fun routingContextFor(
+        path: String,
+        organisationHeader: String? = null,
+    ): RoutingContext {
         val request = mockk<HttpServerRequest>()
         every { request.path() } returns path
         every { request.getHeader(REQUEST_ORGANISATION_ID) } returns organisationHeader
@@ -268,7 +273,6 @@ class OrganisationTenantResolverProducerTest {
  * Behaviour of the platform authorisation gateway.
  */
 class PlatformAuthoriserTest {
-
     private val authoriser =
         PlatformAuthoriser(mockk<TenantResolver>(relaxed = true))
 
@@ -295,7 +299,6 @@ class PlatformAuthoriserTest {
  * Behaviour of the REST authentication challenge.
  */
 class RestAuthenticationChallengeTest {
-
     private val challenge = RestAuthenticationChallenge()
 
     @Test

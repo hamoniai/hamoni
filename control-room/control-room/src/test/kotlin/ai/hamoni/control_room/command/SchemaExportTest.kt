@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.command
 
 import io.mockk.every
@@ -36,7 +35,6 @@ import java.nio.file.Path
  * Behaviour of [SchemaExportCommand].
  */
 class SchemaExportCommandTest {
-
     private val schemaExportService = mockk<SchemaExportService>()
     private val command = SchemaExportCommand(schemaExportService)
 
@@ -58,7 +56,6 @@ class SchemaExportCommandTest {
  * Behaviour of [SchemaExportService].
  */
 class SchemaExportServiceTest {
-
     @TempDir
     lateinit var outputDirectory: Path
 
@@ -84,7 +81,10 @@ class SchemaExportServiceTest {
 
         // Then
         val platformFile = outputDirectory.resolve("platform/h2/V1.0.0__schema.sql").toAbsolutePath().normalize()
-        val organisationFile = outputDirectory.resolve("organisation/h2/V1.0.0__schema.sql").toAbsolutePath().normalize()
+        val organisationFile =
+            outputDirectory.resolve(
+                "organisation/h2/V1.0.0__schema.sql"
+            ).toAbsolutePath().normalize()
 
         assertThat(files).containsExactly(platformFile, organisationFile)
         assertThat(platformFile).exists()
@@ -144,7 +144,6 @@ class SchemaExportServiceTest {
  * Behaviour of the application-version reduction.
  */
 class FlywayVersionTest {
-
     @Test
     fun `a snapshot version is reduced to a Flyway version`() {
         // Given

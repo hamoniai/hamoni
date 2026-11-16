@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room
 
 import ai.hamoni.common.core.PLATFORM_SCHEMA
@@ -43,10 +42,8 @@ import org.eclipse.microprofile.config.ConfigProvider
 import org.hibernate.boot.model.naming.Identifier
 import org.hibernate.boot.model.naming.PhysicalNamingStrategySnakeCaseImpl
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment
-import java.util.*
-import kotlin.uuid.Uuid
+import java.util.UUID
 import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config as MultiTenantConfig
-
 
 /*
  * Security related components/configuration.
@@ -62,28 +59,26 @@ import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config as MultiTenantConfig
  * A session is always required to be active for this.
  */
 @ApplicationScoped
-class PlatformAuthoriser @Inject constructor(
-    @param:PersistenceUnitExtension private val tenantResolver: TenantResolver
-) {
-    /**
-     * Check an authenticated identity has access to an organisation. This is the standard platform wide check
-     * that must be invoked before accessing an organisation.
-     *
-     * @return An empty Uni on success, or a failed Uni on error
-     */
-    fun checkOrganisationAccess(): Uni<Unit> {
-        return Uni.createFrom().item(Unit)
-    }
+class PlatformAuthoriser
+    @Inject
+    constructor(
+        @param:PersistenceUnitExtension private val tenantResolver: TenantResolver,
+    ) {
+        /**
+         * Check an authenticated identity has access to an organisation. This is the standard platform wide check
+         * that must be invoked before accessing an organisation.
+         *
+         * @return An empty Uni on success, or a failed Uni on error
+         */
+        fun checkOrganisationAccess(): Uni<Unit> = Uni.createFrom().item(Unit)
 
-    /**
-     * Check if the caller has the platform admin role, or if it is a system security context.
-     *
-     * @return An empty Uni on success, or a failed Uni on error
-     */
-    fun checkPlatformAdminOrSystem(): Uni<Unit> {
-        return Uni.createFrom().item(Unit)
+        /**
+         * Check if the caller has the platform admin role, or if it is a system security context.
+         *
+         * @return An empty Uni on success, or a failed Uni on error
+         */
+        fun checkPlatformAdminOrSystem(): Uni<Unit> = Uni.createFrom().item(Unit)
     }
-}
 
 /**
  * In the usual case, we want to have tenant resolver that directs queries based on the organisation header.
@@ -98,53 +93,57 @@ class PlatformAuthoriser @Inject constructor(
  */
 @RequestScoped
 @Unremovable
-class OrganisationTenantResolverProducer @Inject constructor(
-    private val routingContext: RoutingContext
-) {
-    /**
-     * Use this to produce a fallback in the request scope. It will only work before the TenantResolver has been
-     * produced, and if the RoutingContext does not exist. Once the tenant override has been produced, it will not be
-     * overridable since the bean already exists.
-     */
-    var tenantFallback: String? = null
+class OrganisationTenantResolverProducer
+    @Inject
+    constructor(
+        private val routingContext: RoutingContext,
+    ) {
+        /**
+         * Use this to produce a fallback in the request scope. It will only work before the TenantResolver has been
+         * produced, and if the RoutingContext does not exist. Once the tenant override has been produced, it will not be
+         * overridable since the bean already exists.
+         */
+        var tenantFallback: String? = null
 
-    @PersistenceUnitExtension
-    @Produces
-    @RequestScoped
-    @Unremovable
-    fun get(): TenantResolver? =
-        // Cannot use Instance.isResolvable because it only checks the bean's existence. Therefore, just have to
-        // try and access the request data.
-        runCatching { routingContext.request() }.fold(
-            { request ->
-                if (request.path().orEmpty().cleanUrl().startsWith(AUTH_PATH)) {
-                    // Organisation agnostic, but we can not set the tenant to null, the
-                    // HibernateCurrentTenantIdentifierResolver will throw an error. Instead, since all of these requests will
-                    // route to the platform schema anyway, just set the platform schema
-                    PLATFORM_SCHEMA
-                } else {
-                    // Everything else requires an organisation. If we cannot resolve one, and it is valid then throw an error.
-                    // Do not let unvalidated organisation identifiers pass here.
-                    try {
-                        Uuid.parse(
-                            request.getHeader(REQUEST_ORGANISATION_ID)
-                                .orEmpty()
-                                .trim()
-                        ).toString()
-                    } catch (_: IllegalArgumentException) {
-                        throw InvalidParameterException(REQUEST_ORGANISATION_ID, "Invalid organisation identifier")
+        @PersistenceUnitExtension
+        @Produces
+        @RequestScoped
+        @Unremovable
+        fun get(): TenantResolver? =
+            // Cannot use Instance.isResolvable because it only checks the bean's existence. Therefore, just have to
+            // try and access the request data.
+            runCatching { routingContext.request() }.fold(
+                { request ->
+                    if (request.path().orEmpty().cleanUrl().startsWith(AUTH_PATH)) {
+                        // Organisation agnostic, but we can not set the tenant to null, the
+                        // HibernateCurrentTenantIdentifierResolver will throw an error. Instead, since all of these requests will
+                        // route to the platform schema anyway, just set the platform schema
+                        PLATFORM_SCHEMA
+                    } else {
+                        // Everything else requires an organisation. If we cannot resolve one, and it is valid then throw an error.
+                        // Do not let unvalidated organisation identifiers pass here.
+                        try {
+                            UUID.fromString(
+                                request.getHeader(REQUEST_ORGANISATION_ID)
+                                    .orEmpty()
+                                    .trim()
+                            ).toString()
+                        } catch (_: IllegalArgumentException) {
+                            throw InvalidParameterException(REQUEST_ORGANISATION_ID, "Invalid organisation identifier")
+                        }
                     }
+                },
+                { tenantFallback } // If there is no fallback, this will end up being unresolved.
+            )?.let {
+                object : TenantResolver {
+                    override fun getDefaultTenantId(): String = it
+
+                    override fun resolveTenantId(): String = it
+
+                    override fun isRoot(tenantId: String?): Boolean = PLATFORM_SCHEMA == tenantId
                 }
-            },
-            { tenantFallback } // If there is no fallback, this will end up being unresolved.
-        )?.let {
-            object : TenantResolver {
-                override fun getDefaultTenantId(): String = it
-                override fun resolveTenantId(): String = it
-                override fun isRoot(tenantId: String?): Boolean = PLATFORM_SCHEMA == tenantId
             }
-        }
-}
+    }
 
 /**
  * A Hibernate naming strategy to add the configured tenant placeholder into unqualified table names
@@ -160,7 +159,7 @@ class PhysicalNamingStrategyTenantQualifyingSnakeCaseImpl : PhysicalNamingStrate
 
     override fun toPhysicalSchemaName(
         logicalName: Identifier?,
-        jdbcEnvironment: JdbcEnvironment
+        jdbcEnvironment: JdbcEnvironment,
     ): Identifier? =
         if (null == logicalName) {
             Identifier(tenantPlaceholder, true, true)
@@ -181,92 +180,93 @@ class PhysicalNamingStrategyTenantQualifyingSnakeCaseImpl : PhysicalNamingStrate
  * default tenant, which is the Keycloak Dev Services tenant in development.
  */
 @ApplicationScoped
-class OidcTenantConfigResolver @Inject constructor(
-    private val authenticationService: AuthenticationService
-) : TenantConfigResolver {
+class OidcTenantConfigResolver
+    @Inject
+    constructor(
+        private val authenticationService: AuthenticationService,
+    ) : TenantConfigResolver {
+        companion object {
+            /**
+             * The query parameter used by the frontend login page to select a provider.
+             */
+            const val PROVIDER_QUERY_PARAMETER = "provider"
+        }
 
-    companion object {
         /**
-         * The query parameter used by the frontend login page to select a provider.
+         * This is called on every request, authenticated and unauthenticated. If authenticated, getting the
+         * `routingContext.get()` call will return a value identifying the context. This function is controlled by
+         * the 'quarkus.oidc.tenant-enabled' property. Returning null from this function does:
+         * check for cache config (by 'routingContext.get("tenant-id")') -> Use default -> fail if auth/allow if non-auth.
+         *
+         * The 'quarkus.oidc.tenant-enabled=false' will skip the default. In dev mode, the default will always use
+         * Keycloak. In other environments this must not be set.
+         *
+         * There are return types/actions depending on the request and expected output.
+         *
+         * ** Login page case **
+         * Must pull the provider id from the request parameter. If not found, then abort with an exception.
+         *
+         * ** Login callback **
+         * Should always return null and use the cached result.
+         *
+         * ** API request **
+         * Should already be authenticated, so return null and use the cached, if not then auth will fail.
+         *
+         * ** Anything else **
+         * Return null, if not protected, it will pass, if protected it will fail.
+         *
+         * Collapsing these rules, only the login page has special handling, all other cases return null
          */
-        const val PROVIDER_QUERY_PARAMETER = "provider"
-    }
+        override fun resolve(
+            routingContext: RoutingContext,
+            requestContext: OidcRequestContext<OidcTenantConfig>,
+        ): Uni<OidcTenantConfig> {
+            val path = routingContext.request().path().orEmpty().cleanUrl()
 
-    /**
-     * This is called on every request, authenticated and unauthenticated. If authenticated, getting the
-     * `routingContext.get()` call will return a value identifying the context. This function is controlled by
-     * the 'quarkus.oidc.tenant-enabled' property. Returning null from this function does:
-     * check for cache config (by 'routingContext.get("tenant-id")') -> Use default -> fail if auth/allow if non-auth.
-     *
-     * The 'quarkus.oidc.tenant-enabled=false' will skip the default. In dev mode, the default will always use
-     * Keycloak. In other environments this must not be set.
-     *
-     * There are return types/actions depending on the request and expected output.
-     *
-     * ** Login page case **
-     * Must pull the provider id from the request parameter. If not found, then abort with an exception.
-     *
-     * ** Login callback **
-     * Should always return null and use the cached result.
-     *
-     * ** API request **
-     * Should already be authenticated, so return null and use the cached, if not then auth will fail.
-     *
-     * ** Anything else **
-     * Return null, if not protected, it will pass, if protected it will fail.
-     *
-     * Collapsing these rules, only the login page has special handling, all other cases return null
-     */
-    override fun resolve(
-        routingContext: RoutingContext,
-        requestContext: OidcRequestContext<OidcTenantConfig>
-    ): Uni<OidcTenantConfig> {
-        val path = routingContext.request().path().orEmpty().cleanUrl()
-
-        return if (path == LOGIN_PATH) {
-            Uni.createFrom()
-                .item {
-                    val provider = routingContext.request().getParam(PROVIDER_QUERY_PARAMETER)
-                    if (null == provider || provider.isBlank()) {
-                        throw InvalidParameterException(PROVIDER_QUERY_PARAMETER, "not specified")
-                    } else {
-                        try {
-                            UUID.fromString(provider)
-                        } catch (e: IllegalArgumentException) {
-                            throw InvalidParameterException(PROVIDER_QUERY_PARAMETER, "invalid format", e)
+            return if (path == LOGIN_PATH) {
+                Uni.createFrom()
+                    .item {
+                        val provider = routingContext.request().getParam(PROVIDER_QUERY_PARAMETER)
+                        if (null == provider || provider.isBlank()) {
+                            throw InvalidParameterException(PROVIDER_QUERY_PARAMETER, "not specified")
+                        } else {
+                            try {
+                                UUID.fromString(provider)
+                            } catch (e: IllegalArgumentException) {
+                                throw InvalidParameterException(PROVIDER_QUERY_PARAMETER, "invalid format", e)
+                            }
                         }
                     }
-                }
-                .onItem().transformToUni {
-                    // Need to map the provider id to an organisation, then get the full config for that organisation,
-                    // will need to switch context/establish a context here, then use a utility library to look up the
-                    // URL, get the well known configuration and then convert it over.
-                    authenticationService.getIdentityProviderById(it)
-                }
-                .emitOn(Infrastructure.getDefaultWorkerPool())
-                .onItem().transform { provider ->
-                    // This is the conversion to a OidcTenantConfig, which includes all the endpoint resolution.
-                    // This will invoke a web request to identify the endpoint.
-                    // TODO: create an object cache for OidcTenantConfig, it will be used frequently and not change often.
-                    // In the event of a cache hit, bypass the whole lookup/transformation route.
-                    OidcTenantConfig.builder()
-                        .tenantId(provider.id.toString())
-                        .authServerUrl(provider.url)
-                        .clientId(provider.clientId)
-                        .credentials(provider.clientSecretReference) // FIXME: should reference the credential vault.
-                        .applicationType(io.quarkus.oidc.runtime.OidcTenantConfig.ApplicationType.HYBRID)
-                        .discoveryEnabled(true)
-                        .build()
-                }
-                .onItem().transform { v ->
-                    v
-                }
-                .emitOn(Infrastructure.getDefaultWorkerPool())
-        } else {
-            Uni.createFrom().nullItem()
+                    .onItem().transformToUni {
+                        // Need to map the provider id to an organisation, then get the full config for that organisation,
+                        // will need to switch context/establish a context here, then use a utility library to look up the
+                        // URL, get the well known configuration and then convert it over.
+                        authenticationService.getIdentityProviderById(it)
+                    }
+                    .emitOn(Infrastructure.getDefaultWorkerPool())
+                    .onItem().transform { provider ->
+                        // This is the conversion to a OidcTenantConfig, which includes all the endpoint resolution.
+                        // This will invoke a web request to identify the endpoint.
+                        // TODO: create an object cache for OidcTenantConfig, it is used frequently and not change often
+                        // In the event of a cache hit, bypass the whole lookup/transformation route.
+                        OidcTenantConfig.builder()
+                            .tenantId(provider.id.toString())
+                            .authServerUrl(provider.url)
+                            .clientId(provider.clientId)
+                            .credentials(provider.clientSecretReference) // FIXME: cred-vault ref.
+                            .applicationType(io.quarkus.oidc.runtime.OidcTenantConfig.ApplicationType.HYBRID)
+                            .discoveryEnabled(true)
+                            .build()
+                    }
+                    .onItem().transform { v ->
+                        v
+                    }
+                    .emitOn(Infrastructure.getDefaultWorkerPool())
+            } else {
+                Uni.createFrom().nullItem()
+            }
         }
     }
-}
 
 /**
  * Turn unauthenticated REST challenges into a 401 response.
@@ -298,6 +298,5 @@ class RestAuthenticationChallenge : JavaScriptRequestChecker {
      * but is invalid, it should have 'error="invalid_token"'. This is further complicated by the fact that we are
      * using the security token, not the bearer to authenticate.
      */
-    override fun getChallenge(context: RoutingContext): ChallengeData =
-        ChallengeData(401, "WWW-Authenticate", "Bearer")
+    override fun getChallenge(context: RoutingContext): ChallengeData = ChallengeData(401, "WWW-Authenticate", "Bearer")
 }

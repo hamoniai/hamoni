@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.service
 
 import ai.hamoni.common.core.exception.ServiceException
@@ -42,7 +41,6 @@ import jakarta.inject.Inject
  * authorisation itself uses a cache because it is accessed very frequently.
  */
 
-
 /**
  * Service for organisation data.
  *
@@ -54,99 +52,101 @@ import jakarta.inject.Inject
  */
 @ApplicationScoped
 @RegisterForReflection
-class OrganisationService @Inject constructor(
-    private val organisationRepository: OrganisationRepository,
-    private val platformAuthoriser: PlatformAuthoriser,
-    @param:PersistenceUnitExtension private val tenantResolver: TenantResolver,
-) {
-    /**
-     * Create an organisation. This requires the organisation schema and tables to already exist. A provisioning
-     * service must perform that. This will only populate the schema. It will not check the state of the schema,
-     * that is the caller's responsibility
-     *
-     * The security check is not completed yet. This should check for an ID with the platform admin role, or a
-     * system security context (from startup)
-     *
-     * @param organisation The organisation representation
-     * @return A Uni with the updated organisation, i.e. identifiers populated.
-     */
-    fun create(organisation: Organisation): Uni<Organisation> =
-        Panache.withTransaction {
-            platformAuthoriser.checkPlatformAdminOrSystem()
-                .onItem().transformToUni {
-                    Uni.createFrom().failure { NotImplementedError("TODO") }
-                }
-            // If identity providers are included, then create all the identity providers first, and then the
-            // main organisations. The settings should persist automatically.
-        }
-
-    /**
-     * Get an organisation and attach the related data the caller asked for. The organisation id comes from the header
-     * there should be no reason to cross over organisations.
-     *
-     * @param hydrate the related data to attach to the organisation
-     * @return the organisation with the requested data attached
-     */
-    fun get(hydrate: List<OrganisationHydration> = emptyList()): Uni<Organisation> {
-        //checkAuthorisation()
-        //organisationRepository.findById(id)
-        TODO()
-    }
-
-    /**
-     * Get an organisation's identity providers.
-     *
-     * This service is used by the public API, but requires that we do not return any information about the
-     * organisation since we do not know whether the person authenticating actually has permission to the organisation
-     * yet.
-     *
-     * @return the organisation authentication configuration
-     */
-    fun getIdentityProviders(): Uni<List<OrganisationIdentityProvider>> {
-        TODO()
-    }
-
-    /**
-     * Get an organisation's settings. ID is determined from the organisation header.
-     *
-     * @return the organisation configuration
-     */
-    fun getSettings(): Uni<List<OrganisationSetting>> {
-        TODO()
-    }
-
-    /**
-     * Get the organisation state.
-     *
-     * Startup only. This bypasses the request-scoped tenant resolver and must
-     * never be exposed through the interface.
-     *
-     * This requires a platform admin role, or a system security context.
-     *
-     * @return whether the organisation table exists
-     */
-    fun state(): Uni<OrganisationState> =
-        // To do this properly, and safely, we need to chain two queries. The first checks the organisation schema
-        // exists, and the second checks the data state.
-        Panache.withSession {
-            platformAuthoriser.checkPlatformAdminOrSystem()
-                .onItem().transformToUni { Panache.getSession() }
-                .onItem().transformToUni { session ->
-                    session.createNamedQuery<Boolean>("Organisation.checkOrganisationExists")
-                        .setParameter("schema", tenantResolver.resolveTenantId())
-                        .singleResult
-                }
-                .onItem().transformToUni { result ->
-                    if (result) {
-                        organisationRepository.find("#Organisation.isOrganisationInitialised")
-                            .project(OrganisationState::class.java)
-                            .singleResult()
-                    } else {
-                        Uni.createFrom().item(OrganisationState.NOT_CREATED)
+class OrganisationService
+    @Inject
+    constructor(
+        private val organisationRepository: OrganisationRepository,
+        private val platformAuthoriser: PlatformAuthoriser,
+        @param:PersistenceUnitExtension private val tenantResolver: TenantResolver,
+    ) {
+        /**
+         * Create an organisation. This requires the organisation schema and tables to already exist. A provisioning
+         * service must perform that. This will only populate the schema. It will not check the state of the schema,
+         * that is the caller's responsibility
+         *
+         * The security check is not completed yet. This should check for an ID with the platform admin role, or a
+         * system security context (from startup)
+         *
+         * @param organisation The organisation representation
+         * @return A Uni with the updated organisation, i.e. identifiers populated.
+         */
+        fun create(organisation: Organisation): Uni<Organisation> =
+            Panache.withTransaction {
+                platformAuthoriser.checkPlatformAdminOrSystem()
+                    .onItem().transformToUni {
+                        Uni.createFrom().failure { NotImplementedError("TODO") }
                     }
-                }
-                .onFailure().transform { throwable ->
-                    ServiceException(::state, "Unable to determine organisation state", throwable)
-                }
+                // If identity providers are included, then create all the identity providers first, and then the
+                // main organisations. The settings should persist automatically.
+            }
+
+        /**
+         * Get an organisation and attach the related data the caller asked for. The organisation id comes from the header
+         * there should be no reason to cross over organisations.
+         *
+         * @param hydrate the related data to attach to the organisation
+         * @return the organisation with the requested data attached
+         */
+        fun get(hydrate: List<OrganisationHydration> = emptyList()): Uni<Organisation> {
+            // checkAuthorisation()
+            // organisationRepository.findById(id)
+            TODO()
         }
-}
+
+        /**
+         * Get an organisation's identity providers.
+         *
+         * This service is used by the public API, but requires that we do not return any information about the
+         * organisation since we do not know whether the person authenticating actually has permission to the organisation
+         * yet.
+         *
+         * @return the organisation authentication configuration
+         */
+        fun getIdentityProviders(): Uni<List<OrganisationIdentityProvider>> {
+            TODO()
+        }
+
+        /**
+         * Get an organisation's settings. ID is determined from the organisation header.
+         *
+         * @return the organisation configuration
+         */
+        fun getSettings(): Uni<List<OrganisationSetting>> {
+            TODO()
+        }
+
+        /**
+         * Get the organisation state.
+         *
+         * Startup only. This bypasses the request-scoped tenant resolver and must
+         * never be exposed through the interface.
+         *
+         * This requires a platform admin role, or a system security context.
+         *
+         * @return whether the organisation table exists
+         */
+        fun state(): Uni<OrganisationState> =
+            // To do this properly, and safely, we need to chain two queries. The first checks the organisation schema
+            // exists, and the second checks the data state.
+            Panache.withSession {
+                platformAuthoriser.checkPlatformAdminOrSystem()
+                    .onItem().transformToUni { Panache.getSession() }
+                    .onItem().transformToUni { session ->
+                        session.createNamedQuery<Boolean>("Organisation.checkOrganisationExists")
+                            .setParameter("schema", tenantResolver.resolveTenantId())
+                            .singleResult
+                    }
+                    .onItem().transformToUni { result ->
+                        if (result) {
+                            organisationRepository.find("#Organisation.isOrganisationInitialised")
+                                .project(OrganisationState::class.java)
+                                .singleResult()
+                        } else {
+                            Uni.createFrom().item(OrganisationState.NOT_CREATED)
+                        }
+                    }
+                    .onFailure().transform { throwable ->
+                        ServiceException(::state, "Unable to determine organisation state", throwable)
+                    }
+            }
+    }

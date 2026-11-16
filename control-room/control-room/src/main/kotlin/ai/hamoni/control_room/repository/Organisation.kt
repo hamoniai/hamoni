@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.repository
 
 import ai.hamoni.control_room.data.Organisation
@@ -23,7 +22,7 @@ import ai.hamoni.control_room.data.OrganisationIdentityProvider
 import io.quarkus.hibernate.reactive.panache.kotlin.PanacheQuery
 import io.quarkus.hibernate.reactive.panache.kotlin.PanacheRepositoryBase
 import jakarta.enterprise.context.ApplicationScoped
-import java.util.*
+import java.util.UUID
 
 /*
  * Control room specific repositories in the organisation specific schema.
@@ -40,14 +39,12 @@ class OrganisationRepository : PanacheRepositoryBase<Organisation, UUID>
  */
 @ApplicationScoped
 class OrganisationIdentityProviderRepository : PanacheRepositoryBase<OrganisationIdentityProvider, UUID> {
-
     /**
      * Find only enabled providers
      */
-    fun findEnabled(): PanacheQuery<OrganisationIdentityProvider> =
-        find("enabled = true")
+    fun findEnabled(): PanacheQuery<OrganisationIdentityProvider> = find("enabled = true")
 
-    /**
+    /*
      * Get a specific setting, or return the default.
      */
 }

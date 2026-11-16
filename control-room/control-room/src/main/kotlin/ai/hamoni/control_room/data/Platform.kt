@@ -15,17 +15,30 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.data
 
 import ai.hamoni.common.core.PLATFORM_SCHEMA
 import ai.hamoni.common.platform.serialization.UUIDSerializer
-import jakarta.persistence.*
+import jakarta.persistence.CollectionTable
+import jakarta.persistence.Column
+import jakarta.persistence.ElementCollection
+import jakarta.persistence.Embeddable
+import jakarta.persistence.Entity
+import jakarta.persistence.ForeignKey
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import jakarta.persistence.Index
+import jakarta.persistence.JoinColumn
+import jakarta.persistence.NamedQueries
+import jakarta.persistence.Table
+import jakarta.persistence.Transient
+import jakarta.persistence.UniqueConstraint
 import kotlinx.serialization.Serializable
 import org.hibernate.annotations.CreationTimestamp
 import java.time.Instant
-import java.util.*
-
+import java.util.Objects
+import java.util.UUID
 
 /*
  * All frontend specific entities and data types (including any projections) for the platform schema go in here.
@@ -46,48 +59,59 @@ import java.util.*
  */
 @Serializable
 @Entity
-@Table(name = "authnprofile", comment = "Authentication profiles", schema = PLATFORM_SCHEMA, indexes = [
-    Index(name = "idx_authnprofile_id_issuer_issuersubject", columnList = "id, issuer, issuerSubject", unique = false),
-    Index(name = "idx_authnprofile_issuer_issuersubject", columnList = "issuer, issuerSubject", unique = false),
-])
+@Table(
+    name = "authnprofile",
+    comment = "Authentication profiles",
+    schema = PLATFORM_SCHEMA,
+    indexes = [
+        Index(
+            name = "idx_authnprofile_id_issuer_issuersubject",
+            columnList = "id, issuer, issuerSubject",
+            unique = false
+        ),
+        Index(name = "idx_authnprofile_issuer_issuersubject", columnList = "issuer, issuerSubject", unique = false),
+    ]
+)
 @NamedQueries()
-class AuthenticationProfile (
+class AuthenticationProfile(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Serializable(with = UUIDSerializer::class)
     var id: UUID? = null,
-
     @Column(name = "family_name", nullable = false, updatable = true, comment = "Family name")
     var familyName: String,
-
     @Column(name = "given_name", nullable = false, updatable = true, comment = "Given name")
     var givenName: String,
-
     @Column(name = "name", nullable = false, updatable = true, comment = "Display name")
     var name: String,
-
     @Column(name = "email", nullable = false, updatable = true, unique = false, comment = "Email address")
     var email: String,
-
     @Column(name = "issuer", nullable = false, updatable = false, unique = false, comment = "OIDC issuer")
     var issuer: String,
-
-    @Column(name = "issuerSubject", nullable = false, updatable = false, unique = false, comment = "OIDC issuer subject")
+    @Column(
+        name = "issuerSubject",
+        nullable = false,
+        updatable = false,
+        unique = false,
+        comment = "OIDC issuer subject"
+    )
     var issuerSubject: String,
-
-    @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status (for banning users)")
+    @Column(
+        name = "enabled",
+        nullable = false,
+        updatable = true,
+        unique = false,
+        comment = "Enabled status (for banning users)"
+    )
     var enabled: Boolean,
-
     @kotlinx.serialization.Transient
     @Column(name = "created", nullable = false, updatable = false, comment = "Date the account was created (UTC)")
     @CreationTimestamp
     var created: Instant? = null,
-
     @kotlinx.serialization.Transient
     @Column(name = "updated", nullable = false, updatable = false, comment = "Date the account was last updated (UTC)")
     var updated: Instant? = null,
 ) {
-
     @ElementCollection
     @CollectionTable(
         name = "authnprofile_organisations",
@@ -109,7 +133,9 @@ class AuthenticationProfile (
     var initials: String = "XX"
 
     override fun hashCode(): Int = Objects.hash(issuer, issuerSubject)
-    override fun equals(other: Any?): Boolean = other is AuthenticationProfile && issuer == other.issuer && issuerSubject == other.issuerSubject
+
+    override fun equals(other: Any?): Boolean =
+        other is AuthenticationProfile && issuer == other.issuer && issuerSubject == other.issuerSubject
 }
 
 /**
@@ -121,7 +147,7 @@ class AuthenticationProfile (
 data class AuthenticationProfileHeader(
     @Serializable(with = UUIDSerializer::class) val id: UUID,
     val name: String,
-    val email: String
+    val email: String,
 ) {
     constructor(c: AuthenticationProfile) : this(c.id!!, c.name, c.email)
 }
@@ -140,18 +166,17 @@ data class AuthenticationProfileHeader(
  */
 @Serializable
 @Embeddable
-class AuthenticationProfileOrganisation (
+class AuthenticationProfileOrganisation(
     @Column(name = "id", nullable = false, updatable = false, comment = "The organisation identifier")
     @Serializable(with = UUIDSerializer::class)
     var id: UUID,
-
     @Transient
-    var name: String
+    var name: String,
 ) {
     override fun hashCode(): Int = Objects.hash(id)
+
     override fun equals(other: Any?): Boolean = other is AuthenticationProfileOrganisation && id == other.id
 }
-
 
 /**
  * The organisation identity provider index. This is because we need to backtrack from an identity provider
@@ -160,27 +185,46 @@ class AuthenticationProfileOrganisation (
  */
 @Serializable
 @Entity
-@Table(name = "idpindex", comment = "Organisation Identity Provider index.", schema = PLATFORM_SCHEMA,
+@Table(
+    name = "idpindex",
+    comment = "Organisation Identity Provider index.",
+    schema = PLATFORM_SCHEMA,
     indexes = [],
     uniqueConstraints = [
-        UniqueConstraint("uk_idpindex_identity_provider_id_organisation_id", ["identity_provider_id", "organisation_id"])
+        UniqueConstraint(
+            "uk_idpindex_identity_provider_id_organisation_id",
+            ["identity_provider_id", "organisation_id"]
+        )
     ]
 )
 @NamedQueries()
-class IdentityProviderIndex (
+class IdentityProviderIndex(
     /**
      * This will become the organisation identity provider id.
      */
     @Id
-    @Column(name = "identity_provider_id", updatable = false, nullable = false, unique = true, comment="Identity Provider identifier")
+    @Column(
+        name = "identity_provider_id",
+        updatable = false,
+        nullable = false,
+        unique = true,
+        comment = "Identity Provider identifier"
+    )
     @GeneratedValue(strategy = GenerationType.UUID)
     @Serializable(with = UUIDSerializer::class)
     var identityProviderId: UUID? = null,
-
-    @Column(name = "organisation_id", nullable = false, updatable = false, unique = false, comment = "Organisation identifier")
+    @Column(
+        name = "organisation_id",
+        nullable = false,
+        updatable = false,
+        unique = false,
+        comment = "Organisation identifier"
+    )
     @Serializable(with = UUIDSerializer::class)
-    var organisationId: UUID
+    var organisationId: UUID,
 ) {
     override fun hashCode(): Int = Objects.hash(identityProviderId)
-    override fun equals(other: Any?): Boolean = other is IdentityProviderIndex && identityProviderId == other.identityProviderId
+
+    override fun equals(other: Any?): Boolean =
+        other is IdentityProviderIndex && identityProviderId == other.identityProviderId
 }

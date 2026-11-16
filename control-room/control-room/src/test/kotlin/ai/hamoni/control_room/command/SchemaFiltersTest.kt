@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.command
 
 import org.assertj.core.api.Assertions.assertThat
@@ -26,7 +25,6 @@ import org.junit.jupiter.api.Test
  * Behaviour of [PlatformSchemaFilter].
  */
 class PlatformSchemaFilterTest {
-
     private val filter = PlatformSchemaFilter()
 
     @Test
@@ -70,7 +68,6 @@ class PlatformSchemaFilterTest {
  * Behaviour of [OrganisationSchemaFilter].
  */
 class OrganisationSchemaFilterTest {
-
     private val filter = OrganisationSchemaFilter()
 
     @Test
@@ -114,7 +111,6 @@ class OrganisationSchemaFilterTest {
  * Behaviour of [PlatformSchemaFilterProvider].
  */
 class PlatformSchemaFilterProviderTest {
-
     private val provider = PlatformSchemaFilterProvider()
 
     @Test
@@ -132,7 +128,6 @@ class PlatformSchemaFilterProviderTest {
  * Behaviour of [OrganisationSchemaFilterProvider].
  */
 class OrganisationSchemaFilterProviderTest {
-
     private val provider = OrganisationSchemaFilterProvider()
 
     @Test

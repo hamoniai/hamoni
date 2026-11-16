@@ -15,13 +15,11 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.processor
 
 import jakarta.enterprise.context.ApplicationScoped
 import org.eclipse.microprofile.reactive.messaging.Incoming
 import org.eclipse.microprofile.reactive.messaging.Outgoing
-
 
 /*
  * Processors for reactive messages. Used for communication between the control room to other components.
@@ -40,5 +38,4 @@ class ProcessRunnerGenerator {
         }
         return "UNKNOWN"
     }
-
 }

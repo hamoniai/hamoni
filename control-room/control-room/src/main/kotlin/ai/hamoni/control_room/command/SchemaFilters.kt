@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.command
 
 import ai.hamoni.common.core.PLATFORM_SCHEMA
@@ -36,10 +35,10 @@ import org.hibernate.tool.schema.spi.SchemaFilterProvider
  */
 enum class SchemaScope(
     val directoryName: String,
-    val filterProvider: Class<out SchemaFilterProvider>
+    val filterProvider: Class<out SchemaFilterProvider>,
 ) {
     PLATFORM("platform", PlatformSchemaFilterProvider::class.java),
-    ORGANISATION("organisation", OrganisationSchemaFilterProvider::class.java)
+    ORGANISATION("organisation", OrganisationSchemaFilterProvider::class.java),
 }
 
 /**
@@ -53,9 +52,7 @@ enum class SchemaScope(
  * table and sequence schema must not be used to select the scope.
  */
 class PlatformSchemaFilter : SchemaFilter {
-
-    override fun includeNamespace(namespace: Namespace): Boolean =
-        namespace.name.schema().isPlatformSchema()
+    override fun includeNamespace(namespace: Namespace): Boolean = namespace.name.schema().isPlatformSchema()
 
     override fun includeTable(table: Table): Boolean = true
 
@@ -74,9 +71,7 @@ class PlatformSchemaFilter : SchemaFilter {
  * table and sequence schema must not be used to select the scope.
  */
 class OrganisationSchemaFilter : SchemaFilter {
-
-    override fun includeNamespace(namespace: Namespace): Boolean =
-        !namespace.name.schema().isPlatformSchema()
+    override fun includeNamespace(namespace: Namespace): Boolean = !namespace.name.schema().isPlatformSchema()
 
     override fun includeTable(table: Table): Boolean = true
 
@@ -91,7 +86,6 @@ class OrganisationSchemaFilter : SchemaFilter {
  * constructor.
  */
 class PlatformSchemaFilterProvider : SchemaFilterProvider {
-
     private val filter = PlatformSchemaFilter()
 
     override fun getCreateFilter(): SchemaFilter = filter
@@ -113,7 +107,6 @@ class PlatformSchemaFilterProvider : SchemaFilterProvider {
  * constructor.
  */
 class OrganisationSchemaFilterProvider : SchemaFilterProvider {
-
     private val filter = OrganisationSchemaFilter()
 
     override fun getCreateFilter(): SchemaFilter = filter
@@ -130,5 +123,4 @@ class OrganisationSchemaFilterProvider : SchemaFilterProvider {
 /**
  * Whether the identifier names the explicit platform schema.
  */
-private fun Identifier?.isPlatformSchema(): Boolean =
-    this?.text.equals(PLATFORM_SCHEMA, ignoreCase = true)
+private fun Identifier?.isPlatformSchema(): Boolean = this?.text.equals(PLATFORM_SCHEMA, ignoreCase = true)

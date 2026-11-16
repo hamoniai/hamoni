@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.service
 
 import ai.hamoni.common.core.exception.EntityNotFoundException
@@ -36,7 +35,7 @@ import jakarta.inject.Inject
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.hibernate.reactive.mutiny.Mutiny
-import java.util.*
+import java.util.UUID
 
 /*
  * All frontend platform services go in here. Services that are common to the frontend and backend should go into one
@@ -46,109 +45,121 @@ import java.util.*
  * authorisation itself uses a cache because it is accessed very frequently.
  */
 
-
 /**
  * Service for authentication activities
  */
 @ApplicationScoped
 @RegisterForReflection
-class AuthenticationService @Inject constructor(
-    private val oidcSession: OidcSession,
-    private val identityProviderIndexRepository: IdentityProviderIndexRepository,
-    private val organisationIdentityProviderRepository: OrganisationIdentityProviderRepository,
-    private val sessionFactory: Mutiny.SessionFactory
-) {
-
-    /**
-     * Get the OIDC configuration for a specific identity profile. This is called from the security context, but will
-     * be on an unauthenticated request. Need to establish the tenant before getting the configuration.
-     *
-     * Needs to return the full object as this get mapped into a [OidcTenantConfig] object.
-     *
-     * This internal service only.
-     */
-    fun getIdentityProviderById(identityProviderId: UUID): Uni<OrganisationIdentityProvider> =
-        identityProviderIndexRepository.findById(identityProviderId)
-            .onItem().transformToUni { index ->
-                if (null != index) {
-                    sessionFactory.withSession(index.organisationId.toString()) {
-                        organisationIdentityProviderRepository.findById(identityProviderId)
+class AuthenticationService
+    @Inject
+    constructor(
+        private val oidcSession: OidcSession,
+        private val identityProviderIndexRepository: IdentityProviderIndexRepository,
+        private val organisationIdentityProviderRepository: OrganisationIdentityProviderRepository,
+        private val sessionFactory: Mutiny.SessionFactory,
+    ) {
+        /**
+         * Get the OIDC configuration for a specific identity profile. This is called from the security context, but will
+         * be on an unauthenticated request. Need to establish the tenant before getting the configuration.
+         *
+         * Needs to return the full object as this get mapped into a [OidcTenantConfig] object.
+         *
+         * This internal service only.
+         */
+        fun getIdentityProviderById(identityProviderId: UUID): Uni<OrganisationIdentityProvider> =
+            identityProviderIndexRepository.findById(identityProviderId)
+                .onItem().transformToUni { index ->
+                    if (null != index) {
+                        sessionFactory.withSession(index.organisationId.toString()) {
+                            organisationIdentityProviderRepository.findById(identityProviderId)
+                        }
+                    } else {
+                        Uni.createFrom().nullItem()
                     }
-                } else {
-                    Uni.createFrom().nullItem()
                 }
-            }
-            .onItem().transformToUni { data ->
-                if (null == data) {
-                    Uni.createFrom().failure(EntityNotFoundException(AuthenticationService::getIdentityProviderById, "identity provider '${identityProviderId}' not found"))
-                } else if (!data.enabled) {
-                    Uni.createFrom().failure(EntityNotFoundException(AuthenticationService::getIdentityProviderById, "identity provider '${identityProviderId}' not enabled"))
-                } else {
-                    Uni.createFrom().item(data)
+                .onItem().transformToUni { data ->
+                    if (null == data) {
+                        Uni.createFrom().failure(
+                            EntityNotFoundException(
+                                AuthenticationService::getIdentityProviderById,
+                                "identity provider '$identityProviderId' not found"
+                            )
+                        )
+                    } else if (!data.enabled) {
+                        Uni.createFrom().failure(
+                            EntityNotFoundException(
+                                AuthenticationService::getIdentityProviderById,
+                                "identity provider '$identityProviderId' not enabled"
+                            )
+                        )
+                    } else {
+                        Uni.createFrom().item(data)
+                    }
                 }
-            }
 
-    /**
-     * Get a list of all the identity providers for an organisation. This is here and not in OrganisationService as it
-     * is a special implementation. Basically, we need to establish a new session in the context of the organisation
-     * and get the providers from there. However, this is very careful to only return very limited information.
-     *
-     * This is unauthenticated, by will return the full list for any organisation. However, it will check the config
-     * to see if it needs to add the default.
-     *
-     * This used on public calls so must be careful of information.
-     */
-    fun listIdentityProvidersByOrganisationId(organisationId: UUID): Uni<List<OrganisationIdentityProviderHeaderWithSource>> =
-        Panache.withSession {
-            // This is a particularly tricky query. We should really check if the schema exists before attempting to
-            // query the organisation providers. However, there's no platform-agnostic way to do that. The easiest way
-            // achieve it is try to get the settings from the organisation, specifically whether to include the
-            // default authenticaiton providers. if that throws an error, the organisation must not exist, but we will
-            // map it to a default value of true.
-            //
-            // The method is also particularly bad as we must bypass standard tenant resolution and to access the
-            // specific tenant. The data is safe because it is converted to a UUID type here.
+        /**
+         * Get a list of all the identity providers for an organisation. This is here and not in OrganisationService as it
+         * is a special implementation. Basically, we need to establish a new session in the context of the organisation
+         * and get the providers from there. However, this is very careful to only return very limited information.
+         *
+         * This is unauthenticated, by will return the full list for any organisation. However, it will check the config
+         * to see if it needs to add the default.
+         *
+         * This used on public calls so must be careful of information.
+         */
+        fun listIdentityProvidersByOrganisationId(
+            organisationId: UUID,
+        ): Uni<List<OrganisationIdentityProviderHeaderWithSource>> =
+            Panache.withSession {
+                // This is a particularly tricky query. We should really check if the schema exists before attempting to
+                // query the organisation providers. However, there's no platform-agnostic way to do that. The easiest way
+                // achieve it is try to get the settings from the organisation, specifically whether to include the
+                // default authenticaiton providers. if that throws an error, the organisation must not exist, but we will
+                // map it to a default value of true.
+                //
+                // The method is also particularly bad as we must bypass standard tenant resolution and to access the
+                // specific tenant. The data is safe because it is converted to a UUID type here.
 //            identityProviderIndexRepository.findById(organisationId)
 //                .onItem().transformToUni {
 //                    Uni.createFrom().item { emptyList() }
 //                }
-            organisationIdentityProviderRepository.findEnabled()
-                .project(OrganisationIdentityProviderHeader::class.java)
-                .list()
-                .onItem().ifNotNull().transform { data ->
-                    data.map { OrganisationIdentityProviderHeaderWithSource(it.id, it.name, false) }
-                }
-        }
-        //} // TODO: add in the default ones. Might need to query the full organisation. Or we create a special access
-    // pattern in the organisation repository to get a specific setting, which might be more useful, because it can
-    // directly return the value, or a default.
+                organisationIdentityProviderRepository.findEnabled()
+                    .project(OrganisationIdentityProviderHeader::class.java)
+                    .list()
+                    .onItem().ifNotNull().transform { data ->
+                        data.map { OrganisationIdentityProviderHeaderWithSource(it.id, it.name, false) }
+                    }
+            }
+        // } // TODO: add in the default ones. Might need to query the full organisation. Or we create a special access
+        // pattern in the organisation repository to get a specific setting, which might be more useful, because it can
+        // directly return the value, or a default.
 
-    /**
-     * Logout the current authentication profile locally.
-     *
-     * This clears the Quarkus session cookie only; it deliberately leaves the
-     * provider's own session intact (for example, the person remains signed in to
-     * Keycloak). Provider-initiated logout is a separate decision.
-     */
-    fun logout(): Uni<Void> = oidcSession.logout()
-}
+        /**
+         * Logout the current authentication profile locally.
+         *
+         * This clears the Quarkus session cookie only; it deliberately leaves the
+         * provider's own session intact (for example, the person remains signed in to
+         * Keycloak). Provider-initiated logout is a separate decision.
+         */
+        fun logout(): Uni<Void> = oidcSession.logout()
+    }
 
 /**
  * Service for authentication profile services
  */
 @ApplicationScoped
 @RegisterForReflection
-class AuthenticationProfileService @Inject constructor(
-) {
-
-    /**
-     * Get the current logged-in authentication profile.
-     */
-    fun profile(hydrate: List<AuthenticationProfileServiceHydration>): Uni<AuthenticationProfile> {
-        // Check the current principle id, and get the profile associated.
-        TODO("Waiting")
+class AuthenticationProfileService
+    @Inject
+    constructor() {
+        /**
+         * Get the current logged-in authentication profile.
+         */
+        fun profile(hydrate: List<AuthenticationProfileServiceHydration>): Uni<AuthenticationProfile> {
+            // Check the current principle id, and get the profile associated.
+            TODO("Waiting")
+        }
     }
-}
 
 /**
  * hydration types for AuthenticationProfileService
@@ -156,7 +167,7 @@ class AuthenticationProfileService @Inject constructor(
 @Serializable
 enum class AuthenticationProfileServiceHydration {
     @SerialName("organisations")
-    ORGANISATIONS
+    ORGANISATIONS,
 }
 
 /**
@@ -165,15 +176,16 @@ enum class AuthenticationProfileServiceHydration {
  */
 @ApplicationScoped
 @RegisterForReflection
-class ConfigurationService @Inject constructor(
-    private val platformConfig: PlatformConfig
-) {
-    /**
-     * Get the default organisation's identifier. This is a wrapper around the configuration so that services
-     * have a common entry point. The startup will ensure this is never null.
-     *
-     * @return the identifier of the deployment's default organisation
-     */
-    fun getDefaultOrganisationId(): Uni<UUID> =
-        Uni.createFrom().item(platformConfig.defaultOrganisation().id())
-}
+class ConfigurationService
+    @Inject
+    constructor(
+        private val platformConfig: PlatformConfig,
+    ) {
+        /**
+         * Get the default organisation's identifier. This is a wrapper around the configuration so that services
+         * have a common entry point. The startup will ensure this is never null.
+         *
+         * @return the identifier of the deployment's default organisation
+         */
+        fun getDefaultOrganisationId(): Uni<UUID> = Uni.createFrom().item(platformConfig.defaultOrganisation().id())
+    }

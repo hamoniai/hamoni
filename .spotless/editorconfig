@@ -22,6 +22,10 @@ ktlint_experimental = disabled
 
 # Don't require trailing commas on method calls
 ktlint_standard_trailing-comma-on-call-site = disabled
+# Allow underscores in package names
+ktlint_standard_package-name = disabled
+# Allow single class in file (because others not implemented yet)
+ktlint_standard_filename = disabled
 
 # Common rule overrides
 #ktlint_standard_no-wildcard-imports = disabled

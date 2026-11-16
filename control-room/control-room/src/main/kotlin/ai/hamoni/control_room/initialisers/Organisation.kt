@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.initialisers
 
 import ai.hamoni.common.platform.PlatformConfig
@@ -55,96 +54,107 @@ import java.nio.charset.StandardCharsets
  */
 @ApplicationScoped
 @IfBuildProperty(name = "quarkus.flyway.enabled", stringValue = "true", enableIfMissing = true)
-class OrganisationInitialiser @Inject constructor(
-    private val organisationService: OrganisationService,
-    private val organisationTenantResolverProducer: OrganisationTenantResolverProducer,
-    private val platformConfig: PlatformConfig,
-    private val vertx: Vertx
-) {
-    /**
-     * Initialise the default organisation.
-     */
-    private fun initialise(): Uni<Boolean> =
-        platformConfig.defaultOrganisation().config().orElse(null).takeIf { !it.isNullOrBlank() }?.let { path ->
-            // Read and then parse/update
-            vertx.fileSystem().exists(path)
-                .onItem().transformToUni {
-                    if (it == true) {
-                        vertx.fileSystem().readFile(path)
-                            .onItem().transformToUni { content ->
-                                loadDefaultOrganisation(content.toString(StandardCharsets.UTF_8))
-                            }
-                    } else {
-                        Uni.createFrom()
-                            .failure { FileNotFoundException("organisation defaults '${path}' not found") }
-                    }
-                }
-        } ?: run {
-            Uni.createFrom()
-                .failure { FileNotFoundException("no organisation defaults specified") }
-        }
-
-    /**
-     * Load an organisation from a JSON defaults
-     * @param defaults The organisation defaults.
-     */
-    private fun loadDefaultOrganisation(defaults: String): Uni<Boolean> {
-        // FIXME: this needs implementing. This function needs to:
-        // 1. Validate the defaults against the generated import schema.
-        // 2. Load the organisation and identity providers.
-        return Uni.createFrom().failure { NotImplementedError("TODO") }
-    }
-
-    /**
-     * Bind to the Quarkus startup to initialise the organisation
-     */
-    @Suppress("unused")
-    fun onStart(
-        @Observes @Priority(Interceptor.Priority.PLATFORM_AFTER)
-        @Suppress("UNUSED_PARAMETER") event: StartupEvent
+class OrganisationInitialiser
+    @Inject
+    constructor(
+        private val organisationService: OrganisationService,
+        private val organisationTenantResolverProducer: OrganisationTenantResolverProducer,
+        private val platformConfig: PlatformConfig,
+        private val vertx: Vertx,
     ) {
-        val defaultOrganisationId = platformConfig.defaultOrganisation().id()
-        ResourceLogger.LOGGER.organisationInitialisationUpdate(defaultOrganisationId, "setting default organisation")
-
-        // Initialise the default organisation if required.
-        VertxContextSupport.subscribeAndAwait {
-            // We have a new request scope here, needs initialising.
-            organisationTenantResolverProducer.tenantFallback = defaultOrganisationId.toString()
-
-            organisationService.state()
-                .onItem().transformToUni { state ->
-                    when (state) {
-                        // Skip if already initialised
-                        OrganisationState.ACTIVE -> {
-                            ResourceLogger.LOGGER.organisationInitialisationUpdate(
-                                defaultOrganisationId,
-                                "already initialised"
-                            )
-                            Uni.createFrom().item(false)
-                        }
-
-                        // Disabled - should be rare
-                        OrganisationState.DISABLED -> Uni.createFrom().failure {
-                            OrganisationInitialisationException("default organisation is disabled")
-                        }
-
-                        // Try to initialise, it might fail the Uni.
-                        OrganisationState.NOT_INITIALISED -> initialise()
-
-                        // Some error, do not boot.
-                        else -> Uni.createFrom().failure {
-                            OrganisationInitialisationException("default organisation has an error")
+        /**
+         * Initialise the default organisation.
+         */
+        private fun initialise(): Uni<Boolean> =
+            platformConfig.defaultOrganisation().config().orElse(null).takeIf { !it.isNullOrBlank() }?.let { path ->
+                // Read and then parse/update
+                vertx.fileSystem().exists(path)
+                    .onItem().transformToUni {
+                        if (it == true) {
+                            vertx.fileSystem().readFile(path)
+                                .onItem().transformToUni { content ->
+                                    loadDefaultOrganisation(content.toString(StandardCharsets.UTF_8))
+                                }
+                        } else {
+                            Uni.createFrom()
+                                .failure { FileNotFoundException("organisation defaults '$path' not found") }
                         }
                     }
-                }
-                .onFailure().invoke { e ->
-                    ResourceLogger.LOGGER.organisationInitialisationError(
-                        defaultOrganisationId,
-                        e.message,
-                        e
-                    )
-                }
-                .onFailure().recoverWithNull()
+            } ?: run {
+                Uni.createFrom()
+                    .failure { FileNotFoundException("no organisation defaults specified") }
+            }
+
+        /**
+         * Load an organisation from a JSON defaults
+         * @param defaults The organisation defaults.
+         */
+        private fun loadDefaultOrganisation(defaults: String): Uni<Boolean> {
+            // FIXME: this needs implementing. This function needs to:
+            // 1. Validate the defaults against the generated import schema.
+            // 2. Load the organisation and identity providers.
+            return Uni.createFrom().failure { NotImplementedError("TODO") }
+        }
+
+        /**
+         * Bind to the Quarkus startup to initialise the organisation
+         */
+        @Suppress("unused")
+        fun onStart(
+            @Observes @Priority(Interceptor.Priority.PLATFORM_AFTER)
+            @Suppress("UNUSED_PARAMETER") event: StartupEvent,
+        ) {
+            val defaultOrganisationId = platformConfig.defaultOrganisation().id()
+            ResourceLogger.LOGGER.organisationInitialisationUpdate(
+                defaultOrganisationId,
+                "setting default organisation"
+            )
+
+            // Initialise the default organisation if required.
+            VertxContextSupport.subscribeAndAwait {
+                // We have a new request scope here, needs initialising.
+                organisationTenantResolverProducer.tenantFallback = defaultOrganisationId.toString()
+
+                organisationService.state()
+                    .onItem().transformToUni { state ->
+                        when (state) {
+                            // Skip if already initialised
+                            OrganisationState.ACTIVE -> {
+                                ResourceLogger.LOGGER.organisationInitialisationUpdate(
+                                    defaultOrganisationId,
+                                    "already initialised"
+                                )
+                                Uni.createFrom().item(false)
+                            }
+
+                            // Disabled - should be rare
+                            OrganisationState.DISABLED -> {
+                                Uni.createFrom().failure {
+                                    OrganisationInitialisationException("default organisation is disabled")
+                                }
+                            }
+
+                            // Try to initialise, it might fail the Uni.
+                            OrganisationState.NOT_INITIALISED -> {
+                                initialise()
+                            }
+
+                            // Some error, do not boot.
+                            else -> {
+                                Uni.createFrom().failure {
+                                    OrganisationInitialisationException("default organisation has an error")
+                                }
+                            }
+                        }
+                    }
+                    .onFailure().invoke { e ->
+                        ResourceLogger.LOGGER.organisationInitialisationError(
+                            defaultOrganisationId,
+                            e.message,
+                            e
+                        )
+                    }
+                    .onFailure().recoverWithNull()
+            }
         }
     }
-}

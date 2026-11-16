@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.command
 
 import io.quarkus.arc.profile.IfBuildProfile
@@ -36,7 +35,6 @@ import java.nio.file.Paths
 import kotlin.io.path.bufferedWriter
 import kotlin.io.path.createDirectories
 
-
 /**
  * The command that generates the platform and organisation schema migrations
  * from the JPA model.
@@ -50,33 +48,33 @@ import kotlin.io.path.createDirectories
 @QuarkusMain(name = "schema-export")
 @ApplicationScoped
 @IfBuildProfile("sql-schema-export")
-class SchemaExportCommand @Inject constructor(
-    private val schemaExportService: SchemaExportService
-) : QuarkusApplication {
+class SchemaExportCommand
+    @Inject
+    constructor(
+        private val schemaExportService: SchemaExportService,
+    ) : QuarkusApplication {
+        private val logger = Logger.getLogger(SchemaExportCommand::class.java)
 
-    private val logger = Logger.getLogger(SchemaExportCommand::class.java)
+        companion object {
+            @JvmStatic
+            fun main(args: Array<String>) {
+                // The command runs as a normal application; the dev profile is only used for its datasource config.
+                LaunchMode.set(LaunchMode.NORMAL)
+                Quarkus.run(SchemaExportCommand::class.java, *args)
+                // The application otherwise keeps a thread pool alive and prevents the JVM from exiting.
+                Quarkus.asyncExit()
+            }
+        }
 
-    companion object {
-        @JvmStatic
-        fun main(args: Array<String>) {
-            // The command runs as a normal application; the dev profile is only used for its datasource config.
-            LaunchMode.set(LaunchMode.NORMAL)
-            Quarkus.run(SchemaExportCommand::class.java, *args)
-            // The application otherwise keeps a thread pool alive and prevents the JVM from exiting.
-            Quarkus.asyncExit()
+        /**
+         * Run the export, returning zero when both scripts were written.
+         */
+        override fun run(vararg args: String): Int {
+            schemaExportService.export()
+                .forEach { logger.infof("Generated schema migration: %s", it) }
+            return 0
         }
     }
-
-    /**
-     * Run the export, returning zero when both scripts were written.
-     */
-    override fun run(vararg args: String): Int {
-        schemaExportService.export()
-            .forEach { logger.infof("Generated schema migration: %s", it) }
-        return 0
-    }
-
-}
 
 /**
  * Generate the platform and organisation schema migration scripts from the JPA
@@ -84,81 +82,87 @@ class SchemaExportCommand @Inject constructor(
  */
 @ApplicationScoped
 @IfBuildProfile("sql-schema-export")
-class SchemaExportService @Inject constructor(
-    private val sessionFactory: SessionFactory,
+class SchemaExportService
+    @Inject
+    constructor(
+        private val sessionFactory: SessionFactory,
+        @param:ConfigProperty(name = "quarkus.application.version")
+        private val applicationVersion: String,
+        @param:ConfigProperty(name = "hamoni.schema-export.db-kind")
+        private val databaseKind: String,
+        @param:ConfigProperty(name = "hamoni.schema-export.output-directory")
+        private val outputDirectory: String,
+    ) {
+        /**
+         * Export both schemas sequentially.
+         *
+         * @return the files that were written, in export order
+         */
+        fun export(): List<Path> {
+            val migrationVersion = flywayVersion(applicationVersion)
+            val outputRoot = Paths.get(outputDirectory).toAbsolutePath().normalize()
 
-    @param:ConfigProperty(name = "quarkus.application.version")
-    private val applicationVersion: String,
+            // Always export both scopes in one run. Platform first, organisation second.
+            return listOf(SchemaScope.PLATFORM, SchemaScope.ORGANISATION).map { scope ->
+                val path =
+                    outputRoot
+                        .resolve(scope.directoryName)
+                        .resolve(databaseKind)
+                        .resolve("V${migrationVersion}__schema.sql")
 
-    @param:ConfigProperty(name = "hamoni.schema-export.db-kind")
-    private val databaseKind: String,
+                path.parent.createDirectories()
+                path.bufferedWriter(Charsets.UTF_8).use {
+                    writeHeader(it, scope, migrationVersion)
 
-    @param:ConfigProperty(name = "hamoni.schema-export.output-directory")
-    private val outputDirectory: String
-) {
-    /**
-     * Export both schemas sequentially.
-     *
-     * @return the files that were written, in export order
-     */
-    fun export(): List<Path> {
-        val migrationVersion = flywayVersion(applicationVersion)
-        val outputRoot = Paths.get(outputDirectory).toAbsolutePath().normalize()
+                    val properties = sessionFactory.properties
 
-        // Always export both scopes in one run. Platform first, organisation second.
-        return listOf(SchemaScope.PLATFORM, SchemaScope.ORGANISATION).map { scope ->
-            val path = outputRoot
-                .resolve(scope.directoryName)
-                .resolve(databaseKind)
-                .resolve("V${migrationVersion}__schema.sql")
+                    // Set the Jakarta-namespace Hibernate properties on the live session factory for this one-shot
+                    // command. They cannot live in application.properties because Quarkus would run schema generation
+                    // at startup, and the filter and target change for each database and scope.
+                    properties[AvailableSettings.JAKARTA_HBM2DDL_DATABASE_ACTION] = Action.NONE
+                    properties[AvailableSettings.JAKARTA_HBM2DDL_SCRIPTS_ACTION] = Action.CREATE_ONLY
+                    properties[AvailableSettings.JAKARTA_HBM2DDL_SCRIPTS_CREATE_TARGET] = it
+                    properties[AvailableSettings.FORMAT_SQL] = true
+                    properties[AvailableSettings.HBM2DDL_FILTER_PROVIDER] = scope.filterProvider.name
 
-            path.parent.createDirectories()
-            path.bufferedWriter(Charsets.UTF_8).use {
-                writeHeader(it, scope, migrationVersion)
+                    // `schemaManager.create()` copies the root properties with the database action already set, so
+                    // the contributor-specific actions must match the root actions or the script target is bypassed.
+                    listOf("orm").forEach { contributor ->
+                        properties["${AvailableSettings.JAKARTA_HBM2DDL_DATABASE_ACTION}.$contributor"] = Action.NONE
+                        properties["${AvailableSettings.JAKARTA_HBM2DDL_SCRIPTS_ACTION}.$contributor"] =
+                            Action.CREATE_ONLY
+                    }
 
-                val properties = sessionFactory.properties
-
-                // Set the Jakarta-namespace Hibernate properties on the live session factory for this one-shot
-                // command. They cannot live in application.properties because Quarkus would run schema generation
-                // at startup, and the filter and target change for each database and scope.
-                properties[AvailableSettings.JAKARTA_HBM2DDL_DATABASE_ACTION] = Action.NONE
-                properties[AvailableSettings.JAKARTA_HBM2DDL_SCRIPTS_ACTION] = Action.CREATE_ONLY
-                properties[AvailableSettings.JAKARTA_HBM2DDL_SCRIPTS_CREATE_TARGET] = it
-                properties[AvailableSettings.FORMAT_SQL] = true
-                properties[AvailableSettings.HBM2DDL_FILTER_PROVIDER] = scope.filterProvider.name
-
-                // `schemaManager.create()` copies the root properties with the database action already set, so
-                // the contributor-specific actions must match the root actions or the script target is bypassed.
-                listOf("orm").forEach { contributor ->
-                    properties["${AvailableSettings.JAKARTA_HBM2DDL_DATABASE_ACTION}.${contributor}"] = Action.NONE
-                    properties["${AvailableSettings.JAKARTA_HBM2DDL_SCRIPTS_ACTION}.${contributor}"] = Action.CREATE_ONLY
+                    // false: do not create database schemas; Flyway creates the schema and applies the script.
+                    sessionFactory.schemaManager.create(false)
                 }
-
-                // false: do not create database schemas; Flyway creates the schema and applies the script.
-                sessionFactory.schemaManager.create(false)
+                path
             }
-            path
+        }
+
+        /**
+         * Write the generated-file header before Hibernate appends the DDL.
+         *
+         * The same writer is passed to Hibernate as the script target, so the header
+         * remains at the top of the file.
+         */
+        private fun writeHeader(
+            writer: BufferedWriter,
+            scope: SchemaScope,
+            migrationVersion: String,
+        ) {
+            writer.write(
+                """
+                -- Generated by the Hamoni schema export command from the JPA model.
+                -- Application version: $applicationVersion
+                -- Migration version: $migrationVersion
+                -- Schema: ${scope.directoryName}
+                -- Database: $databaseKind
+                -- Do not edit this file by hand. Regenerate it with the schema export command.
+                """.trimIndent() + "\n"
+            )
         }
     }
-
-    /**
-     * Write the generated-file header before Hibernate appends the DDL.
-     *
-     * The same writer is passed to Hibernate as the script target, so the header
-     * remains at the top of the file.
-     */
-    private fun writeHeader(writer: BufferedWriter, scope: SchemaScope, migrationVersion: String) {
-        writer.write("""
-            -- Generated by the Hamoni schema export command from the JPA model.
-            -- Application version: $applicationVersion
-            -- Migration version: $migrationVersion
-            -- Schema: ${scope.directoryName}
-            -- Database: $databaseKind
-            -- Do not edit this file by hand. Regenerate it with the schema export command.
-            """.trimIndent() + "\n"
-        )
-    }
-}
 
 /**
  * Reduce the application version to a version Flyway accepts.
@@ -168,9 +172,10 @@ class SchemaExportService @Inject constructor(
  * header.
  */
 internal fun flywayVersion(applicationVersion: String): String {
-    val version = applicationVersion.trim()
-        .takeWhile { it.isDigit() || it == '.' }
-        .trimEnd('.')
+    val version =
+        applicationVersion.trim()
+            .takeWhile { it.isDigit() || it == '.' }
+            .trimEnd('.')
 
     require(version.isNotEmpty()) {
         "Cannot derive a Flyway version from application version '$applicationVersion'."

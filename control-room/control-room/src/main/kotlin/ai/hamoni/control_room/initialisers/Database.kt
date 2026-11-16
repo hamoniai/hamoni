@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.initialisers
 
 import ai.hamoni.common.core.ORGANISATION_SCHEMA
@@ -43,7 +42,6 @@ import org.flywaydb.core.api.resource.LoadableResource
 import java.sql.SQLException
 import javax.sql.DataSource
 
-
 /*
  * Custom initialisers for database related activities.
  */
@@ -67,101 +65,110 @@ const val COMMON_PATH = "common"
  */
 @ApplicationScoped
 @IfBuildProperty(name = "quarkus.flyway.enabled", stringValue = "true", enableIfMissing = true)
-class DatabaseUpdater @Inject constructor (
-    private val platformConfig: PlatformConfig,
-    private val dataSource: DataSource,
-    private val flywayContainerProducer: FlywayContainerProducer,
-    private val defaultFlywayContainer: FlywayContainer,
-    @param:FlywayDataSource(ORGANISATION_SCHEMA)
-    private val schemaSelector: FlywayConfigurationSchemaCustomizer,
+class DatabaseUpdater
+    @Inject
+    constructor(
+        private val platformConfig: PlatformConfig,
+        private val dataSource: DataSource,
+        private val flywayContainerProducer: FlywayContainerProducer,
+        private val defaultFlywayContainer: FlywayContainer,
+        @param:FlywayDataSource(ORGANISATION_SCHEMA)
+        private val schemaSelector: FlywayConfigurationSchemaCustomizer,
+        @param:ConfigProperty(name = "quarkus.datasource.db-kind")
+        private val dataSourceKind: String,
+    ) {
+        /**
+         * Bind the migration to the Quarkus startup. Use the properties from the default container.
+         */
+        @Suppress("unused")
+        fun onStart(
+            @Observes @Priority(Interceptor.Priority.PLATFORM_BEFORE) @Suppress("UNUSED_PARAMETER") event: StartupEvent,
+        ) {
+            // The defaultFlywayContainer is the main one that is a pseudo setup.
+            val platformContainer =
+                flywayContainerProducer.createFlyway(
+                    dataSource,
+                    PLATFORM_SCHEMA,
+                    defaultFlywayContainer.isHasMigrations,
+                    defaultFlywayContainer.isCreatePossible,
+                    defaultFlywayContainer.resourceLocations
+                        .filter { it.contains("/${PLATFORM_SCHEMA}/") }
+                        .flatMap { base ->
+                            base.removeSuffix("/").let { listOf("$it/$dataSourceKind/", "$it/${COMMON_PATH}/") }
+                        }
+                        .toSet()
+                )
 
-    @param:ConfigProperty(name = "quarkus.datasource.db-kind")
-    private val dataSourceKind: String,
-) {
+            try {
+                platformContainer.flyway.migrate()
+            } catch (e: FlywayException) {
+                ResourceLogger.LOGGER.databaseMigrationError(schemaSelector.schema, e)
+                throw e
+            }
 
-    /**
-     * Bind the migration to the Quarkus startup. Use the properties from the default container.
-     */
-    @Suppress("unused")
-    fun onStart(@Observes @Priority(Interceptor.Priority.PLATFORM_BEFORE) @Suppress("UNUSED_PARAMETER") event: StartupEvent) {
-        // The defaultFlywayContainer is the main one that is a pseudo setup.
-        val platformContainer = flywayContainerProducer.createFlyway(
-            dataSource,
-            PLATFORM_SCHEMA,
-            defaultFlywayContainer.isHasMigrations,
-            defaultFlywayContainer.isCreatePossible,
-            defaultFlywayContainer.resourceLocations
-                .filter { it.contains("/${PLATFORM_SCHEMA}/") }
-                .flatMap { base -> base.removeSuffix("/").let { listOf("${it}/${dataSourceKind}/", "${it}/${COMMON_PATH}/") } }
-                .toSet()
-        )
+            // Create a set of organisations to update
+            val organisationIds = mutableSetOf<String>()
 
-        try {
-            platformContainer.flyway.migrate()
-        } catch (e: FlywayException) {
-            ResourceLogger.LOGGER.databaseMigrationError(schemaSelector.schema, e)
-            throw e
-        }
+            // To get the list of schemas, we need to perform a low level query on the datasource. Hibernate etc does
+            // not expose this, and it is very early in the boot cycle. This will use the blocking drivers during startup.
+            try {
+                dataSource.connection.use { connection ->
+                    val metaData = connection.metaData
 
-        // Create a set of organisations to update
-        val organisationIds = mutableSetOf<String>()
-
-        // To get the list of schemas, we need to perform a low level query on the datasource. Hibernate etc does
-        // not expose this, and it is very early in the boot cycle. This will use the blocking drivers during startup.
-        try {
-            dataSource.connection.use { connection ->
-                val metaData = connection.metaData
-
-                metaData.schemas.use { schemas ->
-                    while (schemas.next()) {
-                        schemas.getString("TABLE_SCHEM")?.apply {
-                            if (this.isValidUuid()) {
-                                organisationIds.add(this)
+                    metaData.schemas.use { schemas ->
+                        while (schemas.next()) {
+                            schemas.getString("TABLE_SCHEM")?.apply {
+                                if (this.isValidUuid()) {
+                                    organisationIds.add(this)
+                                }
                             }
                         }
                     }
                 }
+            } catch (e: SQLException) {
+                ResourceLogger.LOGGER.schemaQueryError(e)
+                throw e
             }
-        } catch (e: SQLException) {
-            ResourceLogger.LOGGER.schemaQueryError(e)
-            throw e
-        }
 
-        // Special catch, if the default schema is not already created, and there is no initialiser script, do not
-        // create it. It may be a mistake. The Organisation initialiser will actually report and throw the error. We
-        // check this because if there is an initialiser, then we want to add the schema so that it is created/upgraded
-        // which is essentially a first load scenario.
-        val defaultOrganisationId = platformConfig.defaultOrganisation().id().toString()
-        if (defaultOrganisationId !in organisationIds &&
-            !platformConfig.defaultOrganisation().config().orElse(null).isNullOrBlank()) {
-            organisationIds.add(defaultOrganisationId)
-        }
-
-        // Enumerate over all the organisation schemas. If there is a failure, then fail all.
-        try {
-            organisationIds.forEach { organisationId ->
-                // Create a Flyway container for each organisation which will copy the default. We need a new container
-                // because the Flyway object is created when we create the container.
-                schemaSelector.schema = organisationId
-                val organisationContainer = flywayContainerProducer.createFlyway(
-                    dataSource,
-                    ORGANISATION_SCHEMA,
-                    defaultFlywayContainer.isHasMigrations,
-                    defaultFlywayContainer.isCreatePossible,
-                    defaultFlywayContainer.resourceLocations
-                        .filter { it.contains("/${ORGANISATION_SCHEMA}/") }
-                        .flatMap { base -> base.removeSuffix("/").let { listOf("${it}/${dataSourceKind}/", "${it}/${COMMON_PATH}/") } }
-                        .toSet()
-                )
-
-                organisationContainer.flyway.migrate()
+            // Special catch, if the default schema is not already created, and there is no initialiser script, do not
+            // create it. It may be a mistake. The Organisation initialiser will actually report and throw the error. We
+            // check this because if there is an initialiser, then we want to add the schema so that it is created/upgraded
+            // which is essentially a first load scenario.
+            val defaultOrganisationId = platformConfig.defaultOrganisation().id().toString()
+            if (defaultOrganisationId !in organisationIds &&
+                !platformConfig.defaultOrganisation().config().orElse(null).isNullOrBlank()
+            ) {
+                organisationIds.add(defaultOrganisationId)
             }
-        } catch (e: FlywayException) {
-            ResourceLogger.LOGGER.databaseMigrationError(schemaSelector.schema, e)
-            throw e
+
+            // Enumerate over all the organisation schemas. If there is a failure, then fail all.
+            try {
+                organisationIds.forEach { organisationId ->
+                    // Create a Flyway container for each organisation which will copy the default. We need a new container
+                    // because the Flyway object is created when we create the container.
+                    schemaSelector.schema = organisationId
+                    val organisationContainer =
+                        flywayContainerProducer.createFlyway(
+                            dataSource,
+                            ORGANISATION_SCHEMA,
+                            defaultFlywayContainer.isHasMigrations,
+                            defaultFlywayContainer.isCreatePossible,
+                            defaultFlywayContainer.resourceLocations
+                                .filter { it.contains("/${ORGANISATION_SCHEMA}/") }
+                                .flatMap { base ->
+                                    base.removeSuffix("/").let { listOf("$it/$dataSourceKind/", "$it/${COMMON_PATH}/") }
+                                }
+                                .toSet()
+                        )
+
+                    organisationContainer.flyway.migrate()
+                }
+            } catch (e: FlywayException) {
+                ResourceLogger.LOGGER.databaseMigrationError(schemaSelector.schema, e)
+                throw e
+            }
         }
     }
-}
 
 /**
  * A customiser to set the schema for a given iteration.
@@ -169,7 +176,6 @@ class DatabaseUpdater @Inject constructor (
 @Singleton
 @FlywayDataSource(ORGANISATION_SCHEMA)
 class FlywayConfigurationSchemaCustomizer : FlywayConfigurationCustomizer {
-
     /**
      * This is set to the global schema by default so that the default FlywayContainer has the correct settings.
      */
@@ -187,42 +193,44 @@ class FlywayConfigurationSchemaCustomizer : FlywayConfigurationCustomizer {
  */
 @Singleton
 @FlywayDataSource(ORGANISATION_SCHEMA)
-class FlywayConfigurationOrganisationResourcesCustomizer @Inject constructor (
-    @param:ConfigProperty(name = "quarkus.datasource.db-kind")
-    private val dataSourceKind: String
-) : FlywayConfigurationCustomizer {
-
-    override fun customize(configuration: FluentConfiguration) {
-        configuration.resourceProvider(
-            FilteringResourceProvider(
-                configuration.resourceProvider,
-                ORGANISATION_SCHEMA,
-                dataSourceKind
+class FlywayConfigurationOrganisationResourcesCustomizer
+    @Inject
+    constructor(
+        @param:ConfigProperty(name = "quarkus.datasource.db-kind")
+        private val dataSourceKind: String,
+    ) : FlywayConfigurationCustomizer {
+        override fun customize(configuration: FluentConfiguration) {
+            configuration.resourceProvider(
+                FilteringResourceProvider(
+                    configuration.resourceProvider,
+                    ORGANISATION_SCHEMA,
+                    dataSourceKind
+                )
             )
-        )
+        }
     }
-}
 
 /**
  * A customiser filter the paths for a config (platform)
  */
 @Singleton
 @FlywayDataSource(PLATFORM_SCHEMA)
-class FlywayConfigurationPlatformResourcesCustomizer @Inject constructor (
-    @param:ConfigProperty(name = "quarkus.datasource.db-kind")
-    private val dataSourceKind: String
-) : FlywayConfigurationCustomizer {
-
-    override fun customize(configuration: FluentConfiguration) {
-        configuration.resourceProvider(
-            FilteringResourceProvider(
-                configuration.resourceProvider,
-                PLATFORM_SCHEMA,
-                dataSourceKind
+class FlywayConfigurationPlatformResourcesCustomizer
+    @Inject
+    constructor(
+        @param:ConfigProperty(name = "quarkus.datasource.db-kind")
+        private val dataSourceKind: String,
+    ) : FlywayConfigurationCustomizer {
+        override fun customize(configuration: FluentConfiguration) {
+            configuration.resourceProvider(
+                FilteringResourceProvider(
+                    configuration.resourceProvider,
+                    PLATFORM_SCHEMA,
+                    dataSourceKind
+                )
             )
-        )
+        }
     }
-}
 
 /**
  * A filtering resource provider based on the schema and database type.
@@ -236,17 +244,16 @@ class FlywayConfigurationPlatformResourcesCustomizer @Inject constructor (
 class FilteringResourceProvider(
     private val parent: ResourceProvider,
     schema: String,
-    dataSourceType: String
+    dataSourceType: String,
 ) : ResourceProvider {
-    private val commonPath = "/${schema}/${COMMON_PATH}/"
-    private val typePath = "/${schema}/${dataSourceType}/"
+    private val commonPath = "/$schema/${COMMON_PATH}/"
+    private val typePath = "/$schema/$dataSourceType/"
 
-    override fun getResource(name: String): LoadableResource? =
-        parent.getResource(name)?.takeIf { filterMatches(it) }
+    override fun getResource(name: String): LoadableResource? = parent.getResource(name)?.takeIf { filterMatches(it) }
 
     override fun getResources(
         prefix: String,
-        suffixes: Array<out String>
+        suffixes: Array<out String>,
     ): Collection<LoadableResource> =
         parent
             .getResources(prefix, suffixes)
@@ -257,5 +264,5 @@ class FilteringResourceProvider(
      */
     private fun filterMatches(loadableResource: LoadableResource): Boolean =
         loadableResource.absolutePath.contains(commonPath) ||
-                loadableResource.absolutePath.contains(typePath)
+            loadableResource.absolutePath.contains(typePath)
 }

@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room
 
 import io.quarkus.arc.profile.IfBuildProfile
@@ -46,7 +45,9 @@ import java.sql.Types
 @IfBuildProfile("dev")
 @ApplicationScoped
 class AppInitializer {
-    fun onStart(@Observes event: StartupEvent) {
+    fun onStart(
+        @Observes event: StartupEvent,
+    ) {
         // Need to configure the H2 driver. See the root test support package for reasoning. This does not
         // exist in production, which uses MySQL.
         val dataType = DataType.getDataType(TypeInfo.TYPE_JSON.valueType)
@@ -62,10 +63,9 @@ class AppInitializer {
 @IfBuildProfile("dev")
 @ApplicationScoped
 class DevOidcTenantConfigResolver : TenantConfigResolver {
-
     override fun resolve(
         routingContext: RoutingContext?,
-        requestContext: OidcRequestContext<OidcTenantConfig>
+        requestContext: OidcRequestContext<OidcTenantConfig>,
     ): Uni<OidcTenantConfig> = Uni.createFrom().nullItem()
 }
 
@@ -77,11 +77,11 @@ class DevOidcTenantConfigResolver : TenantConfigResolver {
 class PhysicalNamingSchemaErasingSnakeCaseImpl : PhysicalNamingStrategySnakeCaseImpl() {
     override fun toPhysicalCatalogName(
         logicalName: Identifier?,
-        jdbcEnvironment: JdbcEnvironment?
+        jdbcEnvironment: JdbcEnvironment?,
     ): Identifier? = null
 
     override fun toPhysicalSchemaName(
         logicalName: Identifier?,
-        jdbcEnvironment: JdbcEnvironment
+        jdbcEnvironment: JdbcEnvironment,
     ): Identifier? = null
 }

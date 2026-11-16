@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.resource
 
 import ai.hamoni.control_room.API_PATH
@@ -46,7 +45,6 @@ import java.util.UUID
  */
 @QuarkusTest
 class AuthResourcesTest {
-
     @InjectMock
     lateinit var authenticationService: AuthenticationService
 
@@ -66,10 +64,11 @@ class AuthResourcesTest {
         givenKnownProvider()
 
         // When
-        val response = given()
-            .redirects().follow(false)
-            .queryParam(OidcTenantConfigResolver.PROVIDER_QUERY_PARAMETER, providerId)
-            .`when`().get(LOGIN_PATH)
+        val response =
+            given()
+                .redirects().follow(false)
+                .queryParam(OidcTenantConfigResolver.PROVIDER_QUERY_PARAMETER, providerId)
+                .`when`().get(LOGIN_PATH)
 
         // Then
         response.then()
@@ -85,11 +84,12 @@ class AuthResourcesTest {
         val returnUrl = "/inbox"
 
         // When
-        val response = given()
-            .redirects().follow(false)
-            .queryParam(OidcTenantConfigResolver.PROVIDER_QUERY_PARAMETER, providerId)
-            .queryParam("returnUrl", returnUrl)
-            .`when`().get(LOGIN_PATH)
+        val response =
+            given()
+                .redirects().follow(false)
+                .queryParam(OidcTenantConfigResolver.PROVIDER_QUERY_PARAMETER, providerId)
+                .queryParam("returnUrl", returnUrl)
+                .`when`().get(LOGIN_PATH)
 
         // Then
         response.then()
@@ -104,11 +104,12 @@ class AuthResourcesTest {
         givenKnownProvider()
 
         // When
-        val response = given()
-            .redirects().follow(false)
-            .queryParam(OidcTenantConfigResolver.PROVIDER_QUERY_PARAMETER, providerId)
-            .queryParam("returnUrl", "https://example.com")
-            .`when`().get(LOGIN_PATH)
+        val response =
+            given()
+                .redirects().follow(false)
+                .queryParam(OidcTenantConfigResolver.PROVIDER_QUERY_PARAMETER, providerId)
+                .queryParam("returnUrl", "https://example.com")
+                .`when`().get(LOGIN_PATH)
 
         // Then
         response.then().statusCode(400)
@@ -121,11 +122,12 @@ class AuthResourcesTest {
         givenKnownProvider()
 
         // When
-        val response = given()
-            .redirects().follow(false)
-            .queryParam(OidcTenantConfigResolver.PROVIDER_QUERY_PARAMETER, providerId)
-            .queryParam("returnUrl", "//example.com")
-            .`when`().get(LOGIN_PATH)
+        val response =
+            given()
+                .redirects().follow(false)
+                .queryParam(OidcTenantConfigResolver.PROVIDER_QUERY_PARAMETER, providerId)
+                .queryParam("returnUrl", "//example.com")
+                .`when`().get(LOGIN_PATH)
 
         // Then
         response.then().statusCode(400)
@@ -134,9 +136,10 @@ class AuthResourcesTest {
     @Test
     fun `a protected authentication call without a session returns 401`() {
         // When
-        val response = given()
-            .redirects().follow(false)
-            .`when`().get("${API_PATH}auth/profile")
+        val response =
+            given()
+                .redirects().follow(false)
+                .`when`().get("${API_PATH}auth/profile")
 
         // Then
         response.then().statusCode(401)
@@ -152,8 +155,9 @@ class AuthResourcesTest {
             Uni.createFrom().item(listOf(provider))
 
         // When
-        val response = given()
-            .`when`().get("${API_PATH}auth/identityProviders")
+        val response =
+            given()
+                .`when`().get("${API_PATH}auth/identityProviders")
 
         // Then
         response.then()
@@ -169,9 +173,10 @@ class AuthResourcesTest {
             Uni.createFrom().item(listOf(provider))
 
         // When
-        val response = given()
-            .queryParam("organisationId", organisationId.toString())
-            .`when`().get("${API_PATH}auth/identityProviders")
+        val response =
+            given()
+                .queryParam("organisationId", organisationId.toString())
+                .`when`().get("${API_PATH}auth/identityProviders")
 
         // Then
         response.then()
@@ -188,8 +193,9 @@ class AuthResourcesTest {
             Uni.createFrom().item(profile())
 
         // When
-        val response = given()
-            .`when`().get("${API_PATH}auth/profile")
+        val response =
+            given()
+                .`when`().get("${API_PATH}auth/profile")
 
         // Then
         response.then()
@@ -201,14 +207,16 @@ class AuthResourcesTest {
     @TestSecurity(user = "test")
     fun `the current profile organisations are returned`() {
         // Given
-        val profile = profile().apply {
-            organisations = listOf(
-                AuthenticationProfileOrganisation(
-                    id = organisationId,
-                    name = "Example Organisation"
-                )
-            )
-        }
+        val profile =
+            profile().apply {
+                organisations =
+                    listOf(
+                        AuthenticationProfileOrganisation(
+                            id = organisationId,
+                            name = "Example Organisation"
+                        )
+                    )
+            }
         every {
             authenticationProfileService.profile(
                 listOf(AuthenticationProfileServiceHydration.ORGANISATIONS)
@@ -216,8 +224,9 @@ class AuthResourcesTest {
         } returns Uni.createFrom().item(profile)
 
         // When
-        val response = given()
-            .`when`().get("${API_PATH}auth/profile/organisations")
+        val response =
+            given()
+                .`when`().get("${API_PATH}auth/profile/organisations")
 
         // Then
         response.then()
@@ -232,8 +241,9 @@ class AuthResourcesTest {
         every { authenticationService.logout() } returns Uni.createFrom().voidItem()
 
         // When
-        val response = given()
-            .`when`().get("${API_PATH}auth/logout")
+        val response =
+            given()
+                .`when`().get("${API_PATH}auth/logout")
 
         // Then
         response.then()

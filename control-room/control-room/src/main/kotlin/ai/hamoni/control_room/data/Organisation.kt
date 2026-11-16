@@ -15,21 +15,39 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.data
 
 import ai.hamoni.common.core.shared.TypedSetting
 import ai.hamoni.common.core.shared.TypedSettingType
 import ai.hamoni.common.platform.serialization.UUIDSerializer
 import ai.hamoni.control_room.service.OrganisationService
-import jakarta.persistence.*
+import jakarta.persistence.CascadeType
+import jakarta.persistence.CollectionTable
+import jakarta.persistence.Column
+import jakarta.persistence.ElementCollection
+import jakarta.persistence.Embeddable
+import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
+import jakarta.persistence.ForeignKey
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import jakarta.persistence.JoinColumn
+import jakarta.persistence.NamedNativeQueries
+import jakarta.persistence.NamedNativeQuery
+import jakarta.persistence.NamedQueries
+import jakarta.persistence.NamedQuery
+import jakarta.persistence.OneToMany
+import jakarta.persistence.QueryHint
+import jakarta.persistence.Table
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.eclipse.microprofile.openapi.annotations.media.Schema
 import org.hibernate.annotations.CreationTimestamp
 import java.time.Instant
-import java.util.*
-
+import java.util.Objects
+import java.util.UUID
 
 /*
  * All frontend specific entities and data types (including any projections) for the organisation specific schema go in
@@ -48,11 +66,12 @@ import java.util.*
  *
  */
 @Entity
-@NamedNativeQueries(value = [
-    NamedNativeQuery(
-        name = "Organisation.checkOrganisationExists",
-        hints = [QueryHint(name = "org.hibernate.readOnly", value = "true")],
-        query = """
+@NamedNativeQueries(
+    value = [
+        NamedNativeQuery(
+            name = "Organisation.checkOrganisationExists",
+            hints = [QueryHint(name = "org.hibernate.readOnly", value = "true")],
+            query = """
             SELECT
                 COUNT(*) > 0
             FROM
@@ -60,14 +79,16 @@ import java.util.*
             WHERE
                 (LOWER(TABLE_CATALOG) = :schema OR LOWER(TABLE_SCHEMA) = :schema) AND LOWER(TABLE_NAME) = 'organisation'
         """,
-        resultClass = Boolean::class
-    )
-])
-@NamedQueries(value = [
-    NamedQuery(
-        name = "Organisation.isOrganisationInitialised",
-        hints = [QueryHint(name = "org.hibernate.readOnly", value = "true")],
-        query = """
+            resultClass = Boolean::class
+        )
+    ]
+)
+@NamedQueries(
+    value = [
+        NamedQuery(
+            name = "Organisation.isOrganisationInitialised",
+            hints = [QueryHint(name = "org.hibernate.readOnly", value = "true")],
+            query = """
             SELECT
                 CASE 
                     WHEN COUNT(*) = 0 THEN ai.hamoni.control_room.data.OrganisationState.NOT_INITIALISED
@@ -78,9 +99,10 @@ import java.util.*
             FROM
                 Organisation o
         """,
-        resultClass = OrganisationState::class
-    )
-])
+            resultClass = OrganisationState::class
+        )
+    ]
+)
 @Serializable
 @Table(name = "organisation", comment = "Organisations")
 class Organisation(
@@ -89,26 +111,20 @@ class Organisation(
     @Serializable(with = UUIDSerializer::class)
     @Schema(readOnly = true)
     var id: UUID? = null,
-
     @Column(name = "name", nullable = false, updatable = true, comment = "Organisation name")
     var name: String,
-
     @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status")
     var enabled: Boolean,
-
     @kotlinx.serialization.Transient
     @Schema(readOnly = true)
     @Column(name = "created", nullable = false, updatable = false, comment = "Date the account was created (UTC)")
     @CreationTimestamp
     var created: Instant? = null,
-
     @kotlinx.serialization.Transient
     @Schema(readOnly = true)
     @Column(name = "updated", nullable = false, updatable = false, comment = "Date the account was last updated (UTC)")
-    var updated: Instant? = null
-
+    var updated: Instant? = null,
 ) {
-
     /**
      * The organisation's settings, populated when the `settings`
      * hydration option is requested.
@@ -152,8 +168,7 @@ class Organisation(
 data class OrganisationHeader(
     @Serializable(with = UUIDSerializer::class)
     val id: UUID,
-
-    val name: String
+    val name: String,
 ) {
     constructor(organisation: Organisation) : this(organisation.id!!, organisation.name)
 }
@@ -168,7 +183,7 @@ enum class OrganisationHydration {
     CONFIGURATION,
 
     @SerialName("identityProviders")
-    IDENTITY_PROVIDERS
+    IDENTITY_PROVIDERS,
 }
 
 /**
@@ -183,7 +198,7 @@ enum class OrganisationHydration {
 @Entity
 @Serializable
 @Table(name = "organisation_identity_provider", comment = "Organisation identify providers (OIDC)")
-class OrganisationIdentityProvider (
+class OrganisationIdentityProvider(
     /**
      * This is not generated as the actual generated value is in the platform organisation identity provider index.
      */
@@ -191,40 +206,50 @@ class OrganisationIdentityProvider (
     @Serializable(with = UUIDSerializer::class)
     @Schema(readOnly = true)
     var id: UUID? = null,
-
     /**
      * Security note: the name appears on the login page, do not choose names that are identifying. It will be shown as
      * "continue with <name>".
      */
-    @Column(name = "name", nullable = false, updatable = true, unique = true, comment = "The display name for the OIDC provider")
+    @Column(
+        name = "name",
+        nullable = false,
+        updatable = true,
+        unique = true,
+        comment = "The display name for the OIDC provider"
+    )
     var name: String,
-
     @Column(name = "url", nullable = false, updatable = true, unique = true, comment = "URL for the OIDC provider")
     var url: String,
-
     @Column(name = "client_id", nullable = false, updatable = true, unique = true, comment = "The client id")
     var clientId: String,
-
-    @Column(name = "client_secret_ref", nullable = true, updatable = true, unique = true, comment = "The client secret reference, the actual value is in the credential vault. Null means public client.")
+    @Column(
+        name = "client_secret_ref",
+        nullable = true,
+        updatable = true,
+        unique = true,
+        comment = "The client secret reference, the actual value is in the credential vault. Null means public client."
+    )
     var clientSecretReference: String?,
-
     @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status")
     var enabled: Boolean,
-
     @kotlinx.serialization.Transient
     @Schema(readOnly = true)
     @Column(name = "created", nullable = false, updatable = false, comment = "Date the organisation was created (UTC)")
     @CreationTimestamp
     var created: Instant? = null,
-
     @kotlinx.serialization.Transient
     @Schema(readOnly = true)
-    @Column(name = "updated", nullable = false, updatable = false, comment = "Date the organisation was last updated (UTC)")
-    var updated: Instant? = null
+    @Column(
+        name = "updated",
+        nullable = false,
+        updatable = false,
+        comment = "Date the organisation was last updated (UTC)"
+    )
+    var updated: Instant? = null,
 ) {
     override fun hashCode(): Int = Objects.hash(id)
-    override fun equals(other: Any?): Boolean = other is OrganisationIdentityProvider && id == other.id
 
+    override fun equals(other: Any?): Boolean = other is OrganisationIdentityProvider && id == other.id
 }
 
 /**
@@ -240,10 +265,11 @@ class OrganisationIdentityProvider (
 data class OrganisationIdentityProviderHeader(
     @Serializable(with = UUIDSerializer::class)
     val id: UUID,
-
-    val name: String
+    val name: String,
 ) {
-    constructor(organisationIdentityProvider: OrganisationIdentityProvider) : this(organisationIdentityProvider.id!!, organisationIdentityProvider.name)
+    constructor(
+        organisationIdentityProvider: OrganisationIdentityProvider,
+    ) : this(organisationIdentityProvider.id!!, organisationIdentityProvider.name)
 }
 
 /**
@@ -256,12 +282,12 @@ data class OrganisationIdentityProviderHeader(
 data class OrganisationIdentityProviderHeaderWithSource(
     @Serializable(with = UUIDSerializer::class)
     val id: UUID,
-
     val name: String,
-
-    val default: Boolean
+    val default: Boolean,
 ) {
-    constructor(organisationIdentityProvider: OrganisationIdentityProvider) : this(organisationIdentityProvider.id!!, organisationIdentityProvider.name, false)
+    constructor(
+        organisationIdentityProvider: OrganisationIdentityProvider,
+    ) : this(organisationIdentityProvider.id!!, organisationIdentityProvider.name, false)
 }
 
 /**
@@ -274,30 +300,34 @@ data class OrganisationIdentityProviderHeaderWithSource(
  */
 @Serializable
 @Embeddable
-class OrganisationSetting (
+class OrganisationSetting(
     /**
      * The key for the key/value pair.
      */
     @Column(name = "key", nullable = false, updatable = false, unique = true, comment = "Settings key")
     @Enumerated(EnumType.STRING)
     var key: OrganisationSettingKey,
-
     /**
      * The key for the key/value pair.
      */
-    @Column(name = "value", nullable = true, updatable = true, unique = false, comment = "Settings value", columnDefinition = "TEXT")
+    @Column(
+        name = "value",
+        nullable = true,
+        updatable = true,
+        unique = false,
+        comment = "Settings value",
+        columnDefinition = "TEXT"
+    )
     var value: String,
-
     @kotlinx.serialization.Transient
     @Schema(readOnly = true)
     @Column(name = "created", nullable = false, updatable = false, comment = "Date the key/value created (UTC)")
     @CreationTimestamp
     var created: Instant? = null,
-
     @kotlinx.serialization.Transient
     @Schema(readOnly = true)
     @Column(name = "updated", nullable = false, updatable = false, comment = "Date the key/value last updated (UTC)")
-    var updated: Instant? = null
+    var updated: Instant? = null,
 )
 
 /**
@@ -310,9 +340,8 @@ class OrganisationSetting (
 @Serializable
 enum class OrganisationSettingKey(
     override val type: TypedSettingType<*>,
-    override val default: Any
+    override val default: Any,
 ) : TypedSetting {
-
     /**
      * Defines the calendar.
      */
