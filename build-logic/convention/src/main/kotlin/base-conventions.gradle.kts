@@ -63,10 +63,3 @@ spotless {
             .setEditorConfigPath(spotlessDirectory.file("editorconfig"))
     }
 }
-
-/**
- * Bind the spotless check to the 'check'
- */
-tasks.named("check") {
-    dependsOn(tasks.named("spotlessCheck"))
-}
