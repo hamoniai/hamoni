@@ -1,6 +1,6 @@
 /*
  * Hamoni: Cloud workflow platform
- * Copyright (C) 2026  Hamoni Limited
+ * Copyright (C) 2026 Hamoni Limited
  *
  * Unless you have received this program directly from Hamoni Limited pursuant to
  * the terms of a commercial license agreement with Hamoni Limited, then this
