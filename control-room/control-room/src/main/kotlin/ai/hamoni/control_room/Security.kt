@@ -57,8 +57,11 @@ import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config as MultiTenantConfig
  * A bean to centralise all authorisation checks All checks are reactive since there might be database or cache
  * access.
  *
+ * This can be application scoped because all the methods are runtime evaluated in the erquest scope.
+ *
  * A session is always required to be active for this.
  */
+@ApplicationScoped
 class PlatformAuthoriser @Inject constructor(
     @param:PersistenceUnitExtension private val tenantResolver: TenantResolver
 ) {

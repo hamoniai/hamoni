@@ -20,16 +20,19 @@ package ai.hamoni.control_room.resource
 
 import ai.hamoni.common.core.APPLICATION_JSON_UTF8
 import ai.hamoni.control_room.data.Organisation
+import ai.hamoni.control_room.data.OrganisationHydration
 import ai.hamoni.control_room.data.OrganisationIdentityProvider
 import ai.hamoni.control_room.data.OrganisationSetting
 import ai.hamoni.control_room.service.OrganisationService
-import ai.hamoni.control_room.service.OrganisationServiceHydration
 import io.quarkus.security.Authenticated
 import io.smallrye.mutiny.Uni
 import jakarta.inject.Inject
 import jakarta.ws.rs.GET
 import jakarta.ws.rs.Path
 import jakarta.ws.rs.Produces
+import org.eclipse.microprofile.openapi.annotations.OpenAPIDefinition
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension
+import org.eclipse.microprofile.openapi.annotations.info.Info
 import org.jboss.resteasy.reactive.RestQuery
 import org.jboss.resteasy.reactive.RestResponse
 
@@ -42,6 +45,12 @@ import org.jboss.resteasy.reactive.RestResponse
  * (group C).
  */
 @Authenticated
+@OpenAPIDefinition(
+    extensions = [
+        Extension(name = "x-smallrye-profile-org", value = "")
+    ],
+    info = Info(title = "Organisation APIs", version = "x"),
+)
 @Path("/organisation")
 class OrganisationResource @Inject constructor(
     private val organisationService: OrganisationService,
@@ -60,7 +69,7 @@ class OrganisationResource @Inject constructor(
     @GET
     @Produces(APPLICATION_JSON_UTF8)
     fun get(
-        @RestQuery hydrate: List<OrganisationServiceHydration>
+        @RestQuery hydrate: List<OrganisationHydration>
     ): Uni<RestResponse<Organisation>> =
         organisationService.get(hydrate)
             .onItem().transform { data -> RestResponse.ok(data) }

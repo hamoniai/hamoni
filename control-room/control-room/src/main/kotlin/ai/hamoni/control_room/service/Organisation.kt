@@ -21,6 +21,7 @@ package ai.hamoni.control_room.service
 import ai.hamoni.common.core.exception.ServiceException
 import ai.hamoni.control_room.PlatformAuthoriser
 import ai.hamoni.control_room.data.Organisation
+import ai.hamoni.control_room.data.OrganisationHydration
 import ai.hamoni.control_room.data.OrganisationIdentityProvider
 import ai.hamoni.control_room.data.OrganisationSetting
 import ai.hamoni.control_room.data.OrganisationState
@@ -32,8 +33,6 @@ import io.quarkus.runtime.annotations.RegisterForReflection
 import io.smallrye.mutiny.Uni
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 
 /*
  * All frontend organisation specific services go in here. Services that are common to the frontend and backend
@@ -88,7 +87,7 @@ class OrganisationService @Inject constructor(
      * @param hydrate the related data to attach to the organisation
      * @return the organisation with the requested data attached
      */
-    fun get(hydrate: List<OrganisationServiceHydration> = emptyList()): Uni<Organisation> {
+    fun get(hydrate: List<OrganisationHydration> = emptyList()): Uni<Organisation> {
         //checkAuthorisation()
         //organisationRepository.findById(id)
         TODO()
@@ -150,16 +149,4 @@ class OrganisationService @Inject constructor(
                     ServiceException(::state, "Unable to determine organisation state", throwable)
                 }
         }
-}
-
-/**
- * The related data [OrganisationService] can attach to an organisation.
- */
-@Serializable
-enum class OrganisationServiceHydration {
-    @SerialName("settings")
-    CONFIGURATION,
-
-    @SerialName("identityProviders")
-    IDENTITY_PROVIDERS
 }

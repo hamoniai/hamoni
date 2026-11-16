@@ -21,9 +21,11 @@ package ai.hamoni.control_room.data
 import ai.hamoni.common.core.shared.TypedSetting
 import ai.hamoni.common.core.shared.TypedSettingType
 import ai.hamoni.common.platform.serialization.UUIDSerializer
+import ai.hamoni.control_room.service.OrganisationService
 import jakarta.persistence.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.eclipse.microprofile.openapi.annotations.media.Schema
 import org.hibernate.annotations.CreationTimestamp
 import java.time.Instant
 import java.util.*
@@ -69,7 +71,8 @@ import java.util.*
             SELECT
                 CASE 
                     WHEN COUNT(*) = 0 THEN ai.hamoni.control_room.data.OrganisationState.NOT_INITIALISED
-                    WHEN COUNT(*) = 1 THEN ai.hamoni.control_room.data.OrganisationState.INITIALISED
+                    WHEN COUNT(*) = 1 AND o.enabled = TRUE THEN ai.hamoni.control_room.data.OrganisationState.ACTIVE
+                    WHEN COUNT(*) = 1 AND o.enabled = FALSE THEN ai.hamoni.control_room.data.OrganisationState.DISABLED
                     ELSE ai.hamoni.control_room.data.OrganisationState.ERROR
                 END as organisationState
             FROM
@@ -150,6 +153,19 @@ data class OrganisationHeader(
     val name: String
 ) {
     constructor(organisation: Organisation) : this(organisation.id!!, organisation.name)
+}
+
+/**
+ * The related data [OrganisationService] can attach to an organisation.
+ */
+@Schema(enumeration = ["settings", "identityProviders"])
+@Serializable
+enum class OrganisationHydration {
+    @SerialName("settings")
+    CONFIGURATION,
+
+    @SerialName("identityProviders")
+    IDENTITY_PROVIDERS
 }
 
 /**
@@ -282,6 +298,7 @@ class OrganisationSetting (
  * Each key declares its value type and the value used when the organisation has
  * not stored a setting.
  */
+@Schema(enumeration = ["country", "language", "timezone", "includeDefaultAuthenticationMethods"])
 @Serializable
 enum class OrganisationSettingKey(
     override val type: TypedSettingType<*>,
@@ -319,6 +336,7 @@ enum class OrganisationSettingKey(
 /**
  * The organisation state
  */
+@Schema(enumeration = ["not-created", "not-initialised", "active", "disabled", "error"])
 @Serializable
 enum class OrganisationState {
     /**
@@ -334,10 +352,16 @@ enum class OrganisationState {
     NOT_INITIALISED,
 
     /**
-     * Organisation has been initialised and appears good.
+     * Organisation has been and appears in good order.
      */
-    @SerialName("initialised")
-    INITIALISED,
+    @SerialName("active")
+    ACTIVE,
+
+    /**
+     * Organisation has been administratively disabled.
+     */
+    @SerialName("disabled")
+    DISABLED,
 
     /**
      * Organisation is in error (corrupted data).

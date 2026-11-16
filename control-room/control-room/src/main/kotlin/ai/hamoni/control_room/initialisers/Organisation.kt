@@ -200,7 +200,7 @@ class OrganisationInitialiser @Inject constructor(
                 .onItem().transformToUni { state ->
                     when (state) {
                         // Skip if already initialised
-                        OrganisationState.INITIALISED -> {
+                        OrganisationState.ACTIVE -> {
                             ResourceLogger.LOGGER.organisationInitialisationUpdate(
                                 defaultOrganisationId,
                                 "already initialised"
@@ -208,14 +208,17 @@ class OrganisationInitialiser @Inject constructor(
                             Uni.createFrom().item(false)
                         }
 
+                        // Disabled - should be rare
+                        OrganisationState.DISABLED -> Uni.createFrom().failure {
+                            OrganisationInitialisationException("default organisation is disabled")
+                        }
+
                         // Try to initialise, it might fail the Uni.
                         OrganisationState.NOT_INITIALISED -> initialise()
 
                         // Some error, do not boot.
-                        else -> {
-                            Uni.createFrom().failure {
-                                OrganisationInitialisationException("default organisation has an error")
-                            }
+                        else -> Uni.createFrom().failure {
+                            OrganisationInitialisationException("default organisation has an error")
                         }
                     }
                 }
@@ -226,6 +229,7 @@ class OrganisationInitialiser @Inject constructor(
                         e
                     )
                 }
+                .onFailure().recoverWithNull()
         }
     }
 }

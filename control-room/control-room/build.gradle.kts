@@ -42,6 +42,7 @@ dependencies {
     implementation("io.quarkus:quarkus-reactive-mysql-client")
     implementation("io.quarkus:quarkus-reactive-transactions")
     implementation("io.quarkus:quarkus-scheduler")
+    compileOnly("io.quarkus:quarkus-smallrye-openapi")
     implementation("io.quarkus:quarkus-smallrye-context-propagation")
     //implementation(libs.platform.quarkus.ext.multitenant.http)
     //implementation(libs.platform.quarkus.ext.multitenant.orm)
@@ -56,6 +57,7 @@ dependencies {
     // Quarkus dependencies for dev mode
     compileOnly(libs.platform.quarkus.ext.h2db) // Need this to compile the devMode beans, which are later excluded.
     quarkusDev("io.quarkus:quarkus-jdbc-h2")
+    quarkusDev("io.quarkus:quarkus-smallrye-openapi")
     quarkusDev(libs.platform.quarkus.ext.h2db)
 
     // Test dependencies
