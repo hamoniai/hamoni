@@ -281,7 +281,7 @@ constructor(
                         .tenantId(provider.id.toString())
                         .authServerUrl(provider.url)
                         .clientId(provider.clientId)
-                        .credentials(provider.clientSecretReference) // FIXME: cred-vault ref.
+                        .credentials(provider.clientSecret) // FIXME: cred-vault ref.
                         .applicationType(io.quarkus.oidc.runtime.OidcTenantConfig.ApplicationType.HYBRID)
                         .discoveryEnabled(true)
                         .build()

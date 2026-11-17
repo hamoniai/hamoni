@@ -30,8 +30,6 @@ import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.ForeignKey
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.NamedNativeQueries
@@ -41,13 +39,14 @@ import jakarta.persistence.NamedQuery
 import jakarta.persistence.OneToMany
 import jakarta.persistence.QueryHint
 import jakarta.persistence.Table
+import jakarta.persistence.Transient
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.eclipse.microprofile.openapi.annotations.media.Schema
 import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.UpdateTimestamp
 import java.time.Instant
-import java.util.Objects
-import java.util.UUID
+import java.util.*
 
 /*
  * All frontend specific entities and data types (including any projections) for the organisation specific schema go in
@@ -107,22 +106,26 @@ import java.util.UUID
 @Table(name = "organisation", comment = "Organisations")
 class Organisation(
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Serializable(with = UUIDSerializer::class)
     @param:Schema(readOnly = true)
     var id: UUID? = null,
+
     @Column(name = "name", nullable = false, updatable = true, comment = "Organisation name")
     var name: String,
+
     @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status")
     var enabled: Boolean,
+
     @kotlinx.serialization.Transient
     @param:Schema(readOnly = true)
     @Column(name = "created", nullable = false, updatable = false, comment = "Date the account was created (UTC)")
     @CreationTimestamp
     var created: Instant? = null,
+
     @kotlinx.serialization.Transient
     @param:Schema(readOnly = true)
-    @Column(name = "updated", nullable = false, updatable = false, comment = "Date the account was last updated (UTC)")
+    @Column(name = "updated", nullable = false, updatable = true, comment = "Date the account was last updated (UTC)")
+    @UpdateTimestamp
     var updated: Instant? = null,
 ) {
     /**
@@ -168,6 +171,7 @@ class Organisation(
 data class OrganisationHeader(
     @Serializable(with = UUIDSerializer::class)
     val id: UUID,
+
     val name: String,
 ) {
     constructor(organisation: Organisation) : this(organisation.id!!, organisation.name)
@@ -206,6 +210,7 @@ class OrganisationIdentityProvider(
     @Serializable(with = UUIDSerializer::class)
     @param:Schema(readOnly = true)
     var id: UUID? = null,
+
     /**
      * Security note: the name appears on the login page, do not choose names that are identifying. It will be shown as
      * "continue with <name>".
@@ -218,35 +223,39 @@ class OrganisationIdentityProvider(
         comment = "The display name for the OIDC provider"
     )
     var name: String,
+
     @Column(name = "url", nullable = false, updatable = true, unique = true, comment = "URL for the OIDC provider")
     var url: String,
+
     @Column(name = "client_id", nullable = false, updatable = true, unique = true, comment = "The client id")
     var clientId: String,
-    @Column(
-        name = "client_secret_ref",
-        nullable = true,
-        updatable = true,
-        unique = true,
-        comment = "The client secret reference, the actual value is in the credential vault. Null means public client."
-    )
-    var clientSecretReference: String?,
+
+    /**
+     * True if this identity provider is enabled.
+     */
     @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status")
     var enabled: Boolean,
-    @kotlinx.serialization.Transient
-    @param:Schema(readOnly = true)
-    @Column(name = "created", nullable = false, updatable = false, comment = "Date the organisation was created (UTC)")
+
     @CreationTimestamp
-    var created: Instant? = null,
-    @kotlinx.serialization.Transient
+    @Column(name = "created", nullable = false, updatable = false, comment = "Date the account was created (UTC)")
     @param:Schema(readOnly = true)
-    @Column(
-        name = "updated",
-        nullable = false,
-        updatable = false,
-        comment = "Date the organisation was last updated (UTC)"
-    )
+    @kotlinx.serialization.Transient
+    var created: Instant? = null,
+
+    @Column(name = "updated", nullable = false, updatable = true, comment = "Date the account was last updated (UTC)")
+    @param:Schema(readOnly = true)
+    @kotlinx.serialization.Transient
+    @UpdateTimestamp
     var updated: Instant? = null,
 ) {
+    /**
+     * On write, this value is stored or updated in the credential store. It is not available by read.
+     */
+    @kotlinx.serialization.Transient
+    @Schema(writeOnly = true)
+    @Transient
+    var clientSecret: String? = null
+
     override fun hashCode(): Int = Objects.hash(id)
 
     override fun equals(other: Any?): Boolean = other is OrganisationIdentityProvider && id == other.id
@@ -307,6 +316,7 @@ class OrganisationSetting(
     @Column(name = "key", nullable = false, updatable = false, unique = true, comment = "Settings key")
     @Enumerated(EnumType.STRING)
     var key: OrganisationSettingKey,
+
     /**
      * The key for the key/value pair.
      */
@@ -319,14 +329,17 @@ class OrganisationSetting(
         columnDefinition = "TEXT"
     )
     var value: String,
-    @kotlinx.serialization.Transient
-    @param:Schema(readOnly = true)
-    @Column(name = "created", nullable = false, updatable = false, comment = "Date the key/value created (UTC)")
+
     @CreationTimestamp
-    var created: Instant? = null,
-    @kotlinx.serialization.Transient
+    @Column(name = "created", nullable = false, updatable = false, comment = "Date the account was created (UTC)")
     @param:Schema(readOnly = true)
-    @Column(name = "updated", nullable = false, updatable = false, comment = "Date the key/value last updated (UTC)")
+    @kotlinx.serialization.Transient
+    var created: Instant? = null,
+
+    @Column(name = "updated", nullable = false, updatable = true, comment = "Date the account was last updated (UTC)")
+    @param:Schema(readOnly = true)
+    @kotlinx.serialization.Transient
+    @UpdateTimestamp
     var updated: Instant? = null,
 )
 

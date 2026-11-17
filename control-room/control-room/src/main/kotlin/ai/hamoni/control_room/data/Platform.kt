@@ -35,7 +35,9 @@ import jakarta.persistence.Table
 import jakarta.persistence.Transient
 import jakarta.persistence.UniqueConstraint
 import kotlinx.serialization.Serializable
+import org.eclipse.microprofile.openapi.annotations.media.Schema
 import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.UpdateTimestamp
 import java.time.Instant
 import java.util.Objects
 import java.util.UUID
@@ -78,16 +80,22 @@ class AuthenticationProfile(
     @GeneratedValue(strategy = GenerationType.UUID)
     @Serializable(with = UUIDSerializer::class)
     var id: UUID? = null,
+
     @Column(name = "family_name", nullable = false, updatable = true, comment = "Family name")
     var familyName: String,
+
     @Column(name = "given_name", nullable = false, updatable = true, comment = "Given name")
     var givenName: String,
+
     @Column(name = "name", nullable = false, updatable = true, comment = "Display name")
     var name: String,
+
     @Column(name = "email", nullable = false, updatable = true, unique = false, comment = "Email address")
     var email: String,
+
     @Column(name = "issuer", nullable = false, updatable = false, unique = false, comment = "OIDC issuer")
     var issuer: String,
+
     @Column(
         name = "issuerSubject",
         nullable = false,
@@ -96,6 +104,7 @@ class AuthenticationProfile(
         comment = "OIDC issuer subject"
     )
     var issuerSubject: String,
+
     @Column(
         name = "enabled",
         nullable = false,
@@ -104,12 +113,17 @@ class AuthenticationProfile(
         comment = "Enabled status (for banning users)"
     )
     var enabled: Boolean,
-    @kotlinx.serialization.Transient
-    @Column(name = "created", nullable = false, updatable = false, comment = "Date the account was created (UTC)")
+
     @CreationTimestamp
-    var created: Instant? = null,
+    @Column(name = "created", nullable = false, updatable = false, comment = "Date the account was created (UTC)")
+    @param:Schema(readOnly = true)
     @kotlinx.serialization.Transient
-    @Column(name = "updated", nullable = false, updatable = false, comment = "Date the account was last updated (UTC)")
+    var created: Instant? = null,
+
+    @Column(name = "updated", nullable = false, updatable = true, comment = "Date the account was last updated (UTC)")
+    @param:Schema(readOnly = true)
+    @kotlinx.serialization.Transient
+    @UpdateTimestamp
     var updated: Instant? = null,
 ) {
     @ElementCollection

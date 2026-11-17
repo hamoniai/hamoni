@@ -178,7 +178,7 @@ constructor(
      * @return whether the organisation table exists
      */
     fun state(): Uni<OrganisationState> =
-    // To do this properly, and safely, we need to chain two queries. The first checks the organisation schema
+        // To do this properly, and safely, we need to chain two queries. The first checks the organisation schema
         // exists, and the second checks the data state.
         Panache.withSession {
             platformAuthoriser.checkPlatformAdminOrSystem()

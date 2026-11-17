@@ -221,10 +221,8 @@ class OrganisationInitialiser
                 // We have a new request scope here, needs initialising.
                 organisationTenantResolverProducer.tenantFallback = defaultOrganisationId.toString()
 
-                organisationService
-                    .state()
-                    .onItem()
-                    .transformToUni { state ->
+                organisationService.state()
+                    .onItem().transformToUni { state ->
                         when (state) {
                             // Skip if already initialised
                             OrganisationState.ACTIVE -> {
@@ -255,15 +253,14 @@ class OrganisationInitialiser
                             }
                         }
                     }
-                    .onFailure()
-                    .invoke { e ->
+                    .onFailure().invoke { e ->
                         ResourceLogger.LOGGER.organisationInitialisationError(
                             defaultOrganisationId,
                             e.message,
                             e,
                         )
-                    }.onFailure()
-                    .recoverWithNull()
+                    }
+                    .onFailure().recoverWithNull()
             }
         }
     }
