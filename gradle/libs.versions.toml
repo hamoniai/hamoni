@@ -1,7 +1,7 @@
 [versions]
 docs-antora = "1.0.0"
 kotlin-core = "2.4.21"
-kotlin-serialization = "1.13.0" # Needs to match the serialization-json dependency in the quarkus bom
+kotlin-serialization = "1.11.0" # Needs to match the serialization-json dependency in the quarkus bom
 platform-java = "25"
 platform-quarkus = "3.40.1.2"
 platform-quarkus-ext-quinoa = "2.9.3"
