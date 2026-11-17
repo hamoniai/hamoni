@@ -97,16 +97,12 @@ class JsonSchemaGenerateCommand
 class JsonSchemaExportService
     @Inject
     constructor(
-        @param:ConfigProperty(
-            name = "hamoni.json-schema.input",
-            defaultValue = "build/generated/json/org/openapi-org.json"
-        )
+        @param:ConfigProperty(name = "hamoni.json-schema-export.input")
         private val inputPath: String,
-        @param:ConfigProperty(
-            name = "hamoni.json-schema.output",
-            defaultValue = "build/generated/json/organisation-import.json"
-        )
+        @param:ConfigProperty(name = "hamoni.json-schema-export.output")
         private val outputPath: String,
+        @param:ConfigProperty(name = "hamoni.json-schema-export.version")
+        private val schemaVersion: String,
     ) {
         companion object {
             private const val REF_PREFIX = "#/components/schemas/"
@@ -133,7 +129,7 @@ class JsonSchemaExportService
             val schema =
                 buildJsonObject {
                     put("\$schema", JsonPrimitive("https://json-schema.org/draft/2020-12/schema"))
-                    put("\$id", JsonPrimitive("https://hamoni.ai/schema/organisation-init/v1"))
+                    put("\$id", JsonPrimitive("https://hamoni.ai/schema/organisation-init/$schemaVersion"))
                     put("type", JsonPrimitive("object"))
                     put("additionalProperties", JsonPrimitive(false))
                     put(
@@ -146,7 +142,7 @@ class JsonSchemaExportService
                     put(
                         "properties",
                         buildJsonObject {
-                            put("schemaVersion", buildJsonObject { put("const", JsonPrimitive(1)) })
+                            put("schemaVersion", buildJsonObject { put("const", JsonPrimitive(schemaVersion)) })
                             put(
                                 "organisation",
                                 buildJsonObject {

@@ -45,7 +45,7 @@ import kotlin.io.path.createDirectories
  * The non-default [QuarkusMain] name keeps Quarkus dev mode from treating this
  * command as the application's main entry point.
  */
-@QuarkusMain(name = "schema-export")
+@QuarkusMain(name = "sql-schema-export")
 @ApplicationScoped
 @IfBuildProfile("sql-schema-export")
 class SchemaExportCommand
@@ -88,9 +88,9 @@ class SchemaExportService
         private val sessionFactory: SessionFactory,
         @param:ConfigProperty(name = "quarkus.application.version")
         private val applicationVersion: String,
-        @param:ConfigProperty(name = "hamoni.schema-export.db-kind")
+        @param:ConfigProperty(name = "hamoni.sql-schema-export.db-kind")
         private val databaseKind: String,
-        @param:ConfigProperty(name = "hamoni.schema-export.output-directory")
+        @param:ConfigProperty(name = "hamoni.sql-schema-export.output-directory")
         private val outputDirectory: String,
     ) {
         /**

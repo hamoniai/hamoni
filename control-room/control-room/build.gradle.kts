@@ -21,7 +21,7 @@ plugins {
 
 description = "Main assembly for the Control Room component"
 
-val jsonExportDir = project.layout.buildDirectory.dir("generated/json")
+val jsonSchemaExportDir = project.layout.buildDirectory.dir("generated/json")
 val sqlSchemaExportDir = project.layout.buildDirectory.dir("generated/schema")
 
 dependencies {
@@ -72,13 +72,13 @@ dependencies {
 /**
  * Configure the source sets to pick up the command mode outputs.
  */
-//sourceSets {
-//    main {
-//        resources {
-//            srcDir(sqlSchemaExportDir)
-//        }
-//    }
-//}
+sourceSets {
+    main {
+        resources {
+            srcDir(jsonSchemaExportDir)
+        }
+    }
+}
 
 /**
  * Additional clean tasks
@@ -157,7 +157,7 @@ val jsonSchemaExportTask =
         group = "schema"
         description = "Export the JSON schema."
         classpath(sourceSets.main.get().runtimeClasspath)
-        dependsOn("classes", "jandex", sqlSchemaExportTask)
+        dependsOn("classes", "jandex")
         mainClass = "ai.hamoni.control_room.command.JsonSchemaGenerateCommand"
         systemProperty("quarkus.profile", "dev,cmd,json-schema-export")
 
@@ -168,7 +168,7 @@ val jsonSchemaExportTask =
             //"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
         )
 
-        outputs.dir(jsonExportDir)
+        outputs.dir(jsonSchemaExportDir)
 
         standardOutput = System.out
         errorOutput = System.err

@@ -141,7 +141,7 @@ class Organisation(
      * The organisation's identity providers, populated when the
      * `identityProvider` hydration option is requested.
      */
-    @OneToMany(cascade = [CascadeType.REMOVE], orphanRemoval = true)
+    @OneToMany(cascade = [CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE], orphanRemoval = true)
     @JoinColumn(name = "organisation_id", foreignKey = ForeignKey(name = "fk_organisation_identity_provider"))
     var identityProviders: MutableList<OrganisationIdentityProvider> = mutableListOf()
 

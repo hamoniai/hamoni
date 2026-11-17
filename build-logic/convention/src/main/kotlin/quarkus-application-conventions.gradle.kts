@@ -98,3 +98,10 @@ if (project.projectDir.name != project.projectDir.parentFile.name) {
         enabled = false
     }
 }
+
+/**
+ * Mark some tasks as not compliant with the configuration cache
+ */
+tasks.named { it in setOf("quarkusGenerateCode") }.configureEach {
+    notCompatibleWithConfigurationCache("Quarkus")
+}

@@ -112,3 +112,10 @@ if (isDeployment) {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 }
+
+/**
+ * Mark some tasks as not compliant with the configuration cache
+ */
+tasks.named { it in setOf("quarkusGenerateCode", "validateExtension") }.configureEach {
+    notCompatibleWithConfigurationCache("Quarkus")
+}
