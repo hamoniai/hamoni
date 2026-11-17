@@ -24,8 +24,3 @@ const val API_PATH = "/api/"
 const val AUTH_PATH = "${API_PATH}auth/"
 const val LOGIN_PATH = "${AUTH_PATH}login"
 const val LANDING_PATH = "/"
-
-/*
- * Some standard messages
- */
-const val ERROR_HAS_IDENTIFIERS = "Identifiers provided on create"
