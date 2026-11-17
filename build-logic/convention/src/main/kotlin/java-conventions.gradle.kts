@@ -18,7 +18,6 @@
 
 import ai.hamoni.gradle.tasks.GeneratePomPropertiesFileTask
 import org.gradle.internal.os.OperatingSystem
-import org.gradle.kotlin.dsl.register
 
 val Project.libs get() = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
