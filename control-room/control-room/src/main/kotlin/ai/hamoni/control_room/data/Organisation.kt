@@ -109,19 +109,19 @@ class Organisation(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Serializable(with = UUIDSerializer::class)
-    @Schema(readOnly = true)
+    @param:Schema(readOnly = true)
     var id: UUID? = null,
     @Column(name = "name", nullable = false, updatable = true, comment = "Organisation name")
     var name: String,
     @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status")
     var enabled: Boolean,
     @kotlinx.serialization.Transient
-    @Schema(readOnly = true)
+    @param:Schema(readOnly = true)
     @Column(name = "created", nullable = false, updatable = false, comment = "Date the account was created (UTC)")
     @CreationTimestamp
     var created: Instant? = null,
     @kotlinx.serialization.Transient
-    @Schema(readOnly = true)
+    @param:Schema(readOnly = true)
     @Column(name = "updated", nullable = false, updatable = false, comment = "Date the account was last updated (UTC)")
     var updated: Instant? = null,
 ) {
@@ -204,7 +204,7 @@ class OrganisationIdentityProvider(
      */
     @Id
     @Serializable(with = UUIDSerializer::class)
-    @Schema(readOnly = true)
+    @param:Schema(readOnly = true)
     var id: UUID? = null,
     /**
      * Security note: the name appears on the login page, do not choose names that are identifying. It will be shown as
@@ -233,12 +233,12 @@ class OrganisationIdentityProvider(
     @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status")
     var enabled: Boolean,
     @kotlinx.serialization.Transient
-    @Schema(readOnly = true)
+    @param:Schema(readOnly = true)
     @Column(name = "created", nullable = false, updatable = false, comment = "Date the organisation was created (UTC)")
     @CreationTimestamp
     var created: Instant? = null,
     @kotlinx.serialization.Transient
-    @Schema(readOnly = true)
+    @param:Schema(readOnly = true)
     @Column(
         name = "updated",
         nullable = false,
@@ -320,12 +320,12 @@ class OrganisationSetting(
     )
     var value: String,
     @kotlinx.serialization.Transient
-    @Schema(readOnly = true)
+    @param:Schema(readOnly = true)
     @Column(name = "created", nullable = false, updatable = false, comment = "Date the key/value created (UTC)")
     @CreationTimestamp
     var created: Instant? = null,
     @kotlinx.serialization.Transient
-    @Schema(readOnly = true)
+    @param:Schema(readOnly = true)
     @Column(name = "updated", nullable = false, updatable = false, comment = "Date the key/value last updated (UTC)")
     var updated: Instant? = null,
 )

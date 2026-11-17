@@ -54,7 +54,7 @@ import java.nio.charset.StandardCharsets
  * Validates an organisation initialisation document against the generated JSON
  * Schema, then deserialises the object into an actual [Organisation].
  */
-private class OrganisationLoader(
+internal class OrganisationLoader(
     private val json: Json,
     private val validator: Validator
 ) {
@@ -79,16 +79,19 @@ private class OrganisationLoader(
      */
     private fun errors(result: OutputUnit): String =
         result.errors
-            .flatMap { flatten(it) }
-            .joinToString("; ")
-            .ifBlank { "unknown validation error" }
+            ?.filterNotNull()
+            ?.flatMap { flatten(it) }
+            ?.joinToString("; ")
+            ?.ifBlank { result.error ?: "unknown validation error" }
+            ?: result.error
+            ?: "unknown validation error"
 
     /**
      * Flatten one validation output and its children.
      */
     private fun flatten(unit: OutputUnit): List<String> =
         listOfNotNull(unit.error?.let { "${unit.keywordLocation}: $it" }) +
-            unit.errors.flatMap { flatten(it) }
+            unit.errors.orEmpty().filterNotNull().flatMap { flatten(it) }
 
     /**
      * Validate a content string, and the load the organisation. Even though the schema validator is reactive, all
@@ -96,8 +99,7 @@ private class OrganisationLoader(
      */
     fun loadOrganisation(content: String): Organisation =
         with (JsonObject(content)) {
-            val result = validator.validate(this)
-            if (!result.valid) {
+            validator.validate(this).takeIf { !it.valid }?.let { result ->
                 throw OrganisationInitialisationException(
                     "Unable to validate the organisation initialiser JSON: ${errors(result)}",
                 )
