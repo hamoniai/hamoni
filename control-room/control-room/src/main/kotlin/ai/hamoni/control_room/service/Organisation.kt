@@ -18,12 +18,15 @@
 package ai.hamoni.control_room.service
 
 import ai.hamoni.common.core.exception.ServiceException
+import ai.hamoni.control_room.ERROR_HAS_IDENTIFIERS
 import ai.hamoni.control_room.PlatformAuthoriser
+import ai.hamoni.control_room.data.IdentityProviderIndex
 import ai.hamoni.control_room.data.Organisation
 import ai.hamoni.control_room.data.OrganisationHydration
 import ai.hamoni.control_room.data.OrganisationIdentityProvider
 import ai.hamoni.control_room.data.OrganisationSetting
 import ai.hamoni.control_room.data.OrganisationState
+import ai.hamoni.control_room.repository.IdentityProviderIndexRepository
 import ai.hamoni.control_room.repository.OrganisationRepository
 import io.quarkus.hibernate.orm.PersistenceUnitExtension
 import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
@@ -32,6 +35,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection
 import io.smallrye.mutiny.Uni
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
+import java.time.Instant
 
 /*
  * All frontend organisation specific services go in here. Services that are common to the frontend and backend
@@ -56,6 +60,7 @@ class OrganisationService
     @Inject
     constructor(
         private val organisationRepository: OrganisationRepository,
+        private val identityProviderIndexRepository: IdentityProviderIndexRepository,
         private val platformAuthoriser: PlatformAuthoriser,
         @param:PersistenceUnitExtension private val tenantResolver: TenantResolver,
     ) {
@@ -64,8 +69,9 @@ class OrganisationService
          * service must perform that. This will only populate the schema. It will not check the state of the schema,
          * that is the caller's responsibility
          *
-         * The security check is not completed yet. This should check for an ID with the platform admin role, or a
-         * system security context (from startup)
+         * DO NOT pass an organisation identifier to this function
+         *
+         * This requires a platform admin role, or a system security context.
          *
          * @param organisation The organisation representation
          * @return A Uni with the updated organisation, i.e. identifiers populated.
@@ -74,10 +80,17 @@ class OrganisationService
             Panache.withTransaction {
                 platformAuthoriser.checkPlatformAdminOrSystem()
                     .onItem().transformToUni {
-                        Uni.createFrom().failure { NotImplementedError("TODO") }
+                        if (organisation.id != null) {
+                            Uni.createFrom().failure {
+                                ServiceException(::create, ERROR_HAS_IDENTIFIERS)
+                            }
+                        } else {
+                            // If there are identity providers, we need to create a multi over them and then
+                            // recombine with the updated objects that contain the identifiers. However, only
+                            // create the Multi if there are providers.
+                            TODO()
+                        }
                     }
-                // If identity providers are included, then create all the identity providers first, and then the
-                // main organisations. The settings should persist automatically.
             }
 
         /**
