@@ -29,11 +29,16 @@ import io.mockk.mockk
 import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
 import io.quarkus.oidc.OidcRequestContext
 import io.quarkus.oidc.OidcTenantConfig
+import io.quarkus.test.junit.QuarkusTest
+import io.quarkus.test.security.TestSecurity
+import io.quarkus.test.vertx.RunOnVertxContext
+import io.quarkus.test.vertx.UniAsserter
 import io.smallrye.mutiny.Uni
 import io.vertx.core.http.HttpServerRequest
 import io.vertx.ext.web.RoutingContext
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.util.UUID
@@ -41,7 +46,9 @@ import java.util.UUID
 /**
  * Behaviour of the OIDC tenant configuration resolver.
  */
+@QuarkusTest
 class OidcTenantConfigResolverTest {
+
     private val authenticationService = mockk<AuthenticationService>()
     private val resolver = OidcTenantConfigResolver(authenticationService)
 
@@ -53,74 +60,95 @@ class OidcTenantConfigResolverTest {
     }
 
     @Test
-    fun `a login without a provider is rejected`() {
+    @TestSecurity(user = "test")
+    @RunOnVertxContext
+    @DisplayName("resolve/unauthorised: login without provider is rejected")
+    fun resolveUnauthorisedLoginWithoutProvider(asserter: UniAsserter) {
         // Given
         val context = routingContextFor(LOGIN_PATH, null)
 
-        // When / Then
-        assertThrows<InvalidParameterException> {
-            resolver.resolve(context, requestContext()).await().indefinitely()
-        }
+        // When
+        val result = { resolver.resolve(context, requestContext()) }
+
+        // Then
+        asserter.assertFailedWith(result, InvalidParameterException::class.java)
     }
 
     @Test
-    fun `a login with an invalid provider identifier is rejected`() {
+    @TestSecurity(user = "test")
+    @RunOnVertxContext
+    @DisplayName("resolve/unauthorised: invalid provider identifier is rejected")
+    fun resolveUnauthorisedInvalidProvider(asserter: UniAsserter) {
         // Given
         val context = routingContextFor(LOGIN_PATH, "not-a-uuid")
 
-        // When / Then
-        assertThrows<InvalidParameterException> {
-            resolver.resolve(context, requestContext()).await().indefinitely()
-        }
+        // When
+        val result = { resolver.resolve(context, requestContext()) }
+
+        // Then
+        asserter.assertFailedWith(result, InvalidParameterException::class.java)
     }
 
     @Test
-    fun `a login with an unknown provider is rejected`() {
+    @TestSecurity(user = "test")
+    @RunOnVertxContext
+    @DisplayName("resolve/unauthorised: unknown provider is rejected")
+    fun resolveUnauthorisedUnknownProvider(asserter: UniAsserter) {
         // Given
         every { authenticationService.getIdentityProviderById(providerId) } returns
             Uni.createFrom().failure(
                 EntityNotFoundException(
                     AuthenticationService::getIdentityProviderById,
-                    "identity provider not found"
-                )
+                    "identity provider not found",
+                ),
             )
         val context = routingContextFor(LOGIN_PATH, providerId.toString())
 
-        // When / Then
-        assertThrows<EntityNotFoundException> {
-            resolver.resolve(context, requestContext()).await().indefinitely()
-        }
+        // When
+        val result = { resolver.resolve(context, requestContext()) }
+
+        // Then
+        asserter.assertFailedWith(result, EntityNotFoundException::class.java)
     }
 
     @Test
-    fun `a login with a known provider resolves its configuration`() {
+    @TestSecurity(user = "test")
+    @RunOnVertxContext
+    @DisplayName("resolve/unauthorised: known provider resolves configuration")
+    fun resolveUnauthorisedKnownProvider(asserter: UniAsserter) {
         // Given
         every { authenticationService.getIdentityProviderById(providerId) } returns
             Uni.createFrom().item(provider())
         val context = routingContextFor(LOGIN_PATH, providerId.toString())
 
         // When
-        val actual = checkNotNull(resolver.resolve(context, requestContext()).await().indefinitely())
+        val result = { resolver.resolve(context, requestContext()) }
 
         // Then
-        assertThat(actual.tenantId().get()).isEqualTo(providerId.toString())
-        assertThat(actual.authServerUrl().get()).isEqualTo("https://issuer.example.com")
-        assertThat(actual.clientId().get()).isEqualTo("client-id")
-        assertThat(actual.credentials().secret().get()).isEqualTo("secret-ref")
-        assertThat(actual.applicationType().get().toString()).isEqualTo("HYBRID")
-        assertThat(actual.discoveryEnabled().get()).isTrue()
+        asserter.assertThat(result) { actual ->
+            val configuration = checkNotNull(actual)
+            assertThat(configuration.tenantId().get()).isEqualTo(providerId.toString())
+            assertThat(configuration.authServerUrl().get()).isEqualTo("https://issuer.example.com")
+            assertThat(configuration.clientId().get()).isEqualTo("client-id")
+            assertThat(configuration.credentials().secret().get()).isEqualTo("secret-ref")
+            assertThat(configuration.applicationType().get().toString()).isEqualTo("HYBRID")
+            assertThat(configuration.discoveryEnabled().get()).isTrue()
+        }
     }
 
     @Test
-    fun `a non-login path does not resolve an OIDC tenant`() {
+    @TestSecurity(user = "test")
+    @RunOnVertxContext
+    @DisplayName("resolve/unauthorised: non-login path resolves no tenant")
+    fun resolveUnauthorisedNonLoginPath(asserter: UniAsserter) {
         // Given
         val context = routingContextFor("${API_PATH}organisation", null)
 
         // When
-        val actual = resolver.resolve(context, requestContext()).await().indefinitely()
+        val result = { resolver.resolve(context, requestContext()) }
 
         // Then
-        assertThat(actual).isNull()
+        asserter.assertNull(result)
     }
 
     private fun provider(): OrganisationIdentityProvider =
@@ -130,15 +158,13 @@ class OidcTenantConfigResolverTest {
             url = "https://issuer.example.com",
             clientId = "client-id",
             clientSecretReference = "secret-ref",
-            enabled = true
+            enabled = true,
         )
 
-    private fun requestContext(): OidcRequestContext<OidcTenantConfig> = mockk<OidcRequestContext<OidcTenantConfig>>()
+    private fun requestContext(): OidcRequestContext<OidcTenantConfig> =
+        mockk<OidcRequestContext<OidcTenantConfig>>()
 
-    private fun routingContextFor(
-        path: String,
-        provider: String?,
-    ): RoutingContext {
+    private fun routingContextFor(path: String, provider: String?): RoutingContext {
         val request = mockk<HttpServerRequest>()
         every { request.path() } returns path
         every { request.getParam(OidcTenantConfigResolver.PROVIDER_QUERY_PARAMETER) } returns provider
@@ -272,26 +298,42 @@ class OrganisationTenantResolverProducerTest {
 /**
  * Behaviour of the platform authorisation gateway.
  */
+@QuarkusTest
 class PlatformAuthoriserTest {
     private val authoriser =
         PlatformAuthoriser(mockk<TenantResolver>(relaxed = true))
 
     @Test
-    fun `organisation access currently succeeds`() {
-        // When
-        val result = authoriser.checkOrganisationAccess().await().indefinitely()
-
-        // Then
-        assertThat(result).isEqualTo(Unit)
+    @TestSecurity(user = "test")
+    @RunOnVertxContext
+    @DisplayName("checkOrganisationAccess/authorised: succeeds")
+    fun checkOrganisationAccessAuthorised(asserter: UniAsserter) {
+        // When / Then
+        asserter.assertThat({ authoriser.checkOrganisationAccess() }) { result ->
+            assertThat(result).isEqualTo(Unit)
+        }
     }
 
     @Test
-    fun `platform admin or system access currently succeeds`() {
-        // When
-        val result = authoriser.checkPlatformAdminOrSystem().await().indefinitely()
+    @TestSecurity(user = "test")
+    @RunOnVertxContext
+    @DisplayName("checkPlatformAdminOrSystem/authorised: succeeds")
+    fun checkPlatformAdminOrSystemAuthorised(asserter: UniAsserter) {
+        // When / Then
+        asserter.assertThat({ authoriser.checkPlatformAdminOrSystem() }) { result ->
+            assertThat(result).isEqualTo(Unit)
+        }
+    }
 
-        // Then
-        assertThat(result).isEqualTo(Unit)
+    @Test
+    @TestSecurity(user = "test")
+    @RunOnVertxContext
+    @DisplayName("checkOrganisationAdminOrPlatformAdminOrSystem/authorised: succeeds")
+    fun checkOrganisationAdminOrPlatformAdminOrSystemAuthorised(asserter: UniAsserter) {
+        // When / Then
+        asserter.assertThat({ authoriser.checkOrganisationAdminOrPlatformAdminOrSystem() }) { result ->
+            assertThat(result).isEqualTo(Unit)
+        }
     }
 }
 

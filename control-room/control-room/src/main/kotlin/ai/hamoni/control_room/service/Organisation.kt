@@ -19,6 +19,7 @@ package ai.hamoni.control_room.service
 
 import ai.hamoni.common.core.exception.ServiceException
 import ai.hamoni.control_room.PlatformAuthoriser
+import ai.hamoni.control_room.data.IdentityProviderIndex
 import ai.hamoni.control_room.data.Organisation
 import ai.hamoni.control_room.data.OrganisationHydration
 import ai.hamoni.control_room.data.OrganisationIdentityProvider
@@ -35,7 +36,6 @@ import io.smallrye.mutiny.Multi
 import io.smallrye.mutiny.Uni
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
-import java.time.Instant
 import java.util.UUID
 
 /*
@@ -69,16 +69,35 @@ constructor(
     /**
      * Add Identity provider.
      *
-     * This requires a platform admin role, or a system security context.
+     * This requires the organisation admin permission (the organisation owner or a
+     * person delegated that access), a platform admin, or a system security context.
      *
      * @return the organisation authentication configuration
      */
-    fun addIdentityProvider(identityProvider: OrganisationIdentityProvider): Uni<OrganisationIdentityProvider> {
-        TODO()
-        // 1. Create a new value in identityProviderIndexRepository
-        // 2. Set the id on the identity provider
-        // 3. persist the identityprovider
-    }
+    fun addIdentityProvider(identityProvider: OrganisationIdentityProvider): Uni<OrganisationIdentityProvider> =
+        Panache.withTransaction {
+            platformAuthoriser.checkOrganisationAdminOrPlatformAdminOrSystem()
+                .onItem().transformToUni {
+                    identityProviderIndexRepository
+                        .persistAndFlush(
+                            IdentityProviderIndex(
+                                organisationId = UUID.fromString(tenantResolver.resolveTenantId()),
+                            ),
+                        )
+                }
+                .onItem().transformToUni { index ->
+                    identityProvider.id =
+                        index.identityProviderId
+                            ?: return@transformToUni Uni.createFrom().failure(
+                                ServiceException(
+                                    ::addIdentityProvider,
+                                    "identity provider index id was not generated",
+                                ),
+                            )
+
+                    organisationIdentityProviderRepository.persistAndFlush(identityProvider)
+                }
+        }
 
     /**
      * Create an organisation. This requires the organisation schema and tables to already exist. A provisioning
@@ -107,7 +126,7 @@ constructor(
                     }
                 }
                 .onItem().transformToUni {
-                    organisationRepository.persist(organisation)
+                    organisationRepository.persistAndFlush(organisation)
                 }
         }
 

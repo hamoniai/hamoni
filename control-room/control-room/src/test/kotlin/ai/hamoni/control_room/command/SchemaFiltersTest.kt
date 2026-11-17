@@ -1,6 +1,6 @@
 /*
  * Hamoni: Cloud workflow platform
- * Copyright (C) 2026 Hamoni Limited
+ * Copyright (C) 2026  Hamoni Limited
  *
  * Unless you have received this program directly from Hamoni Limited pursuant to
  * the terms of a commercial license agreement with Hamoni Limited, then this
@@ -17,7 +17,11 @@
  */
 package ai.hamoni.control_room.command
 
+import io.mockk.every
+import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
+import org.hibernate.boot.model.naming.Identifier
+import org.hibernate.boot.model.relational.Namespace
 import org.hibernate.mapping.Table
 import org.junit.jupiter.api.Test
 
@@ -28,39 +32,51 @@ class PlatformSchemaFilterTest {
     private val filter = PlatformSchemaFilter()
 
     @Test
-    fun `a platform table is included`() {
+    fun `the platform schema is included`() {
         // Given
-        val table = Table("authnprofile").apply { schema = "platform" }
+        val namespace = namespace("platform")
 
         // When
-        val included = filter.includeTable(table)
+        val included = filter.includeNamespace(namespace)
 
         // Then
         assertThat(included).isTrue()
     }
 
     @Test
-    fun `a table without a schema is excluded`() {
+    fun `a namespace without a schema is excluded`() {
         // Given
-        val table = Table("organisation")
+        val namespace = namespace(null)
 
         // When
-        val included = filter.includeTable(table)
+        val included = filter.includeNamespace(namespace)
 
         // Then
         assertThat(included).isFalse()
     }
 
     @Test
-    fun `a table in another schema is excluded`() {
+    fun `a namespace in another schema is excluded`() {
         // Given
-        val table = Table("audit").apply { schema = "audit" }
+        val namespace = namespace("audit")
+
+        // When
+        val included = filter.includeNamespace(namespace)
+
+        // Then
+        assertThat(included).isFalse()
+    }
+
+    @Test
+    fun `tables are included once the namespace is selected`() {
+        // Given
+        val table = Table("authnprofile")
 
         // When
         val included = filter.includeTable(table)
 
         // Then
-        assertThat(included).isFalse()
+        assertThat(included).isTrue()
     }
 }
 
@@ -71,33 +87,45 @@ class OrganisationSchemaFilterTest {
     private val filter = OrganisationSchemaFilter()
 
     @Test
-    fun `a platform table is excluded`() {
+    fun `the platform schema is excluded`() {
         // Given
-        val table = Table("authnprofile").apply { schema = "platform" }
+        val namespace = namespace("platform")
 
         // When
-        val included = filter.includeTable(table)
+        val included = filter.includeNamespace(namespace)
 
         // Then
         assertThat(included).isFalse()
     }
 
     @Test
-    fun `a table without a schema is included`() {
+    fun `a namespace without a schema is included`() {
         // Given
-        val table = Table("organisation")
+        val namespace = namespace(null)
 
         // When
-        val included = filter.includeTable(table)
+        val included = filter.includeNamespace(namespace)
 
         // Then
         assertThat(included).isTrue()
     }
 
     @Test
-    fun `a table in another schema is included`() {
+    fun `a namespace in another schema is included`() {
         // Given
-        val table = Table("audit").apply { schema = "audit" }
+        val namespace = namespace("audit")
+
+        // When
+        val included = filter.includeNamespace(namespace)
+
+        // Then
+        assertThat(included).isTrue()
+    }
+
+    @Test
+    fun `tables are included once the namespace is selected`() {
+        // Given
+        val table = Table("organisation")
 
         // When
         val included = filter.includeTable(table)
@@ -139,4 +167,10 @@ class OrganisationSchemaFilterProviderTest {
         assertThat(provider.migrateFilter).isInstanceOf(OrganisationSchemaFilter::class.java)
         assertThat(provider.validateFilter).isInstanceOf(OrganisationSchemaFilter::class.java)
     }
+}
+
+private fun namespace(schema: String?): Namespace {
+    val namespace = mockk<Namespace>()
+    every { namespace.name.schema() } returns schema?.let { Identifier.toIdentifier(it) }
+    return namespace
 }
