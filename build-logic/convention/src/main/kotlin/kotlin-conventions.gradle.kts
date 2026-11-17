@@ -16,7 +16,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import gradle.kotlin.dsl.accessors._18ec383114db3701cb956cd98f8b44e2.spotless
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val Project.libs get() = extensions.getByType<VersionCatalogsExtension>().named("libs")
@@ -73,12 +72,9 @@ spotless {
  */
 detekt {
     buildUponDefaultConfig = true
-    allRules = false // Enable only stable rules
+    allRules = false
     config.setFrom(spotlessDirectory.file("detekt-custom.yml"))
-    baseline = spotlessDirectory.file("detekt-baseline.yml")
-}
-project.tasks.named("check") {
-    dependsOn("detekt")
+    baseline = project.layout.buildDirectory.dir("detekt").map { it.file("baseline.xml") }
 }
 
 /**

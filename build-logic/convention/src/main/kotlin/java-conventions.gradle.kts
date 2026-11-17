@@ -17,7 +17,6 @@
  */
 
 import ai.hamoni.gradle.tasks.GeneratePomPropertiesFileTask
-import gradle.kotlin.dsl.accessors._18ec383114db3701cb956cd98f8b44e2.spotless
 import org.gradle.internal.os.OperatingSystem
 import org.gradle.kotlin.dsl.register
 
@@ -54,10 +53,11 @@ idea {
  */
 spotless {
     java {
+        googleJavaFormat().aosp().reflowLongStrings()
         leadingTabsToSpaces(4)
         trimTrailingWhitespace()
         licenseHeaderFile(rootProject.layout.projectDirectory.dir(".spotless").file("license"))
-        expandWildcardImports()
+        //expandWildcardImports() // Do not use this, it will trigger an early resolution of the classpath.
         removeUnusedImports()
         importOrder("", "\\#")
         formatAnnotations()
