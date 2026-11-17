@@ -21,8 +21,6 @@ import ai.hamoni.common.platform.PlatformConfig
 import ai.hamoni.control_room.OrganisationTenantResolverProducer
 import ai.hamoni.control_room.ResourceLogger
 import ai.hamoni.control_room.data.Organisation
-import ai.hamoni.control_room.data.OrganisationSetting
-import ai.hamoni.control_room.data.OrganisationSettingKey
 import ai.hamoni.control_room.data.OrganisationState
 import ai.hamoni.control_room.exception.OrganisationInitialisationException
 import ai.hamoni.control_room.service.OrganisationService
@@ -47,7 +45,6 @@ import kotlinx.serialization.json.Json
 import org.eclipse.microprofile.config.inject.ConfigProperty
 import java.io.FileNotFoundException
 import java.nio.charset.StandardCharsets
-import java.time.Instant
 
 /*
  * Default initialisers for the organisation.
@@ -72,6 +69,7 @@ private class OrganisationLoader(
                     JsonSchema.of(JsonObject(schema)),
                     JsonSchemaOptions()
                         .setDraft(Draft.DRAFT202012)
+                        .setBaseUri("https://hamoni.ai/schema/organisation-init/")
                 )
             )
     }
@@ -96,19 +94,21 @@ private class OrganisationLoader(
      * Validate a content string, and the load the organisation. Even though the schema validator is reactive, all
      * the refences are loaded into memory so that validation and extraction can happen without blocking.
      */
-    fun loadOrganisation(content: String): Organisation {
-        val result = validator.validate(content).also {
-            if (!it.valid) {
+    fun loadOrganisation(content: String): Organisation =
+        with (JsonObject(content)) {
+            val result = validator.validate(this)
+            if (!result.valid) {
                 throw OrganisationInitialisationException(
-                    "Unable to validate the organisation initialiser JSON: ${errors(it)}",
+                    "Unable to validate the organisation initialiser JSON: ${errors(result)}",
                 )
             }
-        }
 
-        // FIXME:
-        json.decodeFromJsonElement<Organisation>()
-        TODO()
-    }
+            this.getJsonObject("organisation")?.let { obj ->
+                json.decodeFromString<Organisation>(obj.encode())
+            } ?: throw OrganisationInitialisationException(
+                "Organisation initialiser JSON does not contain an organisation"
+            )
+        }
 }
 
 /**
