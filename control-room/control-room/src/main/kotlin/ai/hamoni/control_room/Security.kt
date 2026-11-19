@@ -29,6 +29,7 @@ import ai.hamoni.control_room.data.OrganisationSettingKey
 import ai.hamoni.control_room.data.OrganisationState
 import ai.hamoni.control_room.service.AuthenticationService
 import ai.hamoni.control_room.service.ConfigurationService
+import ai.hamoni.control_room.service.IdentityProviderIndexService
 import ai.hamoni.control_room.service.OrganisationService
 import io.quarkus.arc.Arc
 import io.quarkus.arc.Unremovable
@@ -102,6 +103,13 @@ constructor(
     fun checkOrganisationAccess(): Uni<Unit> = Uni.createFrom().item(Unit)
 
     /**
+     * Check an authenticated identity has access to an organisation, or is a system context.
+     *
+     * @return An empty Uni on success, or a failed Uni on error
+     */
+    fun checkOrganisationAccessOrSystem(): Uni<Unit> = Uni.createFrom().item(Unit)
+
+    /**
      * Check if the caller has the platform admin role, or if it is a system security context.
      *
      * @return An empty Uni on success, or a failed Uni on error
@@ -110,6 +118,17 @@ constructor(
 
     /**
      * Check the caller may administer an organisation.
+     *
+     * The caller must be the organisation owner, or have the organisation admin role (in that organisation)
+     * or be system.
+     *
+     * Delegation is not modelled yet; this check is currently a pass-through like
+     * the other authorisation checks.
+     */
+    fun checkOrganisationAdminOrSystem(): Uni<Unit> = Uni.createFrom().item(Unit)
+
+    /**
+     * Check the caller may administer an organisation or the platform
      *
      * The organisation admin permission includes the organisation owner and any
      * person delegated that access. A platform admin or system security context is
@@ -196,9 +215,7 @@ constructor(
         )?.let {
             object : TenantResolver {
                 override fun getDefaultTenantId(): String = it
-
                 override fun resolveTenantId(): String = it
-
                 override fun isRoot(tenantId: String?): Boolean = PLATFORM_SCHEMA == tenantId
             }
         }
@@ -242,7 +259,7 @@ class PhysicalNamingStrategyTenantQualifyingSnakeCaseImpl : PhysicalNamingStrate
 class OidcTenantConfigResolver
 @Inject
 constructor(
-    private val authenticationService: AuthenticationService,
+    private val securityHelpers: SecurityHelpers
 ) : TenantConfigResolver {
     companion object {
         /**
@@ -300,7 +317,7 @@ constructor(
                     // Need to map the provider id to an organisation, then get the full config for that organisation,
                     // will need to switch context/establish a context here, then use a utility library to look up the
                     // URL, get the well known configuration and then convert it over. Use the SecurityHelpers.
-                    authenticationService.getIdentityProviderById(it)
+                    securityHelpers.getIdentityProviderById(it)
                 }
                 .emitOn(Infrastructure.getDefaultWorkerPool())
                 .onItem().transform { provider ->
@@ -369,11 +386,39 @@ class RestAuthenticationChallenge : JavaScriptRequestChecker {
 class SecurityHelpers @Inject constructor(
     private val configurationService: ConfigurationService,
     private val currentIdentityAssociation: CurrentIdentityAssociation,
+    private val identityProviderIndexService: IdentityProviderIndexService,
     private val organisationService: OrganisationService,
     private val organisationTenantResolverProducer: OrganisationTenantResolverProducer,
     @param:PersistenceUnitExtension
     private val tenantResolver: TenantResolver
 ) {
+    /**
+     * Get the actual identity provider by ID. General rules.
+     * 1. The identity provider can be in the requested organisation or the default scope.
+     * 2. If the identity provider is not in these scopes, then we fail, not silently return missing.
+     * 3. The full object needs to be returned, including the client secret, and this will generally be called
+     *    to create the login link.
+     */
+    fun getIdentityProviderById(id: UUID): Uni<OrganisationIdentityProvider> {
+        val organisationScope = runCatching { UUID.fromString(tenantResolver.resolveTenantId()) }.fold(
+            { setOf(configurationService.defaultOrganisationId, it) },
+            { setOf(configurationService.defaultOrganisationId) }
+        )
+
+        // Query the index using the current scope, no security issue, it's just a list of IDs, but we need
+        // a system context to get past the authorisation.
+        return identityProviderIndexService.get(id, organisationScope)
+            .onItem().transformToUni {
+                if (null != it) {
+                    executeSystemRequestForOrganisation(it.organisationId.toString()) {
+                        organisationService.getIdentityProvider(it.identityProviderId!!, true)
+                    }
+                } else {
+                    Uni.createFrom().failure(ServiceException(::getIdentityProviderById, "No identity provider found"))
+                }
+            }
+    }
+
     /**
      * List the identity providers for an organisation, or the default. This takes the initially established
      * organisation id to do a check. If that organisation does not exist, it will fall back to using the default

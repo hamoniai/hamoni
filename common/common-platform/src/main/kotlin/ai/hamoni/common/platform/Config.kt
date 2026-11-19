@@ -1,10 +1,11 @@
 package ai.hamoni.common.platform
 
 import ai.hamoni.common.core.PRODUCT_ID
+import io.quarkus.runtime.annotations.StaticInitSafe
 import io.smallrye.config.ConfigMapping
-import io.smallrye.config.WithConverter
 import io.smallrye.config.WithDefault
-import org.eclipse.microprofile.config.spi.Converter
+import io.smallrye.config.WithParentName
+import jakarta.validation.constraints.Positive
 import java.util.*
 
 /**
@@ -18,12 +19,12 @@ interface PlatformConfig {
      * sure that the organisation is configured. If it is not, then the init script must be provided to initialise
      * the organisation.
      */
-    fun defaultOrganisation(): OrganisationConfig
+    fun defaultOrganisation(): DefaultOrganisationConfig
 
     /**
-     * The tenant configuration
+     * The default organisation (tenant) configuration
      */
-    interface OrganisationConfig {
+    interface DefaultOrganisationConfig {
         /**
          * The default tenant. This must be defined for the control room, it is not relevant for the process runner as
          * all processes are run in the context of an organisation.
@@ -83,4 +84,49 @@ interface PlatformConfig {
 //        }
 //    }
 }
+
+/**
+ * Multi organisation mode configuration. Designed to be build time fixed.
+ */
+@ConfigMapping(prefix = "${PRODUCT_ID}.platform.multi-organisation")
+@StaticInitSafe
+interface MultiOrganisationConfig {
+    /**
+     * Enable multi-organisation mode. This has implications on security and operations that should be
+     * recognised before enabling.
+     *
+     * Disabled by default as organisations will generally want one organisation.
+     */
+    @WithDefault("false")
+    @WithParentName
+    fun enabled(): Boolean
+
+    /**
+     * Allow a user to provision their own organisations. Further down the line we might want to create constraints
+     * around this, i.e. a user can create one organisation, but be a participant of many.
+     */
+    fun selfProvisioning(): MultiOrganisationConfigSelfProvisioning
+
+    /**
+     * The config for self provisioning
+     */
+    interface MultiOrganisationConfigSelfProvisioning {
+        /**
+         * Self provisioning disabled by default. Organisations will not want staff creating their own organisations
+         * independently,
+         */
+        @WithDefault("false")
+        @WithParentName
+        fun enabled(): Boolean
+
+        /**
+         * The maximum number of self-provisioned organisations. Ignored if disabled. The default is large enough to
+         * effectively be unlimited, without having a bad actor spam the platform.
+         */
+        @Positive(message = "The maximum number of self-provisioned organisations must be greater than 0")
+        @WithDefault("1000")
+        fun max(): Int
+    }
+}
+
 

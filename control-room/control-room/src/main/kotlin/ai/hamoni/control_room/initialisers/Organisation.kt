@@ -105,10 +105,10 @@ internal class OrganisationLoader(
                 )
             }
 
-            this.getJsonObject("organisation")?.let { obj ->
+            this.getJsonObject("defaultOrganisation")?.let { obj ->
                 json.decodeFromString<Organisation>(obj.encode())
             } ?: throw OrganisationInitialisationException(
-                "Organisation initialiser JSON does not contain an organisation"
+                "Organisation initialiser JSON does not contain a default organisation"
             )
         }
 }

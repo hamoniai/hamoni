@@ -46,6 +46,8 @@ import java.util.UUID
  *
  * In all services, the authorisation should be checked before making data calls/accessing cache objects. The
  * authorisation itself uses a cache because it is accessed very frequently.
+ *
+ * Every method in this file must check the authorisation before proceeding.
  */
 
 /**
@@ -159,21 +161,56 @@ constructor(
     /**
      * Get an organisation's identity providers.
      *
-     * This service is used by the public API, but requires that we do not return any information about the
-     * organisation since we do not know whether the person authenticating actually has permission to the organisation
-     * yet.
-     *
-     * @return the organisation authentication configuration
+     * @return the organisation's identity providers
      */
     fun getIdentityProviders(enabled: Boolean? = null): Uni<List<OrganisationIdentityProvider>> =
         Panache.withSession {
-            if (null != enabled) {
-                organisationIdentityProviderRepository.find("enabled", enabled)
-            } else {
-                organisationIdentityProviderRepository.findAll()
-            }
-                .list()
+            platformAuthoriser.checkOrganisationAdminOrSystem()
+                .onItem().transformToUni {
+                    if (null != enabled) {
+                        organisationIdentityProviderRepository.find("enabled", enabled)
+                    } else {
+                        organisationIdentityProviderRepository.findAll()
+                    }
+                        .list()
+                }
         }
+
+    /**
+     * Get single identity provider.
+     *
+     * @param id The identity provider ID
+     * @param enabled filter for the enabled state. If null, no filter.
+     * @return a specific identity provider
+     */
+    fun getIdentityProvider(id: UUID, enabled: Boolean? = null): Uni<OrganisationIdentityProvider> =
+        Panache.withSession {
+            platformAuthoriser.checkOrganisationAdminOrSystem()
+                .onItem().transformToUni {
+                    if (null != enabled) {
+                        organisationIdentityProviderRepository.find(
+                            "id = ?1 AND enabled = ?2",
+                            enabled,
+                            id)
+                    } else {
+                        organisationIdentityProviderRepository.find(
+                            "id ?1",
+                            id
+                        )
+                    }
+                        .firstResult()
+                }
+                .onItem().transformToUni {
+                    if (null != it) {
+                        Uni.createFrom().item(it)
+                    } else {
+                        Uni.createFrom().failure(
+                            ServiceException(::getIdentityProvider, "identity provider not found")
+                        )
+                    }
+                }
+        }
+
 
     /**
      * Get a specific setting for an organisation.
@@ -182,11 +219,16 @@ constructor(
      */
     fun <T : Any> getSetting(key: OrganisationSettingKey<T>): Uni<T> =
         Panache.withSession {
-            organisationRepository
-                .find("#Organisation.getSetting", mapOf("key" to key))
-                .project(String::class.java)
-                .firstResult()
-                .map { stored -> stored?.let(key::decode) ?: key.default }
+            platformAuthoriser.checkOrganisationAccessOrSystem()
+                .onItem().transformToUni {
+                    organisationRepository
+                        .find("#Organisation.getSetting", mapOf("key" to key))
+                        .project(String::class.java)
+                        .firstResult()
+                }
+                .onItem().transform {
+                    it?.let(key::decode) ?: key.default
+                }
         }
 
     /**
@@ -197,10 +239,13 @@ constructor(
      */
     fun getSettings(): Uni<List<OrganisationSetting>> =
         Panache.withSession {
-            organisationRepository
-                .find("#Organisation.getSettings")
-                .project(OrganisationSetting::class.java)
-                .list()
+            platformAuthoriser.checkOrganisationAccessOrSystem()
+                .onItem().transformToUni {
+                    organisationRepository
+                        .find("#Organisation.getSettings")
+                        .project(OrganisationSetting::class.java)
+                        .list()
+                }
         }
 
     /**
@@ -209,6 +254,8 @@ constructor(
      * TODO: cache, this is called frequently, especially from the identity providers login page sequence, which is
      * unauthenticated, meaning, this service could be susceptible to a DoS by frequent calling, or organisation
      * enumeration.
+     *
+     * Should also allow organisation admin?
      *
      * @return whether the organisation table exists
      */

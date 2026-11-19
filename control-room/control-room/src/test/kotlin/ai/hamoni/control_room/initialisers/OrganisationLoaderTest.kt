@@ -82,7 +82,7 @@ class OrganisationLoaderTest {
         """
         {
           "schemaVersion": "test-version",
-          "organisation": {
+          "defaultOrganisation": {
             "name": "Example Organisation",
             "enabled": true,
             "settings": [
@@ -103,12 +103,12 @@ class OrganisationLoaderTest {
           "${'$'}id": "https://hamoni.ai/schema/organisation-init/test",
           "type": "object",
           "additionalProperties": false,
-          "required": ["schemaVersion", "organisation"],
+          "required": ["schemaVersion", "defaultOrganisation"],
           "properties": {
             "schemaVersion": {
               "const": "test-version"
             },
-            "organisation": {
+            "defaultOrganisation": {
               "type": "object"
             }
           }

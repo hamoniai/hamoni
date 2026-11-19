@@ -31,6 +31,8 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.NamedQueries
+import jakarta.persistence.NamedQuery
+import jakarta.persistence.QueryHint
 import jakarta.persistence.Table
 import jakarta.persistence.Transient
 import jakarta.persistence.UniqueConstraint
@@ -211,7 +213,24 @@ class AuthenticationProfileOrganisation(
         )
     ]
 )
-@NamedQueries()
+@NamedQueries(
+    value = [
+        NamedQuery(
+            name = "IdentityProviderIndex.findInScope",
+            hints = [QueryHint(name = "org.hibernate.readOnly", value = "true")],
+            query = """
+            SELECT
+                i
+            FROM
+                IdentityProviderIndex i
+            WHERE
+                i.identityProviderId = :id
+                AND i.organisationId in (:scope)
+        """,
+            resultClass = OrganisationState::class
+        ),
+    ]
+)
 class IdentityProviderIndex(
     /**
      * This will become the organisation identity provider id.
@@ -227,6 +246,7 @@ class IdentityProviderIndex(
     @GeneratedValue(strategy = GenerationType.UUID)
     @Serializable(with = UUIDSerializer::class)
     var identityProviderId: UUID? = null,
+
     @Column(
         name = "organisation_id",
         nullable = false,

@@ -153,7 +153,7 @@ class OrganisationInitialiserTest {
         )
 
     private fun platformConfig(): PlatformConfig {
-        val organisationConfig = mockk<PlatformConfig.OrganisationConfig>()
+        val organisationConfig = mockk<PlatformConfig.DefaultOrganisationConfig>()
         every { organisationConfig.id() } returns organisationId
         every { organisationConfig.config() } returns Optional.of(defaultsPath.toString())
 
@@ -166,7 +166,7 @@ class OrganisationInitialiserTest {
         """
         {
           "schemaVersion": "test-version",
-          "organisation": {
+          "defaultOrganisation": {
             "name": "Example Organisation",
             "enabled": true,
             "settings": [],
@@ -182,12 +182,12 @@ class OrganisationInitialiserTest {
           "${'$'}id": "https://hamoni.ai/schema/organisation-init/test",
           "type": "object",
           "additionalProperties": false,
-          "required": ["schemaVersion", "organisation"],
+          "required": ["schemaVersion", "defaultOrganisation"],
           "properties": {
             "schemaVersion": {
               "const": "test-version"
             },
-            "organisation": {
+            "defaultOrganisation": {
               "type": "object"
             }
           }

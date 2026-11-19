@@ -107,6 +107,7 @@ class JsonSchemaExportService
         companion object {
             private const val REF_PREFIX = "#/components/schemas/"
             private const val ROOT_SCHEMA = "Organisation"
+            private const val ORGANISATION_WITH_IDENTIFIER = "OrganisationWithIdentifier"
         }
 
         private val json = Json { prettyPrint = true }
@@ -125,6 +126,7 @@ class JsonSchemaExportService
 
             val definitions = linkedMapOf<String, JsonObject>()
             collectSchema(ROOT_SCHEMA, schemas, definitions)
+            definitions[ORGANISATION_WITH_IDENTIFIER] = organisationWithIdentifier(definitions.getValue(ROOT_SCHEMA))
 
             val schema =
                 buildJsonObject {
@@ -136,7 +138,7 @@ class JsonSchemaExportService
                         "required",
                         buildJsonArray {
                             add(JsonPrimitive("schemaVersion"))
-                            add(JsonPrimitive("organisation"))
+                            add(JsonPrimitive("defaultOrganisation"))
                         }
                     )
                     put(
@@ -144,9 +146,21 @@ class JsonSchemaExportService
                         buildJsonObject {
                             put("schemaVersion", buildJsonObject { put("const", JsonPrimitive(schemaVersion)) })
                             put(
-                                "organisation",
+                                "defaultOrganisation",
                                 buildJsonObject {
                                     put("\$ref", JsonPrimitive("#/\$defs/$ROOT_SCHEMA"))
+                                }
+                            )
+                            put(
+                                "organisations",
+                                buildJsonObject {
+                                    put("type", JsonPrimitive("array"))
+                                    put(
+                                        "items",
+                                        buildJsonObject {
+                                            put("\$ref", JsonPrimitive("#/\$defs/$ORGANISATION_WITH_IDENTIFIER"))
+                                        }
+                                    )
                                 }
                             )
                         }
@@ -158,6 +172,38 @@ class JsonSchemaExportService
             output.parent?.createDirectories()
             Files.writeString(output, json.encodeToString(JsonElement.serializer(), schema))
             return output
+        }
+
+        /**
+         * Add the identifier required by a non-default organisation.
+         */
+        private fun organisationWithIdentifier(organisation: JsonObject): JsonObject {
+            val properties = organisation["properties"]?.jsonObject
+                ?: throw IllegalStateException("Organisation schema has no properties")
+            val required =
+                organisation["required"]?.jsonArray
+                    ?.map { it.jsonPrimitive.content }
+                    .orEmpty()
+
+            return JsonObject(
+                organisation.toMutableMap().apply {
+                    put(
+                        "properties",
+                        JsonObject(
+                            properties + (
+                                "id" to buildJsonObject {
+                                    put("type", JsonPrimitive("string"))
+                                    put("format", JsonPrimitive("uuid"))
+                                }
+                            )
+                        )
+                    )
+                    put(
+                        "required",
+                        JsonArray((required + "id").distinct().map { JsonPrimitive(it) })
+                    )
+                }
+            )
         }
 
         /**
