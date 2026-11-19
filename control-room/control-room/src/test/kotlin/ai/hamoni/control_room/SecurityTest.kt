@@ -19,16 +19,16 @@ package ai.hamoni.control_room
 
 import ai.hamoni.common.core.PLATFORM_SCHEMA
 import ai.hamoni.common.core.REQUEST_ORGANISATION_ID
-import ai.hamoni.common.core.exception.EntityNotFoundException
 import ai.hamoni.common.core.exception.InvalidParameterException
 import ai.hamoni.common.core.exception.ServiceException
 import ai.hamoni.common.platform.PlatformConfig
+import ai.hamoni.control_room.data.IdentityProviderIndex
 import ai.hamoni.control_room.data.OrganisationIdentityProvider
 import ai.hamoni.control_room.data.OrganisationIdentityProviderHeaderWithSource
 import ai.hamoni.control_room.data.OrganisationSettingKey
 import ai.hamoni.control_room.data.OrganisationState
-import ai.hamoni.control_room.service.AuthenticationService
 import ai.hamoni.control_room.service.ConfigurationService
+import ai.hamoni.control_room.service.IdentityProviderIndexService
 import ai.hamoni.control_room.service.OrganisationService
 import io.mockk.clearMocks
 import io.mockk.every
@@ -58,14 +58,14 @@ import org.junit.jupiter.api.assertThrows
 @QuarkusTest
 class OidcTenantConfigResolverTest {
 
-    private val authenticationService = mockk<AuthenticationService>()
-    private val resolver = OidcTenantConfigResolver(authenticationService)
+    private val securityHelpers = mockk<SecurityHelpers>()
+    private val resolver = OidcTenantConfigResolver(securityHelpers)
 
     private val providerId = UUID.fromString("11111111-1111-1111-1111-111111111111")
 
     @BeforeEach
-    fun resetAuthenticationService() {
-        clearMocks(authenticationService)
+    fun resetSecurityHelpers() {
+        clearMocks(securityHelpers)
     }
 
     @Test
@@ -104,12 +104,9 @@ class OidcTenantConfigResolverTest {
     @DisplayName("resolve/unauthorised: unknown provider is rejected")
     fun resolveUnauthorisedUnknownProvider(asserter: UniAsserter) {
         // Given
-        every { authenticationService.getIdentityProviderById(providerId) } returns
+        every { securityHelpers.getIdentityProviderById(providerId) } returns
             Uni.createFrom().failure(
-                EntityNotFoundException(
-                    AuthenticationService::getIdentityProviderById,
-                    "identity provider not found",
-                ),
+                ServiceException(SecurityHelpers::getIdentityProviderById, "identity provider not found"),
             )
         val context = routingContextFor(LOGIN_PATH, providerId.toString())
 
@@ -117,7 +114,7 @@ class OidcTenantConfigResolverTest {
         val result = { resolver.resolve(context, requestContext()) }
 
         // Then
-        asserter.assertFailedWith(result, EntityNotFoundException::class.java)
+        asserter.assertFailedWith(result, ServiceException::class.java)
     }
 
     @Test
@@ -126,7 +123,7 @@ class OidcTenantConfigResolverTest {
     @DisplayName("resolve/unauthorised: known provider resolves configuration")
     fun resolveUnauthorisedKnownProvider(asserter: UniAsserter) {
         // Given
-        every { authenticationService.getIdentityProviderById(providerId) } returns
+        every { securityHelpers.getIdentityProviderById(providerId) } returns
             Uni.createFrom().item(provider())
         val context = routingContextFor(LOGIN_PATH, providerId.toString())
 
@@ -137,7 +134,7 @@ class OidcTenantConfigResolverTest {
         asserter.assertThat(result) { actual ->
             val configuration = checkNotNull(actual)
             assertThat(configuration.tenantId().get()).isEqualTo(providerId.toString())
-            assertThat(configuration.authServerUrl().get()).isEqualTo("https://issuer.example.com")
+            assertThat(configuration.authServerUrl().get()).isEqualTo("https://www.example.com")
             assertThat(configuration.clientId().get()).isEqualTo("client-id")
             assertThat(configuration.credentials().secret().get()).isEqualTo("secret-ref")
             assertThat(configuration.applicationType().get().toString()).isEqualTo("HYBRID")
@@ -164,7 +161,7 @@ class OidcTenantConfigResolverTest {
         OrganisationIdentityProvider(
             id = providerId,
             name = "Test provider",
-            url = "https://issuer.example.com",
+            url = "https://www.example.com",
             clientId = "client-id",
             enabled = true,
         ).apply { clientSecret = "secret-ref" }
@@ -429,6 +426,7 @@ class SecurityHelpersTest {
 
     private lateinit var configurationService: ConfigurationService
     private lateinit var currentIdentityAssociation: CurrentIdentityAssociation
+    private lateinit var identityProviderIndexService: IdentityProviderIndexService
     private lateinit var organisationService: OrganisationService
     private lateinit var organisationTenantResolverProducer: OrganisationTenantResolverProducer
     private lateinit var tenantResolver: TenantResolver
@@ -445,6 +443,7 @@ class SecurityHelpersTest {
         every { configurationService.defaultOrganisationId } returns defaultOrganisationId
 
         currentIdentityAssociation = mockk(relaxed = true)
+        identityProviderIndexService = mockk()
         organisationService = mockk()
         tenantResolver = mockk()
         organisationTenantResolverProducer =
@@ -459,6 +458,7 @@ class SecurityHelpersTest {
             SecurityHelpers(
                 configurationService,
                 currentIdentityAssociation,
+                identityProviderIndexService,
                 organisationService,
                 organisationTenantResolverProducer,
                 tenantResolver,
@@ -600,6 +600,179 @@ class SecurityHelpersTest {
             name = name,
             url = "https://$name.example.com",
             clientId = "client-$id",
+            enabled = true,
+        )
+}
+
+/**
+ * Behaviour of [SecurityHelpers.getIdentityProviderById].
+ */
+@QuarkusTest
+class SecurityHelpersIdentityProviderTest {
+
+    private val defaultOrganisationId =
+        UUID.fromString("11111111-1111-1111-1111-111111111111")
+    private val otherOrganisationId =
+        UUID.fromString("22222222-2222-2222-2222-222222222222")
+    private val providerId =
+        UUID.fromString("33333333-3333-3333-3333-333333333333")
+
+    private lateinit var configurationService: ConfigurationService
+    private lateinit var currentIdentityAssociation: CurrentIdentityAssociation
+    private lateinit var identityProviderIndexService: IdentityProviderIndexService
+    private lateinit var organisationService: OrganisationService
+    private lateinit var organisationTenantResolverProducer: OrganisationTenantResolverProducer
+    private lateinit var tenantResolver: TenantResolver
+    private lateinit var helpers: SecurityHelpers
+
+    private val providerCalls = mutableListOf<String?>()
+    private val indexScopes = mutableListOf<Set<UUID>>()
+
+    @BeforeEach
+    fun setUp() {
+        configurationService = mockk()
+        every { configurationService.defaultOrganisationId } returns defaultOrganisationId
+
+        currentIdentityAssociation = mockk(relaxed = true)
+        identityProviderIndexService = mockk()
+        organisationService = mockk()
+        tenantResolver = mockk()
+        organisationTenantResolverProducer =
+            OrganisationTenantResolverProducer(
+                mockk<PlatformConfig>(relaxed = true),
+                mockk<RoutingContext>(relaxed = true),
+            )
+
+        every { tenantResolver.resolveTenantId() } returns otherOrganisationId.toString()
+
+        helpers =
+            SecurityHelpers(
+                configurationService,
+                currentIdentityAssociation,
+                identityProviderIndexService,
+                organisationService,
+                organisationTenantResolverProducer,
+                tenantResolver,
+            )
+
+        providerCalls.clear()
+        indexScopes.clear()
+    }
+
+    @Test
+    @DisplayName("getIdentityProviderById/current-organisation: provider is resolved in the current scope")
+    @RunOnVertxContext
+    fun providerInCurrentOrganisation(asserter: UniAsserter) {
+        // Given
+        val provider = provider("Current provider")
+        givenIndexEntry(otherOrganisationId)
+        every { organisationService.getIdentityProvider(providerId, true) } answers {
+            providerCalls.add(organisationTenantResolverProducer.tenantFallback)
+            Uni.createFrom().item(provider)
+        }
+
+        // When
+        val result = { helpers.getIdentityProviderById(providerId) }
+
+        // Then
+        asserter.assertThat(result) { actual ->
+            assertThat(actual).isEqualTo(provider)
+            assertThat(indexScopes).containsExactly(
+                setOf(defaultOrganisationId, otherOrganisationId),
+            )
+            assertThat(providerCalls).containsExactly(otherOrganisationId.toString())
+        }
+    }
+
+    @Test
+    @DisplayName("getIdentityProviderById/default-organisation: provider is resolved in the default scope")
+    @RunOnVertxContext
+    fun providerInDefaultOrganisation(asserter: UniAsserter) {
+        // Given
+        val provider = provider("Default provider")
+        givenIndexEntry(defaultOrganisationId)
+        every { organisationService.getIdentityProvider(providerId, true) } answers {
+            providerCalls.add(organisationTenantResolverProducer.tenantFallback)
+            Uni.createFrom().item(provider)
+        }
+
+        // When
+        val result = { helpers.getIdentityProviderById(providerId) }
+
+        // Then
+        asserter.assertThat(result) { actual ->
+            assertThat(actual).isEqualTo(provider)
+            assertThat(indexScopes).containsExactly(
+                setOf(defaultOrganisationId, otherOrganisationId),
+            )
+            assertThat(providerCalls).containsExactly(defaultOrganisationId.toString())
+        }
+    }
+
+    @Test
+    @DisplayName("getIdentityProviderById/not-found: provider is rejected")
+    @RunOnVertxContext
+    fun providerNotFound(asserter: UniAsserter) {
+        // Given
+        every { identityProviderIndexService.get(providerId, any()) } answers {
+            indexScopes.add(secondArg())
+            Uni.createFrom().nullItem()
+        }
+
+        // When
+        val result = { helpers.getIdentityProviderById(providerId) }
+
+        // Then
+        asserter.assertFailedWith(result) { failure ->
+            assertThat(failure).isInstanceOf(ServiceException::class.java)
+            assertThat(indexScopes).containsExactly(
+                setOf(defaultOrganisationId, otherOrganisationId),
+            )
+            verify(exactly = 0) { organisationService.getIdentityProvider(providerId, true) }
+        }
+    }
+
+    @Test
+    @DisplayName("getIdentityProviderById/disabled: provider is rejected")
+    @RunOnVertxContext
+    fun providerDisabled(asserter: UniAsserter) {
+        // Given
+        givenIndexEntry(otherOrganisationId)
+        every { organisationService.getIdentityProvider(providerId, true) } answers {
+            providerCalls.add(organisationTenantResolverProducer.tenantFallback)
+            Uni.createFrom().failure(
+                ServiceException(OrganisationService::getIdentityProvider, "identity provider not found"),
+            )
+        }
+
+        // When
+        val result = { helpers.getIdentityProviderById(providerId) }
+
+        // Then
+        asserter.assertFailedWith(result) { failure ->
+            assertThat(failure).isInstanceOf(ServiceException::class.java)
+            assertThat(providerCalls).containsExactly(otherOrganisationId.toString())
+        }
+    }
+
+    private fun givenIndexEntry(organisationId: UUID) {
+        every { identityProviderIndexService.get(providerId, any()) } answers {
+            indexScopes.add(secondArg())
+            Uni.createFrom().item(
+                IdentityProviderIndex(
+                    identityProviderId = providerId,
+                    organisationId = organisationId,
+                ),
+            )
+        }
+    }
+
+    private fun provider(name: String): OrganisationIdentityProvider =
+        OrganisationIdentityProvider(
+            id = providerId,
+            name = name,
+            url = "https://$name.example.com",
+            clientId = "client-$providerId",
             enabled = true,
         )
 }

@@ -28,6 +28,8 @@ import jakarta.annotation.Priority
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.event.Observes
 import jakarta.enterprise.inject.Alternative
+import jakarta.inject.Inject
+import jakarta.inject.Singleton
 import org.h2.value.DataType
 import org.h2.value.TypeInfo
 import org.hibernate.boot.model.naming.Identifier
@@ -42,7 +44,7 @@ import java.sql.Types
 /**
  * Fixups for the H2 drive JSON incompatibility.
  */
-@IfBuildProfile("dev")
+@IfBuildProfile(anyOf = ["dev", "test"])
 @ApplicationScoped
 class AppInitializer {
     fun onStart(
@@ -56,17 +58,26 @@ class AppInitializer {
 }
 
 /**
- * Use Keycloak for all requests in dev mode.
+ * Use Keycloak for all requests in dev mode. This approach exercises the parent class, and performs all the
+ * validation, but then diverts all traffic to the local Keycloak.
  */
 @Alternative
+@Singleton
+@IfBuildProfile(anyOf = ["dev", "test"])
 @Priority(Int.MAX_VALUE)
-@IfBuildProfile("dev")
-@ApplicationScoped
-class DevOidcTenantConfigResolver : TenantConfigResolver {
+class DevOidcTenantConfigResolver @Inject constructor(
+    securityHelpers: SecurityHelpers
+) : OidcTenantConfigResolver(securityHelpers) {
+
+    /**
+     * Call parent then divert, unless failure.
+     */
     override fun resolve(
-        routingContext: RoutingContext?,
-        requestContext: OidcRequestContext<OidcTenantConfig>,
-    ): Uni<OidcTenantConfig> = Uni.createFrom().nullItem()
+        routingContext: RoutingContext,
+        requestContext: OidcRequestContext<OidcTenantConfig>
+    ): Uni<OidcTenantConfig?> =
+        super.resolve(routingContext, requestContext)
+            .onItem().transform { null }
 }
 
 /**

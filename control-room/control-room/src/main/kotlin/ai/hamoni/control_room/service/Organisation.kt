@@ -190,8 +190,9 @@ constructor(
                     if (null != enabled) {
                         organisationIdentityProviderRepository.find(
                             "id = ?1 AND enabled = ?2",
-                            enabled,
-                            id)
+                            id,
+                            enabled
+                        )
                     } else {
                         organisationIdentityProviderRepository.find(
                             "id ?1",

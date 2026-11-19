@@ -250,7 +250,7 @@ class AuthResourcesTest {
     }
 
     private fun givenKnownProvider() {
-        every { authenticationService.getIdentityProviderById(providerId) } returns
+        every { securityHelpers.getIdentityProviderById(providerId) } returns
             Uni.createFrom().item(identityProvider())
     }
 

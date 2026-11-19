@@ -27,7 +27,6 @@ import ai.hamoni.control_room.data.OrganisationIdentityProvider
 import ai.hamoni.control_room.data.OrganisationIdentityProviderHeaderWithSource
 import ai.hamoni.control_room.data.OrganisationSettingKey
 import ai.hamoni.control_room.data.OrganisationState
-import ai.hamoni.control_room.service.AuthenticationService
 import ai.hamoni.control_room.service.ConfigurationService
 import ai.hamoni.control_room.service.IdentityProviderIndexService
 import ai.hamoni.control_room.service.OrganisationService
@@ -44,7 +43,6 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity
 import io.quarkus.vertx.http.runtime.security.ChallengeData
 import io.smallrye.config.SmallRyeConfig
 import io.smallrye.mutiny.Uni
-import io.smallrye.mutiny.infrastructure.Infrastructure
 import io.vertx.ext.web.RoutingContext
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.context.RequestScoped
@@ -54,7 +52,7 @@ import org.eclipse.microprofile.config.ConfigProvider
 import org.hibernate.boot.model.naming.Identifier
 import org.hibernate.boot.model.naming.PhysicalNamingStrategySnakeCaseImpl
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment
-import java.util.UUID
+import java.util.*
 import java.util.function.Supplier
 import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config as MultiTenantConfig
 
@@ -158,9 +156,7 @@ constructor(
  */
 @RequestScoped
 @Unremovable
-class OrganisationTenantResolverProducer
-@Inject
-constructor(
+class OrganisationTenantResolverProducer @Inject constructor(
     private val platformConfig: PlatformConfig,
     private val routingContext: RoutingContext
 ) {
@@ -256,9 +252,7 @@ class PhysicalNamingStrategyTenantQualifyingSnakeCaseImpl : PhysicalNamingStrate
  * default tenant, which is the Keycloak Dev Services tenant in development.
  */
 @ApplicationScoped
-class OidcTenantConfigResolver
-@Inject
-constructor(
+class OidcTenantConfigResolver @Inject constructor(
     private val securityHelpers: SecurityHelpers
 ) : TenantConfigResolver {
     companion object {
@@ -292,11 +286,13 @@ constructor(
      * Return null, if not protected, it will pass, if protected it will fail.
      *
      * Collapsing these rules, only the login page has special handling, all other cases return null
+     *
+     * TODO: cache this object/reponse.
      */
     override fun resolve(
         routingContext: RoutingContext,
         requestContext: OidcRequestContext<OidcTenantConfig>,
-    ): Uni<OidcTenantConfig> {
+    ): Uni<OidcTenantConfig?> {
         val path = routingContext.request().path().orEmpty().cleanUrl()
 
         return if (path == LOGIN_PATH) {
@@ -319,12 +315,8 @@ constructor(
                     // URL, get the well known configuration and then convert it over. Use the SecurityHelpers.
                     securityHelpers.getIdentityProviderById(it)
                 }
-                .emitOn(Infrastructure.getDefaultWorkerPool())
                 .onItem().transform { provider ->
-                    // This is the conversion to a OidcTenantConfig, which includes all the endpoint resolution.
-                    // This will invoke a web request to identify the endpoint.
-                    // TODO: create an object cache for OidcTenantConfig, it is used frequently and not change often
-                    // In the event of a cache hit, bypass the whole lookup/transformation route.
+                    // This does not perform any resolution here.
                     OidcTenantConfig.builder()
                         .tenantId(provider.id.toString())
                         .authServerUrl(provider.url)
@@ -334,10 +326,6 @@ constructor(
                         .discoveryEnabled(true)
                         .build()
                 }
-                .onItem().transform { v ->
-                    v
-                }
-                .emitOn(Infrastructure.getDefaultWorkerPool())
         } else {
             Uni.createFrom().nullItem()
         }
