@@ -21,14 +21,23 @@ import ai.hamoni.common.core.PLATFORM_SCHEMA
 import ai.hamoni.common.core.REQUEST_ORGANISATION_ID
 import ai.hamoni.common.core.exception.EntityNotFoundException
 import ai.hamoni.common.core.exception.InvalidParameterException
+import ai.hamoni.common.core.exception.ServiceException
+import ai.hamoni.common.platform.PlatformConfig
 import ai.hamoni.control_room.data.OrganisationIdentityProvider
+import ai.hamoni.control_room.data.OrganisationIdentityProviderHeaderWithSource
+import ai.hamoni.control_room.data.OrganisationSettingKey
+import ai.hamoni.control_room.data.OrganisationState
 import ai.hamoni.control_room.service.AuthenticationService
+import ai.hamoni.control_room.service.ConfigurationService
+import ai.hamoni.control_room.service.OrganisationService
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
 import io.quarkus.oidc.OidcRequestContext
 import io.quarkus.oidc.OidcTenantConfig
+import io.quarkus.security.identity.CurrentIdentityAssociation
 import io.quarkus.test.junit.QuarkusTest
 import io.quarkus.test.security.TestSecurity
 import io.quarkus.test.vertx.RunOnVertxContext
@@ -36,12 +45,12 @@ import io.quarkus.test.vertx.UniAsserter
 import io.smallrye.mutiny.Uni
 import io.vertx.core.http.HttpServerRequest
 import io.vertx.ext.web.RoutingContext
+import java.util.UUID
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import java.util.UUID
 
 /**
  * Behaviour of the OIDC tenant configuration resolver.
@@ -157,9 +166,8 @@ class OidcTenantConfigResolverTest {
             name = "Test provider",
             url = "https://issuer.example.com",
             clientId = "client-id",
-            clientSecretReference = "secret-ref",
             enabled = true,
-        )
+        ).apply { clientSecret = "secret-ref" }
 
     private fun requestContext(): OidcRequestContext<OidcTenantConfig> =
         mockk<OidcRequestContext<OidcTenantConfig>>()
@@ -180,11 +188,12 @@ class OidcTenantConfigResolverTest {
  */
 class OrganisationTenantResolverProducerTest {
     private val organisationId = UUID.fromString("22222222-2222-2222-2222-222222222222")
+    private val platformConfig = mockk<PlatformConfig>(relaxed = true)
 
     @Test
     fun `an authentication path resolves the platform schema`() {
         // Given
-        val producer = OrganisationTenantResolverProducer(routingContextFor("${AUTH_PATH}login"))
+        val producer = OrganisationTenantResolverProducer(platformConfig, routingContextFor("${AUTH_PATH}login"))
 
         // When
         val resolver = checkNotNull(producer.get())
@@ -200,6 +209,7 @@ class OrganisationTenantResolverProducerTest {
         // Given
         val producer =
             OrganisationTenantResolverProducer(
+                platformConfig,
                 routingContextFor(
                     "${API_PATH}organisation",
                     organisationId.toString()
@@ -218,7 +228,7 @@ class OrganisationTenantResolverProducerTest {
     @Test
     fun `a missing organisation header is rejected`() {
         // Given
-        val producer = OrganisationTenantResolverProducer(routingContextFor("${API_PATH}organisation"))
+        val producer = OrganisationTenantResolverProducer(platformConfig, routingContextFor("${API_PATH}organisation"))
 
         // When / Then
         assertThrows<InvalidParameterException> { producer.get() }
@@ -229,6 +239,7 @@ class OrganisationTenantResolverProducerTest {
         // Given
         val producer =
             OrganisationTenantResolverProducer(
+                platformConfig,
                 routingContextFor("${API_PATH}organisation", "not-a-uuid")
             )
 
@@ -239,7 +250,7 @@ class OrganisationTenantResolverProducerTest {
     @Test
     fun `the fallback is used when there is no routing context`() {
         // Given
-        val producer = OrganisationTenantResolverProducer(noRoutingContext())
+        val producer = OrganisationTenantResolverProducer(platformConfig, noRoutingContext())
         producer.tenantFallback = organisationId.toString()
 
         // When
@@ -255,6 +266,7 @@ class OrganisationTenantResolverProducerTest {
         val fallbackId = UUID.fromString("33333333-3333-3333-3333-333333333333")
         val producer =
             OrganisationTenantResolverProducer(
+                platformConfig,
                 routingContextFor("${API_PATH}organisation", organisationId.toString())
             )
         producer.tenantFallback = fallbackId.toString()
@@ -269,7 +281,7 @@ class OrganisationTenantResolverProducerTest {
     @Test
     fun `no routing context and no fallback resolves no tenant`() {
         // Given
-        val producer = OrganisationTenantResolverProducer(noRoutingContext())
+        val producer = OrganisationTenantResolverProducer(platformConfig, noRoutingContext())
 
         // When / Then
         assertThat(producer.get()).isNull()
@@ -393,4 +405,201 @@ class RestAuthenticationChallengeTest {
         every { context.request() } returns request
         return context
     }
+}
+
+/**
+ * Behaviour of [SecurityHelpers] when merging the default organisation's
+ * identity providers with the current organisation's providers.
+ */
+@QuarkusTest
+class SecurityHelpersTest {
+
+    private val defaultOrganisationId =
+        UUID.fromString("11111111-1111-1111-1111-111111111111")
+    private val otherOrganisationId =
+        UUID.fromString("22222222-2222-2222-2222-222222222222")
+    private val defaultProvider = provider(
+        UUID.fromString("33333333-3333-3333-3333-333333333333"),
+        "Default provider",
+    )
+    private val otherProvider = provider(
+        UUID.fromString("44444444-4444-4444-4444-444444444444"),
+        "Other provider",
+    )
+
+    private lateinit var configurationService: ConfigurationService
+    private lateinit var currentIdentityAssociation: CurrentIdentityAssociation
+    private lateinit var organisationService: OrganisationService
+    private lateinit var organisationTenantResolverProducer: OrganisationTenantResolverProducer
+    private lateinit var tenantResolver: TenantResolver
+    private lateinit var helpers: SecurityHelpers
+
+    private val providerCalls = mutableListOf<String?>()
+    private val stateCalls = mutableListOf<String?>()
+    private val settingCalls = mutableListOf<String?>()
+    private val identityProviders = mutableMapOf<String, List<OrganisationIdentityProvider>>()
+
+    @BeforeEach
+    fun setUp() {
+        configurationService = mockk()
+        every { configurationService.defaultOrganisationId } returns defaultOrganisationId
+
+        currentIdentityAssociation = mockk(relaxed = true)
+        organisationService = mockk()
+        tenantResolver = mockk()
+        organisationTenantResolverProducer =
+            OrganisationTenantResolverProducer(
+                mockk<PlatformConfig>(relaxed = true),
+                mockk<RoutingContext>(relaxed = true),
+            )
+
+        every { tenantResolver.resolveTenantId() } returns otherOrganisationId.toString()
+
+        helpers =
+            SecurityHelpers(
+                configurationService,
+                currentIdentityAssociation,
+                organisationService,
+                organisationTenantResolverProducer,
+                tenantResolver,
+            )
+
+        every { organisationService.getIdentityProviders(true) } answers {
+            val tenant = organisationTenantResolverProducer.tenantFallback
+            providerCalls.add(tenant)
+            Uni.createFrom().item(
+                checkNotNull(identityProviders[tenant]) {
+                    "No identity providers configured for tenant $tenant"
+                },
+            )
+        }
+
+        providerCalls.clear()
+        stateCalls.clear()
+        settingCalls.clear()
+        identityProviders.clear()
+    }
+
+    @Test
+    @DisplayName("listIdentityProviders/current-is-default: providers are returned once")
+    @RunOnVertxContext
+    fun currentIsDefaultWithProviders(asserter: UniAsserter) {
+        // Given
+        every { tenantResolver.resolveTenantId() } returns defaultOrganisationId.toString()
+        givenIdentityProviders(defaultOrganisationId, listOf(defaultProvider))
+
+        // When
+        val result = { helpers.listIdentityProviders() }
+
+        // Then
+        asserter.assertThat(result) { providers ->
+            assertThat(providers).containsExactly(
+                OrganisationIdentityProviderHeaderWithSource(defaultProvider, true),
+            )
+            assertThat(providerCalls).containsExactly(defaultOrganisationId.toString())
+            assertThat(stateCalls).isEmpty()
+            assertThat(settingCalls).isEmpty()
+            verify(exactly = 1) { organisationService.getIdentityProviders(true) }
+        }
+    }
+
+    @Test
+    @DisplayName("listIdentityProviders/current-is-default: no providers fails")
+    @RunOnVertxContext
+    fun currentIsDefaultWithoutProviders(asserter: UniAsserter) {
+        // Given
+        every { tenantResolver.resolveTenantId() } returns defaultOrganisationId.toString()
+        givenIdentityProviders(defaultOrganisationId, emptyList())
+
+        // When
+        val result = { helpers.listIdentityProviders() }
+
+        // Then
+        asserter.assertFailedWith(result) { failure ->
+            assertThat(failure).isInstanceOf(ServiceException::class.java)
+            assertThat(providerCalls).containsExactly(defaultOrganisationId.toString())
+            assertThat(stateCalls).isEmpty()
+            assertThat(settingCalls).isEmpty()
+            verify(exactly = 1) { organisationService.getIdentityProviders(true) }
+        }
+    }
+
+    @Test
+    @DisplayName("listIdentityProviders/default-included: current and default providers are returned")
+    @RunOnVertxContext
+    fun otherOrganisationIncludesDefault(asserter: UniAsserter) {
+        // Given
+        givenIdentityProviders(defaultOrganisationId, listOf(defaultProvider))
+        givenIdentityProviders(otherOrganisationId, listOf(otherProvider))
+        givenCurrentStateAndSetting(OrganisationState.ACTIVE, true)
+
+        // When
+        val result = { helpers.listIdentityProviders() }
+
+        // Then
+        asserter.assertThat(result) { providers ->
+            assertThat(providers).containsExactly(
+                OrganisationIdentityProviderHeaderWithSource(otherProvider, false),
+                OrganisationIdentityProviderHeaderWithSource(defaultProvider, true),
+            )
+            assertThat(providerCalls).containsExactly(
+                otherOrganisationId.toString(),
+                defaultOrganisationId.toString(),
+            )
+            assertThat(stateCalls).containsExactly(otherOrganisationId.toString())
+            assertThat(settingCalls).containsExactly(otherOrganisationId.toString())
+        }
+    }
+
+    @Test
+    @DisplayName("listIdentityProviders/default-excluded: only current providers are returned")
+    @RunOnVertxContext
+    fun otherOrganisationExcludesDefault(asserter: UniAsserter) {
+        // Given
+        givenIdentityProviders(defaultOrganisationId, listOf(defaultProvider))
+        givenIdentityProviders(otherOrganisationId, listOf(otherProvider))
+        givenCurrentStateAndSetting(OrganisationState.ACTIVE, false)
+
+        // When
+        val result = { helpers.listIdentityProviders() }
+
+        // Then
+        asserter.assertThat(result) { providers ->
+            assertThat(providers).containsExactly(
+                OrganisationIdentityProviderHeaderWithSource(otherProvider, false),
+            )
+            assertThat(providerCalls).containsExactly(otherOrganisationId.toString())
+            assertThat(stateCalls).containsExactly(otherOrganisationId.toString())
+            assertThat(settingCalls).containsExactly(otherOrganisationId.toString())
+        }
+    }
+
+    private fun givenIdentityProviders(
+        organisationId: UUID,
+        providers: List<OrganisationIdentityProvider>,
+    ) {
+        identityProviders[organisationId.toString()] = providers
+    }
+
+    private fun givenCurrentStateAndSetting(state: OrganisationState, includeDefault: Boolean) {
+        every { organisationService.state() } answers {
+            stateCalls.add(organisationTenantResolverProducer.tenantFallback)
+            Uni.createFrom().item(state)
+        }
+        every {
+            organisationService.getSetting(OrganisationSettingKey.IncludeDefaultAuthenticationMethods)
+        } answers {
+            settingCalls.add(organisationTenantResolverProducer.tenantFallback)
+            Uni.createFrom().item(includeDefault)
+        }
+    }
+
+    private fun provider(id: UUID, name: String): OrganisationIdentityProvider =
+        OrganisationIdentityProvider(
+            id = id,
+            name = name,
+            url = "https://$name.example.com",
+            clientId = "client-$id",
+            enabled = true,
+        )
 }

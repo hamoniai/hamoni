@@ -21,6 +21,7 @@ import ai.hamoni.control_room.API_PATH
 import ai.hamoni.control_room.LANDING_PATH
 import ai.hamoni.control_room.LOGIN_PATH
 import ai.hamoni.control_room.OidcTenantConfigResolver
+import ai.hamoni.control_room.SecurityHelpers
 import ai.hamoni.control_room.data.AuthenticationProfile
 import ai.hamoni.control_room.data.AuthenticationProfileOrganisation
 import ai.hamoni.control_room.data.OrganisationIdentityProvider
@@ -28,7 +29,6 @@ import ai.hamoni.control_room.data.OrganisationIdentityProviderHeaderWithSource
 import ai.hamoni.control_room.service.AuthenticationProfileService
 import ai.hamoni.control_room.service.AuthenticationProfileServiceHydration
 import ai.hamoni.control_room.service.AuthenticationService
-import ai.hamoni.control_room.service.ConfigurationService
 import io.mockk.every
 import io.mockk.verify
 import io.quarkiverse.test.junit.mockk.InjectMock
@@ -52,7 +52,7 @@ class AuthResourcesTest {
     lateinit var authenticationProfileService: AuthenticationProfileService
 
     @InjectMock
-    lateinit var configurationService: ConfigurationService
+    lateinit var securityHelpers: SecurityHelpers
 
     private val organisationId = UUID.fromString("11111111-1111-1111-1111-111111111111")
     private val providerId = UUID.fromString("22222222-2222-2222-2222-222222222222")
@@ -149,9 +149,7 @@ class AuthResourcesTest {
     fun `identity providers without an organisation use the default organisation`() {
         // Given
         val provider = providerHeader()
-        every { configurationService.getDefaultOrganisationId() } returns
-            Uni.createFrom().item(organisationId)
-        every { authenticationService.listIdentityProvidersByOrganisationId(organisationId) } returns
+        every { securityHelpers.listIdentityProviders() } returns
             Uni.createFrom().item(listOf(provider))
 
         // When
@@ -169,7 +167,7 @@ class AuthResourcesTest {
     fun `identity providers with an organisation use that organisation`() {
         // Given
         val provider = providerHeader()
-        every { authenticationService.listIdentityProvidersByOrganisationId(organisationId) } returns
+        every { securityHelpers.listIdentityProviders() } returns
             Uni.createFrom().item(listOf(provider))
 
         // When
@@ -182,7 +180,7 @@ class AuthResourcesTest {
         response.then()
             .statusCode(200)
             .body("[0].name", equalTo("Example provider"))
-        verify(exactly = 0) { configurationService.getDefaultOrganisationId() }
+        verify(exactly = 1) { securityHelpers.listIdentityProviders() }
     }
 
     @Test
@@ -262,9 +260,8 @@ class AuthResourcesTest {
             name = "Example provider",
             url = "https://issuer.example.com",
             clientId = "client-id",
-            clientSecretReference = "secret-ref",
-            enabled = true
-        )
+            enabled = true,
+        ).apply { clientSecret = "secret-ref" }
 
     private fun providerHeader(): OrganisationIdentityProviderHeaderWithSource =
         OrganisationIdentityProviderHeaderWithSource(

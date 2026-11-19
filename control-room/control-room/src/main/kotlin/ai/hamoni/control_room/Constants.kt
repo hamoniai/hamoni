@@ -23,4 +23,32 @@ package ai.hamoni.control_room
 const val API_PATH = "/api/"
 const val AUTH_PATH = "${API_PATH}auth/"
 const val LOGIN_PATH = "${AUTH_PATH}login"
+const val IDENTITY_PROVIDERS_PATH = "${AUTH_PATH}identityProviders"
 const val LANDING_PATH = "/"
+
+
+/*
+ * Standard role definitions. Most of the roles or permissions are dynamically evaluated based on object holding.
+ * However, there are a few standard roles that override those access permissions
+ */
+/**
+ * System role definition. This is for anything acting in the context of the system, and not a user.
+ */
+const val ROLE_SYSTEM = "system"
+
+/**
+ * allows configuration of the environments, runners etc.
+ */
+const val ROLE_PLATFORM_ADMIN = "platform_admin"
+
+/**
+ * allows configuration of the organisation (as a member of that organisation). It does not allow across organisation
+ * access.
+ */
+const val ROLE_ORGANISATION_ADMIN = "platform_admin"
+
+/**
+ * The name of the system identity
+ */
+const val IDENTITY_SYSTEM = "system"
+

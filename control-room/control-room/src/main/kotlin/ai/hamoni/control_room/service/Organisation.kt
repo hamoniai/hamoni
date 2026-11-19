@@ -24,6 +24,7 @@ import ai.hamoni.control_room.data.Organisation
 import ai.hamoni.control_room.data.OrganisationHydration
 import ai.hamoni.control_room.data.OrganisationIdentityProvider
 import ai.hamoni.control_room.data.OrganisationSetting
+import ai.hamoni.control_room.data.OrganisationSettingKey
 import ai.hamoni.control_room.data.OrganisationState
 import ai.hamoni.control_room.repository.IdentityProviderIndexRepository
 import ai.hamoni.control_room.repository.OrganisationIdentityProviderRepository
@@ -36,6 +37,7 @@ import io.smallrye.mutiny.Multi
 import io.smallrye.mutiny.Uni
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
+import java.time.Instant
 import java.util.UUID
 
 /*
@@ -117,6 +119,17 @@ constructor(
                 .onItem().transformToUni {
                     organisation.id = UUID.fromString(tenantResolver.resolveTenantId())
 
+                    // Hibernate's timestamp generation does not run for an
+                    // @Embeddable inside an @ElementCollection, so set the
+                    // organisation and setting timestamps explicitly.
+                    val now = Instant.now()
+                    organisation.created = now
+                    organisation.updated = now
+                    organisation.settings.forEach { setting ->
+                        setting.created = now
+                        setting.updated = now
+                    }
+
                     if (organisation.identityProviders.isNotEmpty()) {
                         Multi.createFrom().iterable(organisation.identityProviders)
                             .onItem().transformToUniAndConcatenate { idp -> addIdentityProvider(idp) }
@@ -150,30 +163,52 @@ constructor(
      * organisation since we do not know whether the person authenticating actually has permission to the organisation
      * yet.
      *
-     * TODO: do we need a version with filters for enabled?
-     *
      * @return the organisation authentication configuration
      */
-    fun getIdentityProviders(): Uni<List<OrganisationIdentityProvider>> =
-        organisationIdentityProviderRepository.findAll()
-            .list()
+    fun getIdentityProviders(enabled: Boolean? = null): Uni<List<OrganisationIdentityProvider>> =
+        Panache.withSession {
+            if (null != enabled) {
+                organisationIdentityProviderRepository.find("enabled", enabled)
+            } else {
+                organisationIdentityProviderRepository.findAll()
+            }
+                .list()
+        }
 
     /**
-     * Get an organisation's settings. ID is determined from the organisation header.
+     * Get a specific setting for an organisation.
      *
-     * @return the organisation configuration
+     * @return the setting value, or the key's default if it was not specified.
      */
-    fun getSettings(): Uni<List<OrganisationSetting>> {
-        TODO()
-    }
+    fun <T : Any> getSetting(key: OrganisationSettingKey<T>): Uni<T> =
+        Panache.withSession {
+            organisationRepository
+                .find("#Organisation.getSetting", mapOf("key" to key))
+                .project(String::class.java)
+                .firstResult()
+                .map { stored -> stored?.let(key::decode) ?: key.default }
+        }
+
+    /**
+     * Get an organisation's settings. The values are returned in their stored
+     * text form; the caller decodes them using the key.
+     *
+     * @return the organisation settings
+     */
+    fun getSettings(): Uni<List<OrganisationSetting>> =
+        Panache.withSession {
+            organisationRepository
+                .find("#Organisation.getSettings")
+                .project(OrganisationSetting::class.java)
+                .list()
+        }
 
     /**
      * Get the organisation state.
      *
-     * Startup only. This bypasses the request-scoped tenant resolver and must
-     * never be exposed through the interface.
-     *
-     * This requires a platform admin role, or a system security context.
+     * TODO: cache, this is called frequently, especially from the identity providers login page sequence, which is
+     * unauthenticated, meaning, this service could be susceptible to a DoS by frequent calling, or organisation
+     * enumeration.
      *
      * @return whether the organisation table exists
      */

@@ -20,8 +20,17 @@ package ai.hamoni.control_room
 import ai.hamoni.common.core.PLATFORM_SCHEMA
 import ai.hamoni.common.core.REQUEST_ORGANISATION_ID
 import ai.hamoni.common.core.exception.InvalidParameterException
+import ai.hamoni.common.core.exception.ServiceException
 import ai.hamoni.common.core.util.cleanUrl
+import ai.hamoni.common.platform.PlatformConfig
+import ai.hamoni.control_room.data.OrganisationIdentityProvider
+import ai.hamoni.control_room.data.OrganisationIdentityProviderHeaderWithSource
+import ai.hamoni.control_room.data.OrganisationSettingKey
+import ai.hamoni.control_room.data.OrganisationState
 import ai.hamoni.control_room.service.AuthenticationService
+import ai.hamoni.control_room.service.ConfigurationService
+import ai.hamoni.control_room.service.OrganisationService
+import io.quarkus.arc.Arc
 import io.quarkus.arc.Unremovable
 import io.quarkus.hibernate.orm.PersistenceUnitExtension
 import io.quarkus.hibernate.orm.runtime.tenant.TenantResolver
@@ -29,6 +38,8 @@ import io.quarkus.oidc.JavaScriptRequestChecker
 import io.quarkus.oidc.OidcRequestContext
 import io.quarkus.oidc.OidcTenantConfig
 import io.quarkus.oidc.TenantConfigResolver
+import io.quarkus.security.identity.CurrentIdentityAssociation
+import io.quarkus.security.runtime.QuarkusSecurityIdentity
 import io.quarkus.vertx.http.runtime.security.ChallengeData
 import io.smallrye.config.SmallRyeConfig
 import io.smallrye.mutiny.Uni
@@ -43,6 +54,7 @@ import org.hibernate.boot.model.naming.Identifier
 import org.hibernate.boot.model.naming.PhysicalNamingStrategySnakeCaseImpl
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment
 import java.util.UUID
+import java.util.function.Supplier
 import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config as MultiTenantConfig
 
 /*
@@ -62,7 +74,8 @@ import ai.hamoni.quarkus.ext.quarkus.multi_tenant.Config as MultiTenantConfig
 class PlatformAuthoriser
 @Inject
 constructor(
-    @param:PersistenceUnitExtension private val tenantResolver: TenantResolver,
+    @param:PersistenceUnitExtension
+    private val tenantResolver: TenantResolver,
 ) {
     /**
      * Check the caller has a specified role.
@@ -106,6 +119,11 @@ constructor(
      * the other authorisation checks.
      */
     fun checkOrganisationAdminOrPlatformAdminOrSystem(): Uni<Unit> = Uni.createFrom().item(Unit)
+
+    /**
+     * Allow any authorised or unauthorised. This is a no-op, but specifically identities calls allowed by any.
+     */
+    fun checkNone(): Uni<Unit> = Uni.createFrom().item(Unit)
 }
 
 /**
@@ -124,7 +142,8 @@ constructor(
 class OrganisationTenantResolverProducer
 @Inject
 constructor(
-    private val routingContext: RoutingContext,
+    private val platformConfig: PlatformConfig,
+    private val routingContext: RoutingContext
 ) {
     /**
      * Use this to produce a fallback in the request scope. It will only work before the TenantResolver has been
@@ -142,23 +161,35 @@ constructor(
         // try and access the request data.
         runCatching { routingContext.request() }.fold(
             { request ->
-                if (request.path().orEmpty().cleanUrl().startsWith(AUTH_PATH)) {
+                request.path().orEmpty().cleanUrl().takeIf { it.startsWith(AUTH_PATH) }?.let { path ->
                     // Organisation agnostic, but we can not set the tenant to null, the
                     // HibernateCurrentTenantIdentifierResolver will throw an error. Instead, since all of these requests will
-                    // route to the platform schema anyway, just set the platform schema
-                    PLATFORM_SCHEMA
-                } else {
+                    // route to the platform schema anyway, just set the platform schema.
+                    // The one exception to this is the identityProviders request, which should look for the
+                    // organisation ID on the headers.
+                    if (path == IDENTITY_PROVIDERS_PATH) {
+                        try {
+                            UUID.fromString(
+                                request.getHeader(REQUEST_ORGANISATION_ID)
+                                    .orEmpty()
+                                    .trim()
+                            ).toString()
+                        } catch (_: IllegalArgumentException) {
+                            platformConfig.defaultOrganisation().id().toString()
+                        }
+                    } else {
+                        PLATFORM_SCHEMA
+                    }
+                } ?: try {
                     // Everything else requires an organisation. If we cannot resolve one, and it is valid then throw an error.
                     // Do not let unvalidated organisation identifiers pass here.
-                    try {
-                        UUID.fromString(
-                            request.getHeader(REQUEST_ORGANISATION_ID)
-                                .orEmpty()
-                                .trim()
+                    UUID.fromString(
+                        request.getHeader(REQUEST_ORGANISATION_ID)
+                            .orEmpty()
+                            .trim()
                         ).toString()
-                    } catch (_: IllegalArgumentException) {
-                        throw InvalidParameterException(REQUEST_ORGANISATION_ID, "Invalid organisation identifier")
-                    }
+                } catch (_: IllegalArgumentException) {
+                    throw InvalidParameterException(REQUEST_ORGANISATION_ID, "Invalid organisation identifier")
                 }
             },
             { tenantFallback } // If there is no fallback, this will end up being unresolved.
@@ -268,7 +299,7 @@ constructor(
                 .onItem().transformToUni {
                     // Need to map the provider id to an organisation, then get the full config for that organisation,
                     // will need to switch context/establish a context here, then use a utility library to look up the
-                    // URL, get the well known configuration and then convert it over.
+                    // URL, get the well known configuration and then convert it over. Use the SecurityHelpers.
                     authenticationService.getIdentityProviderById(it)
                 }
                 .emitOn(Infrastructure.getDefaultWorkerPool())
@@ -327,4 +358,133 @@ class RestAuthenticationChallenge : JavaScriptRequestChecker {
      * using the security token, not the bearer to authenticate.
      */
     override fun getChallenge(context: RoutingContext): ChallengeData = ChallengeData(401, "WWW-Authenticate", "Bearer")
+}
+
+/**
+ * Security helpers for specific tasks. This is used is specific scenarios when the security framework needs to
+ * cross organisations. In particular, the login identity providers request. However, this does not bypass the
+ * security framework for the request
+ */
+@ApplicationScoped
+class SecurityHelpers @Inject constructor(
+    private val configurationService: ConfigurationService,
+    private val currentIdentityAssociation: CurrentIdentityAssociation,
+    private val organisationService: OrganisationService,
+    private val organisationTenantResolverProducer: OrganisationTenantResolverProducer,
+    @param:PersistenceUnitExtension
+    private val tenantResolver: TenantResolver
+) {
+    /**
+     * List the identity providers for an organisation, or the default. This takes the initially established
+     * organisation id to do a check. If that organisation does not exist, it will fall back to using the default
+     * organisation.
+     *
+     * The nature of this service is very heavy. As the original request is unauthenticated, we need to establish
+     * a new system context. Therefore, caching is critical for this. The entire returned obejcts should be
+     * cached, including the merge of the default identity providers. That means the cache must be cleared if these
+     * settings change.
+     *
+     * Design choice is to chain sequentally rather than parallel because this result should be cached, and we don't
+     * want the complexity of parallel runs.
+     */
+    fun listIdentityProviders(): Uni<List<OrganisationIdentityProviderHeaderWithSource>> {
+        val defaultOrganisationId = configurationService.defaultOrganisationId.toString()
+        val currentOrganisationId = tenantResolver.resolveTenantId()
+
+        // No need to check if the default organisation is enabled, it should always be the case.
+        val defaultOrganisationIdps =
+            executeSystemRequestForOrganisation(defaultOrganisationId) {
+                organisationService.getIdentityProviders(true)
+                    .onItem().transform { idps ->
+                        idps.map { idp ->
+                            OrganisationIdentityProviderHeaderWithSource(idp, true)
+                        }
+                    }
+            }
+
+        return if (currentOrganisationId == defaultOrganisationId || currentOrganisationId == PLATFORM_SCHEMA) {
+            // Just return the default organisation's IDPs
+            defaultOrganisationIdps
+                .onItem().transformToUni { idps ->
+                    if (idps.isNotEmpty()) {
+                        Uni.createFrom().item(idps)
+                    } else {
+                        Uni.createFrom().failure(
+                            ServiceException(::listIdentityProviders, "No identity providers available")
+                        )
+                    }
+                }
+        } else {
+            // Need to query the non default organisation.
+            executeSystemRequestForOrganisation(currentOrganisationId) {
+                organisationService.state()
+                    .onItem().transformToUni { state ->
+                        if (state == OrganisationState.ACTIVE) {
+                            organisationService.getSetting(OrganisationSettingKey.IncludeDefaultAuthenticationMethods)
+                        } else {
+                            Uni.createFrom().failure(IllegalStateException())
+                        }
+                    }
+                    .onItem().transformToUni { includeDefault ->
+                        organisationService.getIdentityProviders(true)
+                            .onItem().transform { idps ->
+                                includeDefault to idps.map { idp ->
+                                    OrganisationIdentityProviderHeaderWithSource(idp)
+                                }
+                            }
+                    }
+                    .onFailure().recoverWithItem(true to emptyList())
+            }
+                .onItem().transformToUni { (includeDefault, idps) ->
+                    if (includeDefault) {
+                        defaultOrganisationIdps
+                            .onItem().transform { defaultIdps ->
+                                idps + defaultIdps
+                            }
+                    } else {
+                        Uni.createFrom().item(idps)
+                    }
+                }
+                .onItem().transformToUni { idps ->
+                    if (idps.isNotEmpty()) {
+                        Uni.createFrom().item(idps)
+                    } else {
+                        Uni.createFrom().failure(
+                            ServiceException(::listIdentityProviders, "No identity providers available")
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Establish a new system request context for a request
+     */
+    private fun <T> executeSystemRequestForOrganisation(
+        organisationId: String,
+        uniSupplier: Supplier<Uni<T>>
+    ): Uni<T> =
+        Uni.createFrom().deferred {
+            // Capture the request context to restore after the end of the Uni, and create a new context.
+            val requestContext = Arc.container().requestContext()
+            val previousState = requestContext.stateIfActive
+            requestContext.activate()
+
+            val systemIdentity = QuarkusSecurityIdentity.builder()
+                .setPrincipal { IDENTITY_SYSTEM }
+                .addRole(ROLE_SYSTEM)
+                .setAnonymous(false)
+                .build()
+
+            currentIdentityAssociation.identity = systemIdentity
+            organisationTenantResolverProducer.tenantFallback = organisationId
+
+            uniSupplier.get()
+                .eventually {
+                    requestContext.terminate()
+                    if (null != requestContext) {
+                        requestContext.activate(previousState)
+                    }
+                }
+        }
 }

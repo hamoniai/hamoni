@@ -43,7 +43,7 @@ class OrganisationLoaderTest {
         assertThat(organisation.name).isEqualTo("Example Organisation")
         assertThat(organisation.enabled).isTrue()
         assertThat(organisation.settings).hasSize(1)
-        assertThat(organisation.settings[0].key).isEqualTo(OrganisationSettingKey.COUNTRY)
+        assertThat(organisation.settings[0].key).isEqualTo(OrganisationSettingKey.Country)
         assertThat(organisation.settings[0].value).isEqualTo("GB")
         assertThat(organisation.identityProviders).isEmpty()
     }

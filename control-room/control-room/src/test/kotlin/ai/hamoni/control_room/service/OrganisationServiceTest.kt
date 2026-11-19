@@ -24,6 +24,8 @@ import ai.hamoni.control_room.PlatformAuthoriser
 import ai.hamoni.control_room.data.IdentityProviderIndex
 import ai.hamoni.control_room.data.Organisation
 import ai.hamoni.control_room.data.OrganisationIdentityProvider
+import ai.hamoni.control_room.data.OrganisationSetting
+import ai.hamoni.control_room.data.OrganisationSettingKey
 import ai.hamoni.control_room.data.OrganisationState
 import ai.hamoni.control_room.repository.IdentityProviderIndexRepository
 import ai.hamoni.control_room.repository.OrganisationIdentityProviderRepository
@@ -163,6 +165,37 @@ class OrganisationServiceTest {
         asserter.assertThat(created) { result ->
             assertThat(result.id).isEqualTo(organisationId)
             assertThat(organisationSlot.captured.id).isEqualTo(organisationId)
+        }
+    }
+
+    @Test
+    @DisplayName("create/authorised: timestamps are set for the organisation and its settings")
+    @TestSecurity(user = "test")
+    @RunOnVertxContext
+    fun createAuthorisedTimestamps(asserter: UniAsserter) {
+        // Given
+        val setting = OrganisationSetting(OrganisationSettingKey.Country, "GB")
+        val organisation =
+            Organisation(name = "Example Organisation", enabled = true).apply {
+                settings = mutableListOf(setting)
+            }
+        val organisationSlot = slot<Organisation>()
+
+        every { platformAuthoriser.checkPlatformAdminOrSystem() } returns Uni.createFrom().item(Unit)
+        every { organisationRepository.persistAndFlush(capture(organisationSlot)) } answers {
+            Uni.createFrom().item(organisationSlot.captured)
+        }
+
+        // When
+        val created = { create(organisation) }
+
+        // Then
+        asserter.assertThat(created) { result ->
+            assertThat(result.created).isNotNull()
+            assertThat(result.updated).isNotNull()
+            assertThat(result.settings.single().created).isEqualTo(result.created)
+            assertThat(result.settings.single().updated).isEqualTo(result.updated)
+            assertThat(organisationSlot.captured.created).isEqualTo(result.created)
         }
     }
 
@@ -352,7 +385,6 @@ class OrganisationServiceTest {
             name = "Example provider",
             url = "https://issuer.example.com",
             clientId = "client-id",
-            clientSecretReference = null,
             enabled = true,
         )
 }

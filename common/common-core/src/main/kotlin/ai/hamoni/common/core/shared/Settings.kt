@@ -15,72 +15,24 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.common.core.shared
 
-import java.util.UUID
-
-/*
- * Shared interfaces for the settings structure.
- */
-
 /**
- * A settings value: its type, its stored-text conversion and the value used
- * when no row is stored.
- */
-interface TypedSetting {
-    /** The value type and its conversion. */
-    val type: TypedSettingType<*>
-
-    /** The value used when the settings table holds no row. */
-    val default: Any
-
-    /** Decode [value] using the key's type. */
-    fun decode(value: String): Any = type.decode(value)
-
-    /** Encode [value] using the key's type. */
-    fun encode(value: Any): String = type.encode(value)
-}
-
-/**
- * A supported setting value type and its stored-text conversion.
+ * A typed settings key.
  *
- * The concrete type is retained for the typed [serializer] and [deserializer].
- * The non-generic [encode] and [decode] methods are the bridge used when the
- * type is held through [TypedSetting.type], where the concrete type is erased.
+ * [code] is the stable key used by persistence and the interface. [default] is
+ * the typed value used when no setting is stored.
  */
-sealed interface TypedSettingType<T : Any> {
-    /** Decode to the type's value, returned existentially. */
-    fun decode(value: String): Any = deserializer(value)
+interface SettingKey<T : Any> {
+    /** The stable key code. */
+    val code: String
 
-    /** Convert stored text back to the value. */
-    fun deserializer(value: String): T
+    /** The value used when no setting is stored. */
+    val default: T
 
-    /** Encode a value whose concrete type is known only by the key. */
-    @Suppress("UNCHECKED_CAST")
-    fun encode(value: Any): String = serializer(value as T)
+    /** Encode [value] to its stored text representation. */
+    fun encode(value: T): String
 
-    /** Convert [value] to its stored text. */
-    fun serializer(value: T): String
-
-    /** The type for a [Boolean] value. */
-    data object BooleanType : TypedSettingType<Boolean> {
-        override fun deserializer(value: String): Boolean = value.toBooleanStrict()
-
-        override fun serializer(value: Boolean): String = value.toString()
-    }
-
-    /** The type for a [String] value. */
-    data object StringType : TypedSettingType<String> {
-        override fun deserializer(value: String): String = value
-
-        override fun serializer(value: String): String = value
-    }
-
-    /** The type for a [UUID] value. */
-    data object UUIDType : TypedSettingType<UUID> {
-        override fun deserializer(value: String): UUID = UUID.fromString(value)
-
-        override fun serializer(value: UUID): String = value.toString()
-    }
+    /** Decode [value] from its stored text representation. */
+    fun decode(value: String): T
 }

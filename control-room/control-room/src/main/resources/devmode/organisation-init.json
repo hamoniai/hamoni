@@ -21,6 +21,14 @@
         "value": "true"
       }
     ],
-    "identityProviders": []
+    "identityProviders": [
+      {
+        "name": "Local Keycloak",
+        "url": "http://localhost",
+        "clientId": "quarkus-app",
+        "clientSecret": "secret",
+        "enabled": true
+      }
+    ]
   }
 }

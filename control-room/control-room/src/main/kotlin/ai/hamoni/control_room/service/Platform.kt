@@ -98,14 +98,9 @@ class AuthenticationService
                 }
 
         /**
-         * Get a list of all the identity providers for an organisation. This is here and not in OrganisationService as it
-         * is a special implementation. Basically, we need to establish a new session in the context of the organisation
-         * and get the providers from there. However, this is very careful to only return very limited information.
-         *
-         * This is unauthenticated, by will return the full list for any organisation. However, it will check the config
-         * to see if it needs to add the default.
-         *
-         * This used on public calls so must be careful of information.
+         * Get a list of all the identity providers for an organisation. This is here and not in OrganisationService
+         * as it is a special implementation. It is up to the caller to make sure the request is in the correct
+         * request organisation scopes.
          */
         fun listIdentityProvidersByOrganisationId(
             organisationId: UUID,
@@ -172,20 +167,15 @@ enum class AuthenticationProfileServiceHydration {
 
 /**
  * Service for deployment configuration that is not scoped to an individual
- * organisation.
+ * organisation. THis class should be mostly static, so it does not need mutiny wrappers.
  */
 @ApplicationScoped
 @RegisterForReflection
-class ConfigurationService
-    @Inject
-    constructor(
-        private val platformConfig: PlatformConfig,
-    ) {
-        /**
-         * Get the default organisation's identifier. This is a wrapper around the configuration so that services
-         * have a common entry point. The startup will ensure this is never null.
-         *
-         * @return the identifier of the deployment's default organisation
-         */
-        fun getDefaultOrganisationId(): Uni<UUID> = Uni.createFrom().item(platformConfig.defaultOrganisation().id())
-    }
+class ConfigurationService @Inject constructor(
+    platformConfig: PlatformConfig
+) {
+    /**
+     * The default organisation identifier
+     */
+    val defaultOrganisationId: UUID = platformConfig.defaultOrganisation().id()
+}

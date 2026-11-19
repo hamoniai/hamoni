@@ -15,20 +15,21 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+@file:OptIn(ExperimentalSerializationApi::class)
 package ai.hamoni.control_room.data
 
-import ai.hamoni.common.core.shared.TypedSetting
-import ai.hamoni.common.core.shared.TypedSettingType
+import ai.hamoni.common.core.shared.SettingKey
 import ai.hamoni.common.platform.serialization.UUIDSerializer
 import ai.hamoni.control_room.service.OrganisationService
+import jakarta.persistence.AttributeConverter
 import jakarta.persistence.CascadeType
 import jakarta.persistence.CollectionTable
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
+import jakarta.persistence.Converter
 import jakarta.persistence.ElementCollection
 import jakarta.persistence.Embeddable
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
 import jakarta.persistence.ForeignKey
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
@@ -40,8 +41,20 @@ import jakarta.persistence.OneToMany
 import jakarta.persistence.QueryHint
 import jakarta.persistence.Table
 import jakarta.persistence.Transient
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonTransformingSerializer
+import kotlinx.serialization.json.jsonObject
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType
 import org.eclipse.microprofile.openapi.annotations.media.Schema
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
@@ -99,6 +112,28 @@ import java.util.*
                 Organisation o
         """,
             resultClass = OrganisationState::class
+        ),
+        NamedQuery(
+            name = "Organisation.getSetting",
+            hints = [QueryHint(name = "org.hibernate.readOnly", value = "true")],
+            query = """
+            SELECT
+                s.value
+            FROM
+                Organisation o
+                JOIN o.settings s ON s.key = :key
+        """
+        ),
+        NamedQuery(
+            name = "Organisation.getSettings",
+            hints = [QueryHint(name = "org.hibernate.readOnly", value = "true")],
+            query = """
+            SELECT
+                s
+            FROM
+                Organisation o
+                JOIN o.settings s
+        """
         )
     ]
 )
@@ -200,7 +235,8 @@ enum class OrganisationHydration {
  *
  */
 @Entity
-@Serializable
+@KeepGeneratedSerializer
+@Serializable(with = OrganisationIdentityProviderSerializer::class)
 @Table(name = "organisation_identity_provider", comment = "Organisation identify providers (OIDC)")
 class OrganisationIdentityProvider(
     /**
@@ -231,6 +267,13 @@ class OrganisationIdentityProvider(
     var clientId: String,
 
     /**
+     * On write, this value is stored or updated in the credential store. It is not available by read.
+     */
+    @param:Schema(writeOnly = true)
+    @Transient
+    var clientSecret: String? = null,
+
+    /**
      * True if this identity provider is enabled.
      */
     @Column(name = "enabled", nullable = false, updatable = true, unique = false, comment = "Enabled status")
@@ -248,17 +291,19 @@ class OrganisationIdentityProvider(
     @UpdateTimestamp
     var updated: Instant? = null,
 ) {
-    /**
-     * On write, this value is stored or updated in the credential store. It is not available by read.
-     */
-    @kotlinx.serialization.Transient
-    @Schema(writeOnly = true)
-    @Transient
-    var clientSecret: String? = null
-
     override fun hashCode(): Int = Objects.hash(id)
 
     override fun equals(other: Any?): Boolean = other is OrganisationIdentityProvider && id == other.id
+}
+
+/**
+ * Custom serializer to filter out write-only fields.
+ */
+object OrganisationIdentityProviderSerializer
+    : JsonTransformingSerializer<OrganisationIdentityProvider>(OrganisationIdentityProvider.generatedSerializer()) {
+    override fun transformSerialize(element: JsonElement): JsonElement {
+        return JsonObject(element.jsonObject.filterKeys { it != "clientSecret" })
+    }
 }
 
 /**
@@ -296,7 +341,8 @@ data class OrganisationIdentityProviderHeaderWithSource(
 ) {
     constructor(
         organisationIdentityProvider: OrganisationIdentityProvider,
-    ) : this(organisationIdentityProvider.id!!, organisationIdentityProvider.name, false)
+        default: Boolean = false,
+    ) : this(organisationIdentityProvider.id!!, organisationIdentityProvider.name, default)
 }
 
 /**
@@ -314,20 +360,14 @@ class OrganisationSetting(
      * The key for the key/value pair.
      */
     @Column(name = "key", nullable = false, updatable = false, unique = true, comment = "Settings key")
-    @Enumerated(EnumType.STRING)
-    var key: OrganisationSettingKey,
+    @Convert(converter = OrganisationSettingKeyConverter::class)
+    @field:Schema(implementation = String::class, type = SchemaType.STRING, enumeration = ["country", "language", "timezone", "includeDefaultAuthenticationMethods"])
+    var key: OrganisationSettingKey<*>,
 
     /**
      * The key for the key/value pair.
      */
-    @Column(
-        name = "value",
-        nullable = true,
-        updatable = true,
-        unique = false,
-        comment = "Settings value",
-        columnDefinition = "TEXT"
-    )
+    @Column(name = "value", nullable = true, updatable = true, comment = "Settings value", columnDefinition = "TEXT")
     var value: String,
 
     @CreationTimestamp
@@ -344,43 +384,110 @@ class OrganisationSetting(
 )
 
 /**
- * Keys that can be stored in the [OrganisationSetting] table.
+ * A key in the [OrganisationSetting] table, together with its value type,
+ * default and stored-text conversion.
  *
- * Each key declares its value type and the value used when the organisation has
- * not stored a setting.
+ * The key is invariant because settings are both read and written: [decode]
+ * returns [T] and [encode] accepts [T].
  */
-@Schema(enumeration = ["country", "language", "timezone", "includeDefaultAuthenticationMethods"])
-@Serializable
-enum class OrganisationSettingKey(
-    override val type: TypedSettingType<*>,
-    override val default: Any,
-) : TypedSetting {
+@Serializable(with = OrganisationSettingKeySerializer::class)
+sealed class OrganisationSettingKey<T : Any>(
+    override val code: String,
+    override val default: T,
+) : SettingKey<T> {
+    /**
+     * Decode the stored text representation.
+     */
+    abstract override fun decode(value: String): T
+
+    /**
+     * Encode the value to its stored text representation.
+     */
+    abstract override fun encode(value: T): String
+
     /**
      * Defines the calendar.
      */
-    @SerialName("country")
-    COUNTRY(TypedSettingType.StringType, "GB"),
+    data object Country : OrganisationSettingKey<String>("country", "HK") {
+        override fun decode(value: String): String = value
+
+        override fun encode(value: String): String = value
+    }
 
     /**
      * Defines the default application language.
      */
-    @SerialName("language")
-    LANGUAGE(TypedSettingType.StringType, "en"),
+    data object Language : OrganisationSettingKey<String>("language", "en") {
+        override fun decode(value: String): String = value
+
+        override fun encode(value: String): String = value
+    }
 
     /**
      * Defines the time zone as a BCP 47 `-tz-` key, for example `utc` for UTC
      * or `gbldn` for London. The key is stored as text; translating it to a
      * time zone is a separate concern.
      */
-    @SerialName("timezone")
-    TIMEZONE(TypedSettingType.StringType, "utc"),
+    data object Timezone : OrganisationSettingKey<String>("timezone", "utc") {
+        override fun decode(value: String): String = value
+
+        override fun encode(value: String): String = value
+    }
 
     /**
      * Defines whether an organisation also uses the default organisation auth
      * methods in addition to its own.
      */
-    @SerialName("includeDefaultAuthenticationMethods")
-    INCLUDE_DEFAULT_AUTHENTICATION_METHODS(TypedSettingType.BooleanType, true),
+    data object IncludeDefaultAuthenticationMethods :
+        OrganisationSettingKey<Boolean>("includeDefaultAuthenticationMethods", true) {
+        override fun decode(value: String): Boolean = value.toBooleanStrict()
+
+        override fun encode(value: Boolean): String = value.toString()
+    }
+
+    companion object {
+        /**
+         * Resolve a persisted key code.
+         */
+        fun fromCode(code: String): OrganisationSettingKey<*> = when (code) {
+            Country.code -> Country
+            Language.code -> Language
+            Timezone.code -> Timezone
+            IncludeDefaultAuthenticationMethods.code -> IncludeDefaultAuthenticationMethods
+            else -> throw IllegalArgumentException("Unknown organisation setting: $code")
+        }
+    }
+}
+
+/**
+ * Maps an [OrganisationSettingKey] to and from its persisted code.
+ */
+@Converter
+class OrganisationSettingKeyConverter : AttributeConverter<OrganisationSettingKey<*>, String> {
+    override fun convertToDatabaseColumn(attribute: OrganisationSettingKey<*>?): String? =
+        attribute?.code
+
+    override fun convertToEntityAttribute(dbData: String?): OrganisationSettingKey<*>? =
+        dbData?.let { OrganisationSettingKey.fromCode(it) }
+}
+
+
+/**
+ * Serialises an [OrganisationSettingKey] as its stable code.
+ *
+ * The key is a closed hierarchy, so the code is the complete wire
+ * representation. The entity's JPA converter uses the same code for storage.
+ */
+object OrganisationSettingKeySerializer : KSerializer<OrganisationSettingKey<*>> {
+    override val descriptor =
+        PrimitiveSerialDescriptor("ai.hamoni.control_room.data.OrganisationSettingKey", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: OrganisationSettingKey<*>) {
+        encoder.encodeString(value.code)
+    }
+
+    override fun deserialize(decoder: Decoder): OrganisationSettingKey<*> =
+        OrganisationSettingKey.fromCode(decoder.decodeString())
 }
 
 /**
