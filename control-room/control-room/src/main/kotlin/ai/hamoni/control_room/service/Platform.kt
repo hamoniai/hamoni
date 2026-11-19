@@ -44,9 +44,7 @@ import java.util.*
  */
 @ApplicationScoped
 @RegisterForReflection
-class AuthenticationService @Inject constructor(
-    private val oidcSession: OidcSession
-) {
+class AuthenticationService @Inject constructor(private val oidcSession: OidcSession) {
     /**
      * Logout the current authentication profile locally.
      *
@@ -87,9 +85,7 @@ enum class AuthenticationProfileServiceHydration {
  */
 @ApplicationScoped
 @RegisterForReflection
-class ConfigurationService @Inject constructor(
-    platformConfig: PlatformConfig
-) {
+class ConfigurationService @Inject constructor(platformConfig: PlatformConfig) {
     /**
      * The default organisation identifier
      */
@@ -104,7 +100,7 @@ class ConfigurationService @Inject constructor(
 @ApplicationScoped
 @RegisterForReflection
 class IdentityProviderIndexService @Inject constructor(
-    private val identityProviderIndexRepository: IdentityProviderIndexRepository
+    private val identityProviderIndexRepository: IdentityProviderIndexRepository,
 ) {
     /**
      * Get an index entry, within a specific scope.

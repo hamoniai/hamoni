@@ -254,14 +254,13 @@ class AuthResourcesTest {
             Uni.createFrom().item(identityProvider())
     }
 
-    private fun identityProvider(): OrganisationIdentityProvider =
-        OrganisationIdentityProvider(
-            id = providerId,
-            name = "Example provider",
-            url = "https://issuer.example.com",
-            clientId = "client-id",
-            enabled = true,
-        ).apply { clientSecret = "secret-ref" }
+    private fun identityProvider(): OrganisationIdentityProvider = OrganisationIdentityProvider(
+        id = providerId,
+        name = "Example provider",
+        url = "https://issuer.example.com",
+        clientId = "client-id",
+        enabled = true,
+    ).apply { clientSecret = "secret-ref" }
 
     private fun providerHeader(): OrganisationIdentityProviderHeaderWithSource =
         OrganisationIdentityProviderHeaderWithSource(
@@ -270,15 +269,14 @@ class AuthResourcesTest {
             default = false
         )
 
-    private fun profile(): AuthenticationProfile =
-        AuthenticationProfile(
-            id = UUID.fromString("33333333-3333-3333-3333-333333333333"),
-            familyName = "Doe",
-            givenName = "Jane",
-            name = "Jane Doe",
-            email = "jane@example.com",
-            issuer = "https://issuer.example.com",
-            issuerSubject = "subject",
-            enabled = true
-        )
+    private fun profile(): AuthenticationProfile = AuthenticationProfile(
+        id = UUID.fromString("33333333-3333-3333-3333-333333333333"),
+        familyName = "Doe",
+        givenName = "Jane",
+        name = "Jane Doe",
+        email = "jane@example.com",
+        issuer = "https://issuer.example.com",
+        issuerSubject = "subject",
+        enabled = true
+    )
 }

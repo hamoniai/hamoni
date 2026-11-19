@@ -1,6 +1,6 @@
 /*
  * Hamoni: Cloud workflow platform
- * Copyright (C) 2026  Hamoni Limited
+ * Copyright (C) 2026 Hamoni Limited
  *
  * Unless you have received this program directly from Hamoni Limited pursuant to
  * the terms of a commercial license agreement with Hamoni Limited, then this
@@ -33,9 +33,7 @@ import java.nio.file.Path
 class JsonSchemaExportServiceTest {
 
     @Test
-    fun `the root allows a default organisation and additional organisations`(
-        @TempDir tempDir: Path,
-    ) {
+    fun `the root allows a default organisation and additional organisations`(@TempDir tempDir: Path) {
         // Given
         val input = tempDir.resolve("openapi.json")
         input.toFile().writeText(

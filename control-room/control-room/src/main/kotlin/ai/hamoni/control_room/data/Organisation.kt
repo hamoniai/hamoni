@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 @file:OptIn(ExperimentalSerializationApi::class)
+
 package ai.hamoni.control_room.data
 
 import ai.hamoni.common.core.shared.SettingKey
@@ -299,11 +300,10 @@ class OrganisationIdentityProvider(
 /**
  * Custom serializer to filter out write-only fields.
  */
-object OrganisationIdentityProviderSerializer
-    : JsonTransformingSerializer<OrganisationIdentityProvider>(OrganisationIdentityProvider.generatedSerializer()) {
-    override fun transformSerialize(element: JsonElement): JsonElement {
-        return JsonObject(element.jsonObject.filterKeys { it != "clientSecret" })
-    }
+object OrganisationIdentityProviderSerializer :
+    JsonTransformingSerializer<OrganisationIdentityProvider>(OrganisationIdentityProvider.generatedSerializer()) {
+    override fun transformSerialize(element: JsonElement): JsonElement =
+        JsonObject(element.jsonObject.filterKeys { it != "clientSecret" })
 }
 
 /**
@@ -361,7 +361,11 @@ class OrganisationSetting(
      */
     @Column(name = "key", nullable = false, updatable = false, unique = true, comment = "Settings key")
     @Convert(converter = OrganisationSettingKeyConverter::class)
-    @field:Schema(implementation = String::class, type = SchemaType.STRING, enumeration = ["country", "language", "timezone", "includeDefaultAuthenticationMethods"])
+    @field:Schema(
+        implementation = String::class,
+        type = SchemaType.STRING,
+        enumeration = ["country", "language", "timezone", "includeDefaultAuthenticationMethods"]
+    )
     var key: OrganisationSettingKey<*>,
 
     /**
@@ -391,10 +395,7 @@ class OrganisationSetting(
  * returns [T] and [encode] accepts [T].
  */
 @Serializable(with = OrganisationSettingKeySerializer::class)
-sealed class OrganisationSettingKey<T : Any>(
-    override val code: String,
-    override val default: T,
-) : SettingKey<T> {
+sealed class OrganisationSettingKey<T : Any>(override val code: String, override val default: T) : SettingKey<T> {
     /**
      * Decode the stored text representation.
      */
@@ -464,13 +465,11 @@ sealed class OrganisationSettingKey<T : Any>(
  */
 @Converter
 class OrganisationSettingKeyConverter : AttributeConverter<OrganisationSettingKey<*>, String> {
-    override fun convertToDatabaseColumn(attribute: OrganisationSettingKey<*>?): String? =
-        attribute?.code
+    override fun convertToDatabaseColumn(attribute: OrganisationSettingKey<*>?): String? = attribute?.code
 
     override fun convertToEntityAttribute(dbData: String?): OrganisationSettingKey<*>? =
         dbData?.let { OrganisationSettingKey.fromCode(it) }
 }
-
 
 /**
  * Serialises an [OrganisationSettingKey] as its stable code.

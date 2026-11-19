@@ -115,35 +115,34 @@ constructor(
      * @param organisation The organisation representation
      * @return A Uni with the updated organisation, i.e. identifiers populated.
      */
-    fun create(organisation: Organisation): Uni<Organisation> =
-        Panache.withTransaction {
-            platformAuthoriser.checkPlatformAdminOrSystem()
-                .onItem().transformToUni {
-                    organisation.id = UUID.fromString(tenantResolver.resolveTenantId())
+    fun create(organisation: Organisation): Uni<Organisation> = Panache.withTransaction {
+        platformAuthoriser.checkPlatformAdminOrSystem()
+            .onItem().transformToUni {
+                organisation.id = UUID.fromString(tenantResolver.resolveTenantId())
 
-                    // Hibernate's timestamp generation does not run for an
-                    // @Embeddable inside an @ElementCollection, so set the
-                    // organisation and setting timestamps explicitly.
-                    val now = Instant.now()
-                    organisation.created = now
-                    organisation.updated = now
-                    organisation.settings.forEach { setting ->
-                        setting.created = now
-                        setting.updated = now
-                    }
+                // Hibernate's timestamp generation does not run for an
+                // @Embeddable inside an @ElementCollection, so set the
+                // organisation and setting timestamps explicitly.
+                val now = Instant.now()
+                organisation.created = now
+                organisation.updated = now
+                organisation.settings.forEach { setting ->
+                    setting.created = now
+                    setting.updated = now
+                }
 
-                    if (organisation.identityProviders.isNotEmpty()) {
-                        Multi.createFrom().iterable(organisation.identityProviders)
-                            .onItem().transformToUniAndConcatenate { idp -> addIdentityProvider(idp) }
-                            .collect().asList().replaceWith(organisation)
-                    } else {
-                        Uni.createFrom().item(organisation)
-                    }
+                if (organisation.identityProviders.isNotEmpty()) {
+                    Multi.createFrom().iterable(organisation.identityProviders)
+                        .onItem().transformToUniAndConcatenate { idp -> addIdentityProvider(idp) }
+                        .collect().asList().replaceWith(organisation)
+                } else {
+                    Uni.createFrom().item(organisation)
                 }
-                .onItem().transformToUni {
-                    organisationRepository.persistAndFlush(organisation)
-                }
-        }
+            }
+            .onItem().transformToUni {
+                organisationRepository.persistAndFlush(organisation)
+            }
+    }
 
     /**
      * Get an organisation and attach the related data the caller asked for. The organisation id comes from the header
@@ -163,18 +162,17 @@ constructor(
      *
      * @return the organisation's identity providers
      */
-    fun getIdentityProviders(enabled: Boolean? = null): Uni<List<OrganisationIdentityProvider>> =
-        Panache.withSession {
-            platformAuthoriser.checkOrganisationAdminOrSystem()
-                .onItem().transformToUni {
-                    if (null != enabled) {
-                        organisationIdentityProviderRepository.find("enabled", enabled)
-                    } else {
-                        organisationIdentityProviderRepository.findAll()
-                    }
-                        .list()
+    fun getIdentityProviders(enabled: Boolean? = null): Uni<List<OrganisationIdentityProvider>> = Panache.withSession {
+        platformAuthoriser.checkOrganisationAdminOrSystem()
+            .onItem().transformToUni {
+                if (null != enabled) {
+                    organisationIdentityProviderRepository.find("enabled", enabled)
+                } else {
+                    organisationIdentityProviderRepository.findAll()
                 }
-        }
+                    .list()
+            }
+    }
 
     /**
      * Get single identity provider.
@@ -212,25 +210,23 @@ constructor(
                 }
         }
 
-
     /**
      * Get a specific setting for an organisation.
      *
      * @return the setting value, or the key's default if it was not specified.
      */
-    fun <T : Any> getSetting(key: OrganisationSettingKey<T>): Uni<T> =
-        Panache.withSession {
-            platformAuthoriser.checkOrganisationAccessOrSystem()
-                .onItem().transformToUni {
-                    organisationRepository
-                        .find("#Organisation.getSetting", mapOf("key" to key))
-                        .project(String::class.java)
-                        .firstResult()
-                }
-                .onItem().transform {
-                    it?.let(key::decode) ?: key.default
-                }
-        }
+    fun <T : Any> getSetting(key: OrganisationSettingKey<T>): Uni<T> = Panache.withSession {
+        platformAuthoriser.checkOrganisationAccessOrSystem()
+            .onItem().transformToUni {
+                organisationRepository
+                    .find("#Organisation.getSetting", mapOf("key" to key))
+                    .project(String::class.java)
+                    .firstResult()
+            }
+            .onItem().transform {
+                it?.let(key::decode) ?: key.default
+            }
+    }
 
     /**
      * Get an organisation's settings. The values are returned in their stored
@@ -238,16 +234,15 @@ constructor(
      *
      * @return the organisation settings
      */
-    fun getSettings(): Uni<List<OrganisationSetting>> =
-        Panache.withSession {
-            platformAuthoriser.checkOrganisationAccessOrSystem()
-                .onItem().transformToUni {
-                    organisationRepository
-                        .find("#Organisation.getSettings")
-                        .project(OrganisationSetting::class.java)
-                        .list()
-                }
-        }
+    fun getSettings(): Uni<List<OrganisationSetting>> = Panache.withSession {
+        platformAuthoriser.checkOrganisationAccessOrSystem()
+            .onItem().transformToUni {
+                organisationRepository
+                    .find("#Organisation.getSettings")
+                    .project(OrganisationSetting::class.java)
+                    .list()
+            }
+    }
 
     /**
      * Get the organisation state.

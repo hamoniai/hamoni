@@ -45,16 +45,21 @@ concern, covered under UI design and language (Part III).
 - **Immutability first.** Prefer `val`; prefer immutable collections; prefer data
   classes for value objects. Mutability is a deliberate, local decision — a JPA
   entity is the one standing exception, where properties are `var` (§10).
-- **Write Kotlin, not Java in Kotlin.** Use the language rather than translating
-  Java structure: primary constructors, immutable properties, data and sealed
-  types, `when`, expression bodies, delegation (`by`), extension functions and the
+- **Write idiomatic Kotlin.** Use the language rather than translating Java
+  structure: primary constructors, immutable properties, sealed and data types,
+  `when`, expression bodies, delegation (`by`), extension functions and the
   standard collection transformations (`map`, `filter`, `flatMap`, `fold`,
-  `associate`, `partition`, `groupBy`, `let`, `takeIf`, `use`). Do not write
-  Java-style explicit getters and setters for simple properties, mutable fields
-  for values that are immutable, mutable collections only to populate them in a
-  loop, or utility classes when a top-level function or object is the Kotlin
-  idiom. If a Kotlin file reads like Java with `fun`, rewrite it. Use a loop only
-  when the logic is genuinely clearer or an external API requires mutation.
+  `associate`, `partition`, `groupBy`, `let`, `takeIf`, `use`). A function that
+  needs more than a handful of local `val` assignments — roughly four or more —
+  before producing its result is a signal to simplify: prefer expressions, scope
+  functions, collection operations, data/sealed types and delegation over
+  procedural step-by-step construction. Do not use explicit getters and setters
+  for simple properties, mutable fields for immutable values, mutable
+  collections only to populate them, or utility classes when a top-level
+  function or object is the Kotlin idiom. A loop is acceptable only when it is
+  genuinely clearer or an external API requires mutation. Tests are the
+  exception: Given-When-Then is naturally linear, so a test body may use a
+  procedural style.
 - **Order the class body deliberately.** Declare properties first, then the
   companion object, then initialisers and methods. Order methods alphabetically
   by name and keep overloads together; apply the same ordering inside the
@@ -115,6 +120,22 @@ concern, covered under UI design and language (Part III).
   may contain several related classes; grouping related classes together is the
   preferred default. Split a file only when it grows unwieldy or its classes stop
   belonging together.
+
+  For example, a source file that declares several related classes has one test
+  file named after the source file:
+
+  ```text
+  Widget.kt
+    Widget
+    WidgetValidator
+
+  WidgetTest.kt
+    class WidgetTest
+    class WidgetValidatorTest
+  ```
+
+  Do not create `WidgetValidatorTest.kt` when `WidgetValidator` is declared in
+  `Widget.kt`.
 - A package belongs to the project that owns it. Do not create a package in one
   project that the package-to-project mapping assigns to another.
 - Within a file containing several classes, order the classes alphabetically by
@@ -321,6 +342,16 @@ Do not:
   number type, the serialisation maps numbers to `BigDecimal` explicitly rather
   than to `double`. **Time** is `java.time.Instant` in Coordinated Universal
   Time; convert only at the edge. Do not do raw epoch arithmetic.
+- **Settings tables share one key contract.** Every settings table — organisation,
+  team, project, process and so on — derives its key type from the common
+  `SettingKey<T>` contract. Each concrete key is a sealed type, not an enum, and
+  declares its storage code, default value, `encode` and `decode`.
+- **Every persisted settings key has both mappings.** A JPA converter maps the
+  key to its stable storage code and a Kotlin serializer maps it to the same code
+  on the interface. The two representations must not drift.
+- **Write-only values are explicit.** A value accepted on input but never
+  returned — such as a client secret — is not persisted and is marked write-only
+  on the interface.
 - **Business rules are data, not code branches**, where the product models them
   as data (ADR-0016). A business rule is a project-scoped artefact, not a
   conditional in a service.
@@ -344,8 +375,12 @@ Do not:
 - **Transactions are explicit and short.** No remote call inside a transaction.
 - **Optimistic locking** on aggregates that can be edited concurrently; surface a
   conflict as a domain outcome, not a server error.
-- **Queries live on repositories**; no query construction in a resource or a
-  transport type.
+- **Queries are declared on the entity and executed by the repository.**
+  Register named queries with `@NamedQuery` or `@NamedQueries` on the entity
+  that owns the result, and reference them by name from the repository. Do not
+  construct JPQL or HQL inline in a resource or service when a named query
+  expresses the operation. Do not duplicate a registered query as an inline
+  string.
 - **Isolation is by schema, not by a discriminator column** (ADR-0052). Global
   tables are addressed with an explicit schema qualifier; every other table
   belongs to an organisation schema whose name is the organisation identifier.
@@ -493,6 +528,16 @@ Do not:
 
 - Use Quarkus configuration (`application.properties`, profile-based), typed with
   a configuration mapping where there is more than one related property.
+- **Classify every configuration property as build-time or runtime before adding
+  it.**
+  - A value that must not change without rebuilding is build-time configuration.
+    `@ConfigRoot` is used only in a Quarkus extension; do not add it to an
+    application or shared project.
+  - A value that may change at runtime uses a typed configuration mapping in the
+    owning application project.
+  - If the correct classification or registration is not clear, stop and ask.
+    Do not move a mapping between `common/` and an extension or add a
+    configuration annotation speculatively.
 - **Prefer configuration over code.** Behaviour that varies by profile,
   environment, database or deployment belongs in configuration — a profile, a
   build property, a typed configuration mapping — or in a build/profile
@@ -531,6 +576,8 @@ Do not:
 - Where one source file contains several classes, the test file is named after
   the source file — `<SourceFile>Test.kt` — and contains one independent test
   class per class under test.
+- See the multi-class source-file example in §2. Do not create a separate test
+  file for one class when that class is declared in the shared source file.
 - Do not merge unrelated classes into one test class.
 - Quarkus extension pairs place all tests in the deployment project under the
   `test` sub-package, which is a deliberate deviation from the same-package rule;
@@ -570,7 +617,27 @@ Do not:
   activity.
 - Use existing constants for paths, header names and query-parameter names. Do
   not duplicate them as literals in tests.
-- Name tests for behaviour: `` `a pended process suspends all parallel paths` ``.
+- Name tests using `@DisplayName`; the Kotlin method name must remain a legal
+  identifier. For authorisation tests use the pattern
+  `<method>/<authorised|unauthorised>: <objective>`. The objective states the
+  expected or unacceptable scenario in business terms — for example
+  `fail on unknown identity provider` — not a technical description of the
+  input or exception.
+
+  ```kotlin
+  @Test
+  @DisplayName("getIdentityProviderById/unauthorised: fail on unknown identity provider")
+  fun getIdentityProviderByIdUnauthorisedUnknownProvider() {
+      // Given
+      ...
+
+      // When
+      ...
+
+      // Then
+      ...
+  }
+  ```
 - **Every domain state transition has a test.** The state models (ADR-0012,
   ADR-0013) and the pend and exception semantics (ADR-0014, ADR-0015) are the
   highest-risk areas and must be covered.

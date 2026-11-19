@@ -50,7 +50,7 @@ class AuthenticationResource @Inject constructor(
     private val identity: SecurityIdentity,
     private val authenticationService: AuthenticationService,
     private val authenticationProfileService: AuthenticationProfileService,
-    private val securityHelpers: SecurityHelpers
+    private val securityHelpers: SecurityHelpers,
 ) {
     /**
      * Get the identity provider information for an organisation. This is used to support the login page. This service
@@ -99,12 +99,14 @@ class AuthenticationResource @Inject constructor(
         @RestQuery
         @Pattern(regexp = "^/(?!/).*$", message = "must be a local path")
         returnUrl: String?,
-    ): Uni<RestResponse<Void>> =
-        Uni.createFrom().item {
-            RestResponse.ResponseBuilder.create<Void>(RestResponse.Status.SEE_OTHER)
-                .header(HttpHeaders.LOCATION, returnUrl ?: LANDING_PATH)
-                .build()
-        }
+    ): Uni<RestResponse<Void>> = Uni.createFrom().item {
+        // TODO: need to check the authentication profile here and make sure it has not been disabled.
+        // If one does not exist, then it needs creating.
+        // Even if it does exist, we need to call out to the IDP service and get the name, email etc.
+        RestResponse.ResponseBuilder.create<Void>(RestResponse.Status.SEE_OTHER)
+            .header(HttpHeaders.LOCATION, returnUrl ?: LANDING_PATH)
+            .build()
+    }
 
     /**
      * Logout locally, clearing the Quarkus session cookie.
@@ -112,11 +114,10 @@ class AuthenticationResource @Inject constructor(
     @GET
     @Path("/logout")
     @Produces(APPLICATION_JSON_UTF8)
-    fun logout(): Uni<RestResponse<Boolean>> =
-        authenticationService.logout()
-            .onItem().transform { _ ->
-                RestResponse.ok(true)
-            }
+    fun logout(): Uni<RestResponse<Boolean>> = authenticationService.logout()
+        .onItem().transform { _ ->
+            RestResponse.ok(true)
+        }
 
     /**
      * Get the current authentication profile
@@ -126,11 +127,10 @@ class AuthenticationResource @Inject constructor(
     @Produces(APPLICATION_JSON_UTF8)
     fun profile(
         @RestQuery hydrate: List<AuthenticationProfileServiceHydration>,
-    ): Uni<RestResponse<AuthenticationProfile>> =
-        authenticationProfileService.profile(hydrate)
-            .onItem().transform { data ->
-                RestResponse.ok(data)
-            }
+    ): Uni<RestResponse<AuthenticationProfile>> = authenticationProfileService.profile(hydrate)
+        .onItem().transform { data ->
+            RestResponse.ok(data)
+        }
 
     /**
      * Get the current authentication profile

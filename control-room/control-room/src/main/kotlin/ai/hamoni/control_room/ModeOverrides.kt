@@ -47,9 +47,7 @@ import java.sql.Types
 @IfBuildProfile(anyOf = ["dev", "test"])
 @ApplicationScoped
 class AppInitializer {
-    fun onStart(
-        @Observes event: StartupEvent,
-    ) {
+    fun onStart(@Observes event: StartupEvent) {
         // Need to configure the H2 driver. See the root test support package for reasoning. This does not
         // exist in production, which uses MySQL.
         val dataType = DataType.getDataType(TypeInfo.TYPE_JSON.valueType)
@@ -65,19 +63,17 @@ class AppInitializer {
 @Singleton
 @IfBuildProfile(anyOf = ["dev", "test"])
 @Priority(Int.MAX_VALUE)
-class DevOidcTenantConfigResolver @Inject constructor(
-    securityHelpers: SecurityHelpers
-) : OidcTenantConfigResolver(securityHelpers) {
+class DevOidcTenantConfigResolver @Inject constructor(securityHelpers: SecurityHelpers) :
+    OidcTenantConfigResolver(securityHelpers) {
 
     /**
      * Call parent then divert, unless failure.
      */
     override fun resolve(
         routingContext: RoutingContext,
-        requestContext: OidcRequestContext<OidcTenantConfig>
-    ): Uni<OidcTenantConfig?> =
-        super.resolve(routingContext, requestContext)
-            .onItem().transform { null }
+        requestContext: OidcRequestContext<OidcTenantConfig>,
+    ): Uni<OidcTenantConfig?> = super.resolve(routingContext, requestContext)
+        .onItem().transform { null }
 }
 
 /**
@@ -86,13 +82,7 @@ class DevOidcTenantConfigResolver @Inject constructor(
  */
 @IfBuildProfile("cmd")
 class PhysicalNamingSchemaErasingSnakeCaseImpl : PhysicalNamingStrategySnakeCaseImpl() {
-    override fun toPhysicalCatalogName(
-        logicalName: Identifier?,
-        jdbcEnvironment: JdbcEnvironment?,
-    ): Identifier? = null
+    override fun toPhysicalCatalogName(logicalName: Identifier?, jdbcEnvironment: JdbcEnvironment?): Identifier? = null
 
-    override fun toPhysicalSchemaName(
-        logicalName: Identifier?,
-        jdbcEnvironment: JdbcEnvironment,
-    ): Identifier? = null
+    override fun toPhysicalSchemaName(logicalName: Identifier?, jdbcEnvironment: JdbcEnvironment): Identifier? = null
 }

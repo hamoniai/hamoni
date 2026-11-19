@@ -84,9 +84,16 @@ work; do not restate the rules here.
 - **Honour the platform invariants.** The reactive, organisation-isolation and
   audit rules are in `CODING-STANDARDS.md` §8, §10 and §13. Apply them; do not
   reproduce them here.
-- **Build scripts require approval.** `build-logic/`, the Gradle convention
-  plugins and every `build.gradle.kts` are sensitive. Propose a change and wait
-  for the user before editing one.
+- **Build system files require approval.** Do not edit `build-logic/`, the
+  Gradle convention plugins, `settings.gradle.kts`, any `build.gradle.kts`, the
+  Gradle wrapper files, or `gradle/libs.versions.toml` without explicit
+  approval. Propose the change and wait.
+- **Sensitive files require approval.** Do not edit any file named `Security.kt`
+  without explicit approval. Propose the change and wait.
+- **Honour the requested scope.** Do not change adjacent files, tests, loaders,
+  schemas or configuration merely to make a requested change compile or start.
+  If the change cannot be completed within the requested scope, stop and explain
+  why.
 - **Propose, do not unilaterally update, governing documents.** You may propose
   changes to `ARCHITECTURE-DECISIONS.md`, `CODING-STANDARDS.md`,
   `API-AND-DATABASE.md`, `README.md` or `AGENTS.md`, but ask the user before
@@ -105,6 +112,12 @@ work; do not restate the rules here.
 6. Run the affected component's build, lint and tests before finishing.
 7. If the owning component or the design is unclear, stop and ask rather than
    guessing.
+8. When an interface or contract is underspecified, propose it first. Do not
+   invent a JSON shape, default value, identifier, provisioning step or
+   serialization format. Present a concrete proposal and wait for confirmation.
+9. Follow the test naming and placement examples in `CODING-STANDARDS.md` §16.2
+   and §16.6. Do not create a separate test file when the class under test is
+   declared in a multi-class source file.
 
 # Challenge the approach
 

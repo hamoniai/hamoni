@@ -158,7 +158,7 @@ constructor(
 @Unremovable
 class OrganisationTenantResolverProducer @Inject constructor(
     private val platformConfig: PlatformConfig,
-    private val routingContext: RoutingContext
+    private val routingContext: RoutingContext,
 ) {
     /**
      * Use this to produce a fallback in the request scope. It will only work before the TenantResolver has been
@@ -202,7 +202,7 @@ class OrganisationTenantResolverProducer @Inject constructor(
                         request.getHeader(REQUEST_ORGANISATION_ID)
                             .orEmpty()
                             .trim()
-                        ).toString()
+                    ).toString()
                 } catch (_: IllegalArgumentException) {
                     throw InvalidParameterException(REQUEST_ORGANISATION_ID, "Invalid organisation identifier")
                 }
@@ -229,10 +229,7 @@ class PhysicalNamingStrategyTenantQualifyingSnakeCaseImpl : PhysicalNamingStrate
             .getConfigMapping(MultiTenantConfig::class.java)
             .placeholder()
 
-    override fun toPhysicalSchemaName(
-        logicalName: Identifier?,
-        jdbcEnvironment: JdbcEnvironment,
-    ): Identifier? =
+    override fun toPhysicalSchemaName(logicalName: Identifier?, jdbcEnvironment: JdbcEnvironment): Identifier? =
         if (null == logicalName) {
             Identifier(tenantPlaceholder, true, true)
         } else {
@@ -252,9 +249,8 @@ class PhysicalNamingStrategyTenantQualifyingSnakeCaseImpl : PhysicalNamingStrate
  * default tenant, which is the Keycloak Dev Services tenant in development.
  */
 @ApplicationScoped
-class OidcTenantConfigResolver @Inject constructor(
-    private val securityHelpers: SecurityHelpers
-) : TenantConfigResolver {
+class OidcTenantConfigResolver @Inject constructor(private val securityHelpers: SecurityHelpers) :
+    TenantConfigResolver {
     companion object {
         /**
          * The query parameter used by the frontend login page to select a provider.
@@ -378,7 +374,7 @@ class SecurityHelpers @Inject constructor(
     private val organisationService: OrganisationService,
     private val organisationTenantResolverProducer: OrganisationTenantResolverProducer,
     @param:PersistenceUnitExtension
-    private val tenantResolver: TenantResolver
+    private val tenantResolver: TenantResolver,
 ) {
     /**
      * Get the actual identity provider by ID. General rules.
@@ -493,10 +489,7 @@ class SecurityHelpers @Inject constructor(
     /**
      * Establish a new system request context for a request
      */
-    private fun <T> executeSystemRequestForOrganisation(
-        organisationId: String,
-        uniSupplier: Supplier<Uni<T>>
-    ): Uni<T> =
+    private fun <T> executeSystemRequestForOrganisation(organisationId: String, uniSupplier: Supplier<Uni<T>>): Uni<T> =
         Uni.createFrom().deferred {
             // Capture the request context to restore after the end of the Uni, and create a new context.
             val requestContext = Arc.container().requestContext()

@@ -45,12 +45,12 @@ import io.quarkus.test.vertx.UniAsserter
 import io.smallrye.mutiny.Uni
 import io.vertx.core.http.HttpServerRequest
 import io.vertx.ext.web.RoutingContext
-import java.util.UUID
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.util.UUID
 
 /**
  * Behaviour of the OIDC tenant configuration resolver.
@@ -157,17 +157,15 @@ class OidcTenantConfigResolverTest {
         asserter.assertNull(result)
     }
 
-    private fun provider(): OrganisationIdentityProvider =
-        OrganisationIdentityProvider(
-            id = providerId,
-            name = "Test provider",
-            url = "https://www.example.com",
-            clientId = "client-id",
-            enabled = true,
-        ).apply { clientSecret = "secret-ref" }
+    private fun provider(): OrganisationIdentityProvider = OrganisationIdentityProvider(
+        id = providerId,
+        name = "Test provider",
+        url = "https://www.example.com",
+        clientId = "client-id",
+        enabled = true,
+    ).apply { clientSecret = "secret-ref" }
 
-    private fun requestContext(): OidcRequestContext<OidcTenantConfig> =
-        mockk<OidcRequestContext<OidcTenantConfig>>()
+    private fun requestContext(): OidcRequestContext<OidcTenantConfig> = mockk<OidcRequestContext<OidcTenantConfig>>()
 
     private fun routingContextFor(path: String, provider: String?): RoutingContext {
         val request = mockk<HttpServerRequest>()
@@ -284,10 +282,7 @@ class OrganisationTenantResolverProducerTest {
         assertThat(producer.get()).isNull()
     }
 
-    private fun routingContextFor(
-        path: String,
-        organisationHeader: String? = null,
-    ): RoutingContext {
+    private fun routingContextFor(path: String, organisationHeader: String? = null): RoutingContext {
         val request = mockk<HttpServerRequest>()
         every { request.path() } returns path
         every { request.getHeader(REQUEST_ORGANISATION_ID) } returns organisationHeader
@@ -574,10 +569,7 @@ class SecurityHelpersTest {
         }
     }
 
-    private fun givenIdentityProviders(
-        organisationId: UUID,
-        providers: List<OrganisationIdentityProvider>,
-    ) {
+    private fun givenIdentityProviders(organisationId: UUID, providers: List<OrganisationIdentityProvider>) {
         identityProviders[organisationId.toString()] = providers
     }
 
@@ -594,14 +586,13 @@ class SecurityHelpersTest {
         }
     }
 
-    private fun provider(id: UUID, name: String): OrganisationIdentityProvider =
-        OrganisationIdentityProvider(
-            id = id,
-            name = name,
-            url = "https://$name.example.com",
-            clientId = "client-$id",
-            enabled = true,
-        )
+    private fun provider(id: UUID, name: String): OrganisationIdentityProvider = OrganisationIdentityProvider(
+        id = id,
+        name = name,
+        url = "https://$name.example.com",
+        clientId = "client-$id",
+        enabled = true,
+    )
 }
 
 /**
@@ -767,12 +758,11 @@ class SecurityHelpersIdentityProviderTest {
         }
     }
 
-    private fun provider(name: String): OrganisationIdentityProvider =
-        OrganisationIdentityProvider(
-            id = providerId,
-            name = name,
-            url = "https://$name.example.com",
-            clientId = "client-$providerId",
-            enabled = true,
-        )
+    private fun provider(name: String): OrganisationIdentityProvider = OrganisationIdentityProvider(
+        id = providerId,
+        name = name,
+        url = "https://$name.example.com",
+        clientId = "client-$providerId",
+        enabled = true,
+    )
 }

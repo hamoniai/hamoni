@@ -64,30 +64,29 @@ import kotlin.io.path.createDirectories
 @ApplicationScoped
 @IfBuildProfile("json-schema-export")
 class JsonSchemaGenerateCommand
-    @Inject
-    constructor(
-        private val jsonSchemaExportService: JsonSchemaExportService,
-    ) : QuarkusApplication {
-        private val logger = Logger.getLogger(JsonSchemaGenerateCommand::class.java)
+@Inject
+constructor(private val jsonSchemaExportService: JsonSchemaExportService) :
+    QuarkusApplication {
+    private val logger = Logger.getLogger(JsonSchemaGenerateCommand::class.java)
 
-        companion object {
-            @JvmStatic
-            fun main(args: Array<String>) {
-                LaunchMode.set(LaunchMode.NORMAL)
-                Quarkus.run(JsonSchemaGenerateCommand::class.java, *args)
-                Quarkus.asyncExit()
-            }
-        }
-
-        /**
-         * Run the export and return zero when the schema was written.
-         */
-        override fun run(vararg args: String): Int {
-            val output = jsonSchemaExportService.generate()
-            logger.infof("Generated JSON schema: %s", output)
-            return 0
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            LaunchMode.set(LaunchMode.NORMAL)
+            Quarkus.run(JsonSchemaGenerateCommand::class.java, *args)
+            Quarkus.asyncExit()
         }
     }
+
+    /**
+     * Run the export and return zero when the schema was written.
+     */
+    override fun run(vararg args: String): Int {
+        val output = jsonSchemaExportService.generate()
+        logger.infof("Generated JSON schema: %s", output)
+        return 0
+    }
+}
 
 /**
  * Build the import JSON Schema from the organisation OpenAPI document.
@@ -95,272 +94,266 @@ class JsonSchemaGenerateCommand
 @ApplicationScoped
 @IfBuildProfile("json-schema-export")
 class JsonSchemaExportService
-    @Inject
-    constructor(
-        @param:ConfigProperty(name = "hamoni.json-schema-export.input")
-        private val inputPath: String,
-        @param:ConfigProperty(name = "hamoni.json-schema-export.output")
-        private val outputPath: String,
-        @param:ConfigProperty(name = "hamoni.json-schema-export.version")
-        private val schemaVersion: String,
-    ) {
-        companion object {
-            private const val REF_PREFIX = "#/components/schemas/"
-            private const val ROOT_SCHEMA = "Organisation"
-            private const val ORGANISATION_WITH_IDENTIFIER = "OrganisationWithIdentifier"
-        }
-
-        private val json = Json { prettyPrint = true }
-
-        /**
-         * Generate the schema and return the path it was written to.
-         */
-        fun generate(): Path {
-            val document = json.parseToJsonElement(Files.readString(Path.of(inputPath))).jsonObject
-            val schemas =
-                document["components"]
-                    ?.jsonObject
-                    ?.get("schemas")
-                    ?.jsonObject
-                    ?: throw IllegalStateException("OpenAPI document '$inputPath' has no components.schemas")
-
-            val definitions = linkedMapOf<String, JsonObject>()
-            collectSchema(ROOT_SCHEMA, schemas, definitions)
-            definitions[ORGANISATION_WITH_IDENTIFIER] = organisationWithIdentifier(definitions.getValue(ROOT_SCHEMA))
-
-            val schema =
-                buildJsonObject {
-                    put("\$schema", JsonPrimitive("https://json-schema.org/draft/2020-12/schema"))
-                    put("\$id", JsonPrimitive("https://hamoni.ai/schema/organisation-init/$schemaVersion"))
-                    put("type", JsonPrimitive("object"))
-                    put("additionalProperties", JsonPrimitive(false))
-                    put(
-                        "required",
-                        buildJsonArray {
-                            add(JsonPrimitive("schemaVersion"))
-                            add(JsonPrimitive("defaultOrganisation"))
-                        }
-                    )
-                    put(
-                        "properties",
-                        buildJsonObject {
-                            put("schemaVersion", buildJsonObject { put("const", JsonPrimitive(schemaVersion)) })
-                            put(
-                                "defaultOrganisation",
-                                buildJsonObject {
-                                    put("\$ref", JsonPrimitive("#/\$defs/$ROOT_SCHEMA"))
-                                }
-                            )
-                            put(
-                                "organisations",
-                                buildJsonObject {
-                                    put("type", JsonPrimitive("array"))
-                                    put(
-                                        "items",
-                                        buildJsonObject {
-                                            put("\$ref", JsonPrimitive("#/\$defs/$ORGANISATION_WITH_IDENTIFIER"))
-                                        }
-                                    )
-                                }
-                            )
-                        }
-                    )
-                    put("\$defs", JsonObject(definitions.mapValues { (_, value) -> rewriteReferences(value) }))
-                }
-
-            val output = Path.of(outputPath)
-            output.parent?.createDirectories()
-            Files.writeString(output, json.encodeToString(JsonElement.serializer(), schema))
-            return output
-        }
-
-        /**
-         * Add the identifier required by a non-default organisation.
-         */
-        private fun organisationWithIdentifier(organisation: JsonObject): JsonObject {
-            val properties = organisation["properties"]?.jsonObject
-                ?: throw IllegalStateException("Organisation schema has no properties")
-            val required =
-                organisation["required"]?.jsonArray
-                    ?.map { it.jsonPrimitive.content }
-                    .orEmpty()
-
-            return JsonObject(
-                organisation.toMutableMap().apply {
-                    put(
-                        "properties",
-                        JsonObject(
-                            properties + (
-                                "id" to buildJsonObject {
-                                    put("type", JsonPrimitive("string"))
-                                    put("format", JsonPrimitive("uuid"))
-                                }
-                            )
-                        )
-                    )
-                    put(
-                        "required",
-                        JsonArray((required + "id").distinct().map { JsonPrimitive(it) })
-                    )
-                }
-            )
-        }
-
-        /**
-         * Collect [name] and every schema it references, removing read-only
-         * properties and nullable fields from `required`.
-         */
-        private fun collectSchema(
-            name: String,
-            schemas: JsonObject,
-            definitions: MutableMap<String, JsonObject>,
-        ) {
-            if (definitions.containsKey(name)) return
-
-            val schema =
-                schemas[name]?.jsonObject
-                    ?: throw IllegalStateException("OpenAPI schema '$name' not found")
-
-            val cleaned = stripNullableRequired(stripReadOnly(schema))
-            definitions[name] = cleaned
-
-            references(cleaned).forEach { reference -> collectSchema(reference, schemas, definitions) }
-        }
-
-        /**
-         * Remove properties marked `readOnly` and drop them from `required`.
-         */
-        private fun stripReadOnly(schema: JsonObject): JsonObject {
-            val properties = schema["properties"]?.jsonObject ?: return schema
-            val readOnly =
-                properties
-                    .filterValues { property ->
-                        property is JsonObject && property["readOnly"]?.jsonPrimitive?.booleanOrNull == true
-                    }
-                    .keys
-
-            if (readOnly.isEmpty()) return schema
-
-            val required =
-                schema["required"]?.jsonArray
-                    ?.filterNot { it.jsonPrimitive.content in readOnly }
-                    ?.let { JsonArray(it) }
-
-            return JsonObject(
-                schema.toMutableMap().apply {
-                    this["properties"] = JsonObject(properties.filterKeys { it !in readOnly })
-                    if (!required.isNullOrEmpty()) {
-                        this["required"] = required
-                    } else {
-                        remove("required")
-                    }
-                }
-            )
-        }
-
-        /**
-         * Remove nullable properties from `required`.
-         */
-        private fun stripNullableRequired(schema: JsonObject): JsonObject {
-            val properties = schema["properties"]?.jsonObject ?: return schema
-            val nullable =
-                properties
-                    .filterValues { property -> property.isNullable() }
-                    .keys
-
-            if (nullable.isEmpty()) return schema
-
-            val required =
-                schema["required"]?.jsonArray
-                    ?.filterNot { it.jsonPrimitive.content in nullable }
-                    ?.let { JsonArray(it) }
-
-            return JsonObject(
-                schema.toMutableMap().apply {
-                    if (!required.isNullOrEmpty()) {
-                        this["required"] = required
-                    } else {
-                        remove("required")
-                    }
-                }
-            )
-        }
-
-        /**
-         * Whether this schema allows `null`.
-         */
-        private fun JsonElement.isNullable(): Boolean {
-            val schema = this as? JsonObject ?: return false
-
-            val anyOf = schema["anyOf"]?.jsonArray
-            if (anyOf?.any { it is JsonObject && it["type"]?.jsonPrimitive?.contentOrNull == "null" } == true) {
-                return true
-            }
-
-            val type = schema["type"]
-            return type is JsonArray && type.any { it.jsonPrimitive.contentOrNull == "null" }
-        }
-
-        /**
-         * Collect the names of every `components/schemas` reference in [element].
-         */
-        private fun references(element: JsonElement): Set<String> =
-            when (element) {
-                is JsonObject -> {
-                    element.entries.flatMap { (key, value) ->
-                        if (key == "\$ref") {
-                            val reference = (value as? JsonPrimitive)?.contentOrNull
-                            if (reference != null && reference.startsWith(REF_PREFIX)) {
-                                listOf(reference.removePrefix(REF_PREFIX))
-                            } else {
-                                emptyList()
-                            }
-                        } else {
-                            references(value).toList()
-                        }
-                    }.toSet()
-                }
-
-                is JsonArray -> {
-                    element.flatMap { references(it) }.toSet()
-                }
-
-                else -> {
-                    emptySet()
-                }
-            }
-
-        /**
-         * Rewrite `components/schemas` references to `$defs` references.
-         */
-        private fun rewriteReferences(element: JsonElement): JsonElement =
-            when (element) {
-                is JsonObject -> {
-                    JsonObject(
-                        element.mapValues { (key, value) ->
-                            if (key == "\$ref") {
-                                val reference = (value as? JsonPrimitive)?.contentOrNull
-                                if (reference != null && reference.startsWith(REF_PREFIX)) {
-                                    JsonPrimitive("#/\$defs/${reference.removePrefix(REF_PREFIX)}")
-                                } else {
-                                    value
-                                }
-                            } else {
-                                rewriteReferences(value)
-                            }
-                        }
-                    )
-                }
-
-                is JsonArray -> {
-                    JsonArray(element.map { rewriteReferences(it) })
-                }
-
-                else -> {
-                    element
-                }
-            }
+@Inject
+constructor(
+    @param:ConfigProperty(name = "hamoni.json-schema-export.input")
+    private val inputPath: String,
+    @param:ConfigProperty(name = "hamoni.json-schema-export.output")
+    private val outputPath: String,
+    @param:ConfigProperty(name = "hamoni.json-schema-export.version")
+    private val schemaVersion: String,
+) {
+    companion object {
+        private const val REF_PREFIX = "#/components/schemas/"
+        private const val ROOT_SCHEMA = "Organisation"
+        private const val ORGANISATION_WITH_IDENTIFIER = "OrganisationWithIdentifier"
     }
+
+    private val json = Json { prettyPrint = true }
+
+    /**
+     * Generate the schema and return the path it was written to.
+     */
+    fun generate(): Path {
+        val document = json.parseToJsonElement(Files.readString(Path.of(inputPath))).jsonObject
+        val schemas =
+            document["components"]
+                ?.jsonObject
+                ?.get("schemas")
+                ?.jsonObject
+                ?: throw IllegalStateException("OpenAPI document '$inputPath' has no components.schemas")
+
+        val definitions = linkedMapOf<String, JsonObject>()
+        collectSchema(ROOT_SCHEMA, schemas, definitions)
+        definitions[ORGANISATION_WITH_IDENTIFIER] = organisationWithIdentifier(definitions.getValue(ROOT_SCHEMA))
+
+        val schema =
+            buildJsonObject {
+                put("\$schema", JsonPrimitive("https://json-schema.org/draft/2020-12/schema"))
+                put("\$id", JsonPrimitive("https://hamoni.ai/schema/organisation-init/$schemaVersion"))
+                put("type", JsonPrimitive("object"))
+                put("additionalProperties", JsonPrimitive(false))
+                put(
+                    "required",
+                    buildJsonArray {
+                        add(JsonPrimitive("schemaVersion"))
+                        add(JsonPrimitive("defaultOrganisation"))
+                    }
+                )
+                put(
+                    "properties",
+                    buildJsonObject {
+                        put("schemaVersion", buildJsonObject { put("const", JsonPrimitive(schemaVersion)) })
+                        put(
+                            "defaultOrganisation",
+                            buildJsonObject {
+                                put("\$ref", JsonPrimitive("#/\$defs/$ROOT_SCHEMA"))
+                            }
+                        )
+                        put(
+                            "organisations",
+                            buildJsonObject {
+                                put("type", JsonPrimitive("array"))
+                                put(
+                                    "items",
+                                    buildJsonObject {
+                                        put("\$ref", JsonPrimitive("#/\$defs/$ORGANISATION_WITH_IDENTIFIER"))
+                                    }
+                                )
+                            }
+                        )
+                    }
+                )
+                put("\$defs", JsonObject(definitions.mapValues { (_, value) -> rewriteReferences(value) }))
+            }
+
+        val output = Path.of(outputPath)
+        output.parent?.createDirectories()
+        Files.writeString(output, json.encodeToString(JsonElement.serializer(), schema))
+        return output
+    }
+
+    /**
+     * Add the identifier required by a non-default organisation.
+     */
+    private fun organisationWithIdentifier(organisation: JsonObject): JsonObject {
+        val properties = organisation["properties"]?.jsonObject
+            ?: throw IllegalStateException("Organisation schema has no properties")
+        val required =
+            organisation["required"]?.jsonArray
+                ?.map { it.jsonPrimitive.content }
+                .orEmpty()
+
+        return JsonObject(
+            organisation.toMutableMap().apply {
+                put(
+                    "properties",
+                    JsonObject(
+                        properties + (
+                            "id" to buildJsonObject {
+                                put("type", JsonPrimitive("string"))
+                                put("format", JsonPrimitive("uuid"))
+                            }
+                            )
+                    )
+                )
+                put(
+                    "required",
+                    JsonArray((required + "id").distinct().map { JsonPrimitive(it) })
+                )
+            }
+        )
+    }
+
+    /**
+     * Collect [name] and every schema it references, removing read-only
+     * properties and nullable fields from `required`.
+     */
+    private fun collectSchema(name: String, schemas: JsonObject, definitions: MutableMap<String, JsonObject>) {
+        if (definitions.containsKey(name)) return
+
+        val schema =
+            schemas[name]?.jsonObject
+                ?: throw IllegalStateException("OpenAPI schema '$name' not found")
+
+        val cleaned = stripNullableRequired(stripReadOnly(schema))
+        definitions[name] = cleaned
+
+        references(cleaned).forEach { reference -> collectSchema(reference, schemas, definitions) }
+    }
+
+    /**
+     * Remove properties marked `readOnly` and drop them from `required`.
+     */
+    private fun stripReadOnly(schema: JsonObject): JsonObject {
+        val properties = schema["properties"]?.jsonObject ?: return schema
+        val readOnly =
+            properties
+                .filterValues { property ->
+                    property is JsonObject && property["readOnly"]?.jsonPrimitive?.booleanOrNull == true
+                }
+                .keys
+
+        if (readOnly.isEmpty()) return schema
+
+        val required =
+            schema["required"]?.jsonArray
+                ?.filterNot { it.jsonPrimitive.content in readOnly }
+                ?.let { JsonArray(it) }
+
+        return JsonObject(
+            schema.toMutableMap().apply {
+                this["properties"] = JsonObject(properties.filterKeys { it !in readOnly })
+                if (!required.isNullOrEmpty()) {
+                    this["required"] = required
+                } else {
+                    remove("required")
+                }
+            }
+        )
+    }
+
+    /**
+     * Remove nullable properties from `required`.
+     */
+    private fun stripNullableRequired(schema: JsonObject): JsonObject {
+        val properties = schema["properties"]?.jsonObject ?: return schema
+        val nullable =
+            properties
+                .filterValues { property -> property.isNullable() }
+                .keys
+
+        if (nullable.isEmpty()) return schema
+
+        val required =
+            schema["required"]?.jsonArray
+                ?.filterNot { it.jsonPrimitive.content in nullable }
+                ?.let { JsonArray(it) }
+
+        return JsonObject(
+            schema.toMutableMap().apply {
+                if (!required.isNullOrEmpty()) {
+                    this["required"] = required
+                } else {
+                    remove("required")
+                }
+            }
+        )
+    }
+
+    /**
+     * Whether this schema allows `null`.
+     */
+    private fun JsonElement.isNullable(): Boolean {
+        val schema = this as? JsonObject ?: return false
+
+        val anyOf = schema["anyOf"]?.jsonArray
+        if (anyOf?.any { it is JsonObject && it["type"]?.jsonPrimitive?.contentOrNull == "null" } == true) {
+            return true
+        }
+
+        val type = schema["type"]
+        return type is JsonArray && type.any { it.jsonPrimitive.contentOrNull == "null" }
+    }
+
+    /**
+     * Collect the names of every `components/schemas` reference in [element].
+     */
+    private fun references(element: JsonElement): Set<String> = when (element) {
+        is JsonObject -> {
+            element.entries.flatMap { (key, value) ->
+                if (key == "\$ref") {
+                    val reference = (value as? JsonPrimitive)?.contentOrNull
+                    if (reference != null && reference.startsWith(REF_PREFIX)) {
+                        listOf(reference.removePrefix(REF_PREFIX))
+                    } else {
+                        emptyList()
+                    }
+                } else {
+                    references(value).toList()
+                }
+            }.toSet()
+        }
+
+        is JsonArray -> {
+            element.flatMap { references(it) }.toSet()
+        }
+
+        else -> {
+            emptySet()
+        }
+    }
+
+    /**
+     * Rewrite `components/schemas` references to `$defs` references.
+     */
+    private fun rewriteReferences(element: JsonElement): JsonElement = when (element) {
+        is JsonObject -> {
+            JsonObject(
+                element.mapValues { (key, value) ->
+                    if (key == "\$ref") {
+                        val reference = (value as? JsonPrimitive)?.contentOrNull
+                        if (reference != null && reference.startsWith(REF_PREFIX)) {
+                            JsonPrimitive("#/\$defs/${reference.removePrefix(REF_PREFIX)}")
+                        } else {
+                            value
+                        }
+                    } else {
+                        rewriteReferences(value)
+                    }
+                }
+            )
+        }
+
+        is JsonArray -> {
+            JsonArray(element.map { rewriteReferences(it) })
+        }
+
+        else -> {
+            element
+        }
+    }
+}
 
 /**
  * Shared security documentation for the Control Room API documents.

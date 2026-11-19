@@ -1,6 +1,6 @@
 /*
  * Hamoni: Cloud workflow platform
- * Copyright (C) 2026  Hamoni Limited
+ * Copyright (C) 2026 Hamoni Limited
  *
  * Unless you have received this program directly from Hamoni Limited pursuant to
  * the terms of a commercial license agreement with Hamoni Limited, then this
@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.initialisers
 
 import ai.hamoni.common.platform.PlatformConfig
@@ -142,15 +141,14 @@ class OrganisationInitialiserTest {
     private fun initialiser(
         service: OrganisationService,
         producer: OrganisationTenantResolverProducer,
-    ): OrganisationInitialiser =
-        OrganisationInitialiser(
-            service,
-            producer,
-            platformConfig(),
-            vertx,
-            schemaPath.toString(),
-            json,
-        )
+    ): OrganisationInitialiser = OrganisationInitialiser(
+        service,
+        producer,
+        platformConfig(),
+        vertx,
+        schemaPath.toString(),
+        json,
+    )
 
     private fun platformConfig(): PlatformConfig {
         val organisationConfig = mockk<PlatformConfig.DefaultOrganisationConfig>()

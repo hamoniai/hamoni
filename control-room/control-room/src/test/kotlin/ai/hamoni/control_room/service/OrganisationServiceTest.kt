@@ -1,6 +1,6 @@
 /*
  * Hamoni: Cloud workflow platform
- * Copyright (C) 2026  Hamoni Limited
+ * Copyright (C) 2026 Hamoni Limited
  *
  * Unless you have received this program directly from Hamoni Limited pursuant to
  * the terms of a commercial license agreement with Hamoni Limited, then this
@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package ai.hamoni.control_room.service
 
 import ai.hamoni.common.core.exception.ServiceException
@@ -368,23 +367,20 @@ class OrganisationServiceTest {
             service.addIdentityProvider(provider)
         }
 
-    private fun create(organisation: Organisation): Uni<Organisation> =
-        Uni.createFrom().deferred {
-            tenantResolverProducer.tenantFallback = organisationId.toString()
-            service.create(organisation)
-        }
+    private fun create(organisation: Organisation): Uni<Organisation> = Uni.createFrom().deferred {
+        tenantResolverProducer.tenantFallback = organisationId.toString()
+        service.create(organisation)
+    }
 
-    private fun state(): Uni<OrganisationState> =
-        Uni.createFrom().deferred {
-            tenantResolverProducer.tenantFallback = organisationId.toString()
-            service.state()
-        }
+    private fun state(): Uni<OrganisationState> = Uni.createFrom().deferred {
+        tenantResolverProducer.tenantFallback = organisationId.toString()
+        service.state()
+    }
 
-    private fun provider(): OrganisationIdentityProvider =
-        OrganisationIdentityProvider(
-            name = "Example provider",
-            url = "https://issuer.example.com",
-            clientId = "client-id",
-            enabled = true,
-        )
+    private fun provider(): OrganisationIdentityProvider = OrganisationIdentityProvider(
+        name = "Example provider",
+        url = "https://issuer.example.com",
+        clientId = "client-id",
+        enabled = true,
+    )
 }
